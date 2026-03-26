@@ -1,5 +1,7 @@
 ﻿'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
@@ -132,6 +134,7 @@ export default function DoctorConsultationPage() {
   });
 
   const getUserData = () => {
+    if (typeof window === 'undefined') return null;
     try {
       const raw = localStorage.getItem('user');
       return raw ? JSON.parse(raw) : null;
