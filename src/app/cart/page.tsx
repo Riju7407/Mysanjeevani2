@@ -1,0 +1,795 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+
+interface CartItem {
+  id: string | number;
+  name: string;
+  price: number;
+  quantity: number;
+  brand: string;
+  image?: string;
+  vendorId?: string;
+}
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: Record<string, unknown>) => {
+      open: () => void;
+      on: (event: string, callback: (response: any) => void) => void;
+    };
+  }
+}
+
+function isImageUrl(value?: string) {
+  return !!value && /^(https?:\/\/|\/)/i.test(value);
+}
+
+async function loadRazorpayScript() {
+  if (window.Razorpay) return true;
+
+  return new Promise<boolean>((resolve) => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
+export default function CartPage() {
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [user, setUser] = useState<any>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [address, setAddress] = useState({
+    houseNo: '',
+    streetAddress: '',
+    fullName: '',
+    phoneNumber: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: 'India',
+  });
+  const router = useRouter();
+
+  useEffect(() => {
+    // Load cart from localStorage
+    const savedCart = localStorage.getItem('cart');
+    if (savedCart) {
+      try {
+        const parsed = JSON.parse(savedCart);
+        const normalized = Array.isArray(parsed)
+          ? parsed.map((item: any) => ({
+              id: item.id,
+              name: item.name || 'Product',
+              price: Number(item.price) || 0,
+              quantity: Number(item.quantity) || 1,
+              brand: item.brand || 'MySanjeevani',
+              image: item.image || '💊',
+            }))
+          : [];
+        setCartItems(normalized);
+      } catch {
+        setCartItems([]);
+      }
+    }
+
+    // Load user from localStorage
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      setUser(JSON.parse(userStr));
+    }
+  }, []);
+
+  const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const discount = Math.floor(totalPrice * 0.10); // 10% discount
+  const finalPrice = totalPrice - discount;
+  const deliveryCharge = finalPrice > 299 ? 0 : 49;
+  const totalAmount = finalPrice + deliveryCharge;
+
+  const updateQuantity = (id: string | number, quantity: number) => {
+    if (quantity <= 0) {
+      removeFromCart(id);
+      return;
+    }
+    const updated = cartItems.map((item) =>
+      item.id === id ? { ...item, quantity } : item
+    );
+    setCartItems(updated);
+    localStorage.setItem('cart', JSON.stringify(updated));
+  };
+
+  const removeFromCart = (id: string | number) => {
+    const updated = cartItems.filter((item) => item.id !== id);
+    setCartItems(updated);
+    localStorage.setItem('cart', JSON.stringify(updated));
+  };
+
+  const clearCart = () => {
+    if (confirm('Are you sure you want to clear the cart?')) {
+      setCartItems([]);
+      localStorage.setItem('cart', JSON.stringify([]));
+    }
+  };
+
+  const handleBuyNow = () => {
+    if (!user) {
+      alert('Please login first');
+      router.push('/login');
+      return;
+    }
+    if (cartItems.length === 0) {
+      alert('Your cart is empty');
+      return;
+    }
+    setShowAddressForm(true);
+  };
+
+  const processPayment = async () => {
+    if (!selectedPaymentMethod) {
+      alert('Please select a payment method');
+      return;
+    }
+
+    // COD should not go through online payment gateway.
+    if (selectedPaymentMethod === 'cod') {
+      const order = {
+        _id: Math.random().toString(36).substr(2, 9),
+        userId: user?.id || 'guest',
+        customerName: address.fullName,
+        customerEmail: user?.email || 'not-provided',
+        customerPhone: address.phoneNumber,
+        items: cartItems.map((item) => ({
+          ...item,
+          vendorId: item.vendorId || 'default-vendor',
+        })),
+        totalAmount,
+        subtotal: finalPrice,
+        discount,
+        deliveryCharge,
+        paymentMethod: 'cod',
+        paymentGateway: 'cod',
+        deliveryAddress: address,
+        status: 'pending',
+        paymentStatus: 'pending',
+        createdAt: new Date().toISOString(),
+      };
+
+      const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+      orders.push(order);
+      localStorage.setItem('orders', JSON.stringify(orders));
+
+      setCartItems([]);
+      localStorage.setItem('cart', JSON.stringify([]));
+      setShowPaymentModal(false);
+      setSelectedPaymentMethod('');
+
+      alert(`Order placed with Cash on Delivery!\n\nOrder ID: ${order._id}`);
+      router.push('/orders');
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const isRazorpayLoaded = await loadRazorpayScript();
+      if (!isRazorpayLoaded || !window.Razorpay) {
+        alert('Unable to load Razorpay checkout. Please try again.');
+        setIsProcessing(false);
+        return;
+      }
+
+      const createOrderResponse = await fetch('/api/payments/razorpay/create-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: totalAmount,
+          receipt: `rcpt_${Date.now()}`,
+          selectedPaymentMethod,
+          notes: {
+            userId: user?.id || 'guest',
+            email: user?.email || 'not-provided',
+            selectedPaymentMethod,
+          },
+        }),
+      });
+
+      const createOrderData = await createOrderResponse.json();
+
+      if (!createOrderResponse.ok) {
+        throw new Error(createOrderData.error || 'Failed to create Razorpay order');
+      }
+
+      const methodConfig = {
+        card: false,
+        netbanking: false,
+        upi: false,
+        wallet: false,
+      } as Record<string, boolean>;
+
+      if (selectedPaymentMethod === 'card') methodConfig.card = true;
+      if (selectedPaymentMethod === 'netbanking') methodConfig.netbanking = true;
+      if (selectedPaymentMethod === 'upi') methodConfig.upi = true;
+      if (selectedPaymentMethod === 'wallet') methodConfig.wallet = true;
+
+      const options: Record<string, unknown> = {
+        key: createOrderData.keyId,
+        amount: createOrderData.order.amount,
+        currency: createOrderData.order.currency,
+        name: 'MySanjeevani',
+        description: 'Order Payment',
+        order_id: createOrderData.order.id,
+        prefill: {
+          name: address.fullName,
+          email: user?.email || '',
+          contact: address.phoneNumber,
+        },
+        notes: {
+          address: `${address.houseNo}, ${address.streetAddress}, ${address.city}, ${address.state} - ${address.postalCode}`,
+        },
+        theme: {
+          color: '#059669',
+        },
+        method: methodConfig,
+        handler: async (response: any) => {
+          try {
+            const verifyResponse = await fetch('/api/payments/razorpay/verify-order', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              }),
+            });
+
+            const verifyData = await verifyResponse.json();
+
+            if (!verifyResponse.ok || !verifyData.success) {
+              throw new Error(verifyData.error || 'Payment verification failed');
+            }
+
+            const order = {
+              _id: Math.random().toString(36).substr(2, 9),
+              userId: user?.id || 'guest',
+              customerName: address.fullName,
+              customerEmail: user?.email || 'not-provided',
+              customerPhone: address.phoneNumber,
+              items: cartItems.map((item) => ({
+                ...item,
+                vendorId: item.vendorId || 'default-vendor',
+              })),
+              totalAmount,
+              subtotal: finalPrice,
+              discount,
+              deliveryCharge,
+              paymentMethod: `razorpay-${selectedPaymentMethod}`,
+              paymentGateway: 'razorpay',
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              deliveryAddress: address,
+              status: 'confirmed',
+              paymentStatus: 'completed',
+              createdAt: new Date().toISOString(),
+            };
+
+            const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+            orders.push(order);
+            localStorage.setItem('orders', JSON.stringify(orders));
+
+            setCartItems([]);
+            localStorage.setItem('cart', JSON.stringify([]));
+
+            setShowPaymentModal(false);
+            setSelectedPaymentMethod('');
+            setIsProcessing(false);
+
+            alert(
+              `Payment successful!\n\nOrder ID: ${order._id}\nRazorpay Payment ID: ${response.razorpay_payment_id}`
+            );
+            router.push('/orders');
+          } catch (error: any) {
+            setIsProcessing(false);
+            alert(error?.message || 'Payment verification failed. Please contact support.');
+          }
+        },
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.on('payment.failed', (failureResponse: any) => {
+        const reason = failureResponse?.error?.description || 'Payment failed';
+        alert(reason);
+        setIsProcessing(false);
+      });
+
+      razorpay.open();
+    } catch (error: any) {
+      console.error('Payment error:', error);
+      alert(error?.message || 'Payment failed. Please try again.');
+      setIsProcessing(false);
+    }
+  };
+
+  const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setAddress((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const submitAddress = () => {
+    // Validate address fields
+    if (!address.houseNo || !address.fullName || !address.phoneNumber || !address.streetAddress || !address.city || !address.state || !address.postalCode) {
+      alert('Please fill in all address fields');
+      return;
+    }
+
+    // Validate phone number
+    if (!/^\d{10}$/.test(address.phoneNumber)) {
+      alert('Please enter a valid 10-digit phone number');
+      return;
+    }
+
+    // Hide address form and show payment modal
+    setShowAddressForm(false);
+    setShowPaymentModal(true);
+  };
+
+  return (
+    <div className="min-h-screen bg-white flex flex-col">
+      <Header />
+
+      <div className="flex-1 py-12">
+        <div className="max-w-6xl mx-auto px-4">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Shopping Cart</h1>
+          <p className="text-gray-600 mb-8">
+            {cartItems.length} item{cartItems.length !== 1 ? 's' : ''} in your cart
+          </p>
+
+          {cartItems.length === 0 ? (
+            <div className="text-center py-20">
+              <div className="text-6xl mb-4">🛒</div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Your cart is empty</h2>
+              <p className="text-gray-600 mb-8">Add some medicines to get started</p>
+              <Link
+                href="/medicines"
+                className="inline-block bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-lg font-semibold transition"
+              >
+                Continue Shopping
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Cart Items */}
+              <div className="lg:col-span-2">
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      Cart Items ({cartItems.length})
+                    </h2>
+                    <button
+                      onClick={clearCart}
+                      className="text-sm text-red-600 hover:text-red-700"
+                    >
+                      Clear Cart
+                    </button>
+                  </div>
+
+                  <div className="divide-y divide-gray-200">
+                    {cartItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className="px-6 py-4 flex gap-4 items-center hover:bg-gray-50 transition"
+                      >
+                        {/* Product Image */}
+                        <div className="w-20 h-20 bg-emerald-50 rounded-lg flex items-center justify-center text-3xl flex-shrink-0">
+                          {isImageUrl(item.image) ? (
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              className="w-full h-full object-cover rounded-lg"
+                              loading="lazy"
+                            />
+                          ) : (
+                            item.image || '💊'
+                          )}
+                        </div>
+
+                        {/* Product Details */}
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900">{item.name}</h3>
+                          <p className="text-sm text-gray-600">{item.brand}</p>
+                          <p className="text-lg font-bold text-emerald-600 mt-1">
+                            ₹{item.price}
+                          </p>
+                        </div>
+
+                        {/* Quantity Control */}
+                        <div className="flex items-center gap-3 bg-gray-100 rounded-lg px-3 py-2">
+                          <button
+                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            className="text-gray-600 hover:text-gray-900 font-bold"
+                          >
+                            −
+                          </button>
+                          <span className="w-8 text-center font-semibold">
+                            {item.quantity}
+                          </span>
+                          <button
+                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            className="text-gray-600 hover:text-gray-900 font-bold"
+                          >
+                            +
+                          </button>
+                        </div>
+
+                        {/* Total & Remove */}
+                        <div className="text-right">
+                          <p className="font-bold text-gray-900">
+                            ₹{item.price * item.quantity}
+                          </p>
+                          <button
+                            onClick={() => removeFromCart(item.id)}
+                            className="text-sm text-red-600 hover:text-red-700 mt-2"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Continue Shopping */}
+                <div className="mt-6">
+                  <Link
+                    href="/medicines"
+                    className="inline-block text-emerald-600 hover:text-emerald-700 font-semibold"
+                  >
+                    ← Continue Shopping
+                  </Link>
+                </div>
+              </div>
+
+              {/* Price Summary */}
+              <div className="lg:col-span-1">
+                <div className="bg-gradient-to-b from-emerald-50 to-white border border-emerald-200 rounded-lg p-6 sticky top-24">
+                  <h3 className="text-lg font-bold text-gray-900 mb-6">Order Summary</h3>
+
+                  <div className="space-y-4 mb-6 pb-6 border-b border-gray-200">
+                    <div className="flex justify-between items-center text-gray-700">
+                      <span>Subtotal:</span>
+                      <span className="font-semibold">₹{totalPrice.toFixed(2)}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-green-600">
+                      <span>Discount (10%):</span>
+                      <span className="font-semibold">-₹{discount.toFixed(2)}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-gray-700">
+                      <span>After Discount:</span>
+                      <span className="font-semibold">₹{finalPrice.toFixed(2)}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-gray-700">
+                      <span>
+                        Delivery{' '}
+                        {deliveryCharge === 0 && (
+                          <span className="text-green-600 font-semibold text-xs">
+                            (FREE)
+                          </span>
+                        )}
+                        :
+                      </span>
+                      <span className="font-semibold">
+                        {deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center mb-6 text-lg">
+                    <span className="font-bold text-gray-900">Total Amount:</span>
+                    <span className="font-bold text-emerald-600 text-2xl">
+                      ₹{totalAmount.toFixed(2)}
+                    </span>
+                  </div>
+
+                  {deliveryCharge > 0 && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6 text-xs text-blue-700">
+                      📦 Add ₹{(299 - finalPrice).toFixed(2)} more to get FREE delivery
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleBuyNow}
+                    className="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white py-3 rounded-lg font-bold transition"
+                  >
+                    💳 Buy Now
+                  </button>
+
+                  <div className="mt-4 text-xs text-gray-600 text-center space-y-1">
+                    <p>✓ Secure Checkout</p>
+                    <p>✓ Multiple Payment Options</p>
+                    <p>✓ Money Back Guarantee</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Payment Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-96 overflow-y-auto">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Select Payment Method</h2>
+            <p className="text-gray-600 mb-6">
+              Amount to Pay: <span className="font-bold text-emerald-600 text-lg">₹{totalAmount.toFixed(2)}</span>
+            </p>
+
+            <div className="space-y-3 mb-6">
+              {/* Credit/Debit Card */}
+              <label className="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-emerald-300 transition"
+                onClick={() => setSelectedPaymentMethod('card')}>
+                <input
+                  type="radio"
+                  name="payment"
+                  value="card"
+                  checked={selectedPaymentMethod === 'card'}
+                  onChange={() => setSelectedPaymentMethod('card')}
+                  className="mr-4"
+                />
+                <div>
+                  <p className="font-semibold text-gray-900">💳 Credit/Debit Card</p>
+                  <p className="text-xs text-gray-600">Visa, Mastercard, Amex</p>
+                </div>
+              </label>
+
+              {/* Net Banking */}
+              <label className="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-emerald-300 transition"
+                onClick={() => setSelectedPaymentMethod('netbanking')}>
+                <input
+                  type="radio"
+                  name="payment"
+                  value="netbanking"
+                  checked={selectedPaymentMethod === 'netbanking'}
+                  onChange={() => setSelectedPaymentMethod('netbanking')}
+                  className="mr-4"
+                />
+                <div>
+                  <p className="font-semibold text-gray-900">🏦 Net Banking</p>
+                  <p className="text-xs text-gray-600">All Indian Banks Supported</p>
+                </div>
+              </label>
+
+              {/* UPI */}
+              <label className="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-emerald-300 transition"
+                onClick={() => setSelectedPaymentMethod('upi')}>
+                <input
+                  type="radio"
+                  name="payment"
+                  value="upi"
+                  checked={selectedPaymentMethod === 'upi'}
+                  onChange={() => setSelectedPaymentMethod('upi')}
+                  className="mr-4"
+                />
+                <div>
+                  <p className="font-semibold text-gray-900">📱 UPI</p>
+                  <p className="text-xs text-gray-600">Google Pay, PhonePe, Paytm</p>
+                </div>
+              </label>
+
+              {/* Wallets */}
+              <label className="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-emerald-300 transition"
+                onClick={() => setSelectedPaymentMethod('wallet')}>
+                <input
+                  type="radio"
+                  name="payment"
+                  value="wallet"
+                  checked={selectedPaymentMethod === 'wallet'}
+                  onChange={() => setSelectedPaymentMethod('wallet')}
+                  className="mr-4"
+                />
+                <div>
+                  <p className="font-semibold text-gray-900">💰 Digital Wallets</p>
+                  <p className="text-xs text-gray-600">Paytm, Amazon Pay, Airtel Money</p>
+                </div>
+              </label>
+
+              {/* Cash on Delivery */}
+              <label className="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-emerald-300 transition"
+                onClick={() => setSelectedPaymentMethod('cod')}>
+                <input
+                  type="radio"
+                  name="payment"
+                  value="cod"
+                  checked={selectedPaymentMethod === 'cod'}
+                  onChange={() => setSelectedPaymentMethod('cod')}
+                  className="mr-4"
+                />
+                <div>
+                  <p className="font-semibold text-gray-900">🚚 Cash on Delivery</p>
+                  <p className="text-xs text-gray-600">Pay when you receive</p>
+                </div>
+              </label>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowPaymentModal(false)}
+                className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-50 transition"
+                disabled={isProcessing}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={processPayment}
+                disabled={isProcessing || !selectedPaymentMethod}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white py-2 rounded-lg font-semibold transition"
+              >
+                {isProcessing ? 'Processing...' : 'Pay Now'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Address Form Modal */}
+      {showAddressForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full p-6 max-h-96 overflow-y-auto">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Delivery Address</h2>
+            <p className="text-gray-600 mb-6">Please provide your complete delivery address</p>
+
+            <div className="space-y-4">
+              {/* Full Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">Full Name *</label>
+                <input
+                  type="text"
+                  name="fullName"
+                  value={address.fullName}
+                  onChange={handleAddressChange}
+                  placeholder="Enter your full name"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* Phone Number */}
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">Phone Number *</label>
+                <input
+                  type="tel"
+                  name="phoneNumber"
+                  value={address.phoneNumber}
+                  onChange={handleAddressChange}
+                  placeholder="Enter 10-digit phone number"
+                  maxLength={10}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* House No or Flat No */}
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">House No or Flat No *</label>
+                <input
+                  type="text"
+                  name="houseNo"
+                  value={address.houseNo}
+                  onChange={handleAddressChange}
+                  placeholder="e.g., 123 or Flat 4B"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* Street Address */}
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">Street Address *</label>
+                <input
+                  type="text"
+                  name="streetAddress"
+                  value={address.streetAddress}
+                  onChange={handleAddressChange}
+                  placeholder="Enter building name, street"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* City */}
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">City *</label>
+                <input
+                  type="text"
+                  name="city"
+                  value={address.city}
+                  onChange={handleAddressChange}
+                  placeholder="Enter city name"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* State */}
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">State *</label>
+                <input
+                  type="text"
+                  name="state"
+                  value={address.state}
+                  onChange={handleAddressChange}
+                  placeholder="Enter state name"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* Postal Code */}
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">Postal Code *</label>
+                <input
+                  type="text"
+                  name="postalCode"
+                  value={address.postalCode}
+                  onChange={handleAddressChange}
+                  placeholder="Enter 6-digit postal code"
+                  maxLength={6}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* Country */}
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">Country</label>
+                <select
+                  name="country"
+                  value={address.country}
+                  onChange={handleAddressChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="India">India</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowAddressForm(false);
+                  setAddress({ houseNo: '', streetAddress: '', fullName: '', phoneNumber: '', city: '', state: '', postalCode: '', country: 'India' });
+                  setSelectedPaymentMethod('');
+                }}
+                className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitAddress}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg font-semibold transition"
+              >
+                ✓ Confirm & Proceed to Payment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Footer />
+    </div>
+  );
+}

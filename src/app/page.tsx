@@ -1,0 +1,664 @@
+﻿'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import HeroCarousel from '@/components/HeroCarousel';
+import PrimaryServicesCarousel from '@/components/PrimaryServicesCarousel';
+import HealthConcernCarousel from '@/components/HealthConcernCarousel';
+
+interface Product {
+  _id: string;
+  name: string;
+  brand?: string;
+  category: string;
+  productType?: string;
+  price: number;
+  mrp?: number;
+  stock: number;
+  image?: string;
+  icon?: string;
+  rating?: number;
+  reviews?: number;
+  isPopular?: boolean;
+  isPopularGeneric?: boolean;
+  isPopularAyurveda?: boolean;
+  isPopularHomeopathy?: boolean;
+  isPopularLabTests?: boolean;
+}
+
+interface ReviewSummary {
+  averageRating: number;
+  total: number;
+  latestComment?: string;
+  latestUserName?: string;
+}
+
+interface PopularSectionProps {
+  title: string;
+  subtitle: string;
+  productType: string;
+  products: Product[];
+  reviewSummaries: Record<string, ReviewSummary>;
+  loading: boolean;
+  onAddToCart: (product: Product) => void;
+  onBuyNow: (product: Product) => void;
+  onProductClick: (productId: string) => void;
+}
+
+function PopularProductsDisplay({
+  title,
+  subtitle,
+  productType,
+  products,
+  reviewSummaries,
+  loading,
+  onAddToCart,
+  onBuyNow,
+  onProductClick,
+}: PopularSectionProps) {
+  const themes: Record<string, {
+    panel: string;
+    ring: string;
+    glow: string;
+    chip: string;
+    button: string;
+  }> = {
+    'Generic Medicine': {
+      panel: 'bg-linear-to-br from-emerald-50 via-teal-50 to-cyan-50',
+      ring: 'border-emerald-200',
+      glow: 'bg-emerald-300/25',
+      chip: 'bg-emerald-600 text-white',
+      button: 'bg-emerald-600 hover:bg-emerald-700',
+    },
+    'Ayurveda Medicine': {
+      panel: 'bg-linear-to-br from-amber-50 via-lime-50 to-emerald-50',
+      ring: 'border-amber-200',
+      glow: 'bg-amber-300/30',
+      chip: 'bg-amber-600 text-white',
+      button: 'bg-amber-600 hover:bg-amber-700',
+    },
+    Homeopathy: {
+      panel: 'bg-linear-to-br from-sky-50 via-cyan-50 to-teal-50',
+      ring: 'border-sky-200',
+      glow: 'bg-sky-300/30',
+      chip: 'bg-sky-600 text-white',
+      button: 'bg-sky-600 hover:bg-sky-700',
+    },
+    'Lab Tests': {
+      panel: 'bg-linear-to-br from-violet-50 via-fuchsia-50 to-rose-50',
+      ring: 'border-violet-200',
+      glow: 'bg-violet-300/30',
+      chip: 'bg-violet-600 text-white',
+      button: 'bg-violet-600 hover:bg-violet-700',
+    },
+  };
+
+  const theme = themes[productType] || themes['Generic Medicine'];
+  const isLabTestsSection = productType === 'Lab Tests';
+
+  const discountPercent = (product: Product) => {
+    if (!product.mrp || product.mrp <= product.price) return 0;
+    return Math.round(((product.mrp - product.price) / product.mrp) * 100);
+  };
+
+  if (loading) {
+    return (
+      <section className="max-w-7xl mx-auto px-4 py-12 w-full">
+        <div className={`relative overflow-hidden rounded-3xl border ${theme.ring} ${theme.panel} p-6 sm:p-8`}>
+          <div className={`absolute -top-12 -right-8 h-32 w-32 rounded-full blur-2xl ${theme.glow}`} />
+          <div className="mb-7 relative z-10">
+            <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${theme.chip}`}>Featured Collection</span>
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900 mt-3">{title}</h2>
+            <p className="text-slate-700 mt-2 max-w-2xl">{subtitle}</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 relative z-10">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="bg-white/80 border border-white rounded-2xl h-72 animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (products.length === 0) {
+    return (
+      <section className="max-w-7xl mx-auto px-4 py-12 w-full">
+        <div className={`relative overflow-hidden rounded-3xl border ${theme.ring} ${theme.panel} p-6 sm:p-8`}>
+          <div className={`absolute -top-12 -right-8 h-32 w-32 rounded-full blur-2xl ${theme.glow}`} />
+          <div className="mb-5 relative z-10">
+            <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${theme.chip}`}>Featured Collection</span>
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900 mt-3">{title}</h2>
+            <p className="text-slate-700 mt-2">{subtitle}</p>
+          </div>
+          <div className="text-center py-10 text-slate-600 relative z-10 bg-white/65 rounded-2xl border border-white">
+            <p className="text-lg font-semibold">No products available yet</p>
+            <p className="text-sm mt-1">Admin can mark products as popular to feature them here.</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="max-w-7xl mx-auto px-4 py-12 w-full">
+      <div className={`relative overflow-hidden rounded-3xl border ${theme.ring} ${theme.panel} p-6 sm:p-8`}>
+        <div className={`absolute -top-14 -right-10 h-36 w-36 rounded-full blur-2xl ${theme.glow}`} />
+        <div className={`absolute -bottom-16 -left-12 h-40 w-40 rounded-full blur-3xl ${theme.glow}`} />
+
+        <div className="mb-8 flex flex-col gap-3 relative z-10">
+          <span className={`inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-semibold ${theme.chip}`}>Featured Collection</span>
+          <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900">{title}</h2>
+          <p className="text-slate-700 max-w-2xl text-sm sm:text-base">{subtitle}</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 relative z-10">
+          {products.slice(0, 8).map((product) => {
+            const summary = reviewSummaries[product._id] || {
+              averageRating: product.rating || 0,
+              total: product.reviews || 0,
+            };
+
+            return (
+              <article
+                key={product._id}
+                className="group bg-white/95 border border-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition duration-300 cursor-pointer"
+                onClick={() => onProductClick(product._id)}
+              >
+                <div className="relative bg-linear-to-br from-white to-slate-50 h-48 flex items-center justify-center overflow-hidden">
+                  <span className={`absolute top-3 left-3 rounded-full px-2.5 py-1 text-[10px] font-bold ${theme.chip}`}>
+                    Popular
+                  </span>
+                  {product.image ? (
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      className="h-full w-full object-contain p-4 group-hover:scale-105 transition duration-300"
+                    />
+                  ) : (
+                    <div className="text-5xl">{product.icon || '💊'}</div>
+                  )}
+                </div>
+
+                <div className="p-4">
+                  <p className="text-[11px] font-medium text-slate-500 mb-1 uppercase tracking-wide">{product.brand || 'MySanjeevani'}</p>
+                  <h3 className="font-bold text-slate-900 text-sm line-clamp-2 min-h-10 mb-2">{product.name}</h3>
+
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1">
+                      <span className="text-amber-500">★</span>
+                      <span className="text-xs font-semibold text-slate-900">{Number(summary.averageRating).toFixed(1)}</span>
+                      <span className="text-xs text-slate-500">({summary.total})</span>
+                    </div>
+                    <span
+                      className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
+                        product.stock > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                      }`}
+                    >
+                      {product.stock > 0 ? 'In Stock' : 'Out of Stock'}
+                    </span>
+                  </div>
+
+                  {summary.latestComment && (
+                    <p className="text-xs text-slate-600 mb-2 line-clamp-2">"{summary.latestComment}"</p>
+                  )}
+
+                  <div className="mb-3 flex items-end justify-between">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-lg font-black text-slate-900">₹{product.price}</span>
+                      {product.mrp && product.mrp > product.price && (
+                        <span className="text-xs text-slate-400 line-through">₹{product.mrp}</span>
+                      )}
+                    </div>
+                    {product.mrp && product.mrp > product.price && (
+                      <span className="text-[11px] font-bold text-emerald-600">{discountPercent(product)}% OFF</span>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isLabTestsSection) {
+                          onProductClick(product._id);
+                          return;
+                        }
+                        onAddToCart(product);
+                      }}
+                      disabled={product.stock <= 0}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${
+                        product.stock <= 0
+                          ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                          : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      {isLabTestsSection ? 'View Details' : 'Add to Cart'}
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onBuyNow(product);
+                      }}
+                      disabled={product.stock <= 0}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold text-white transition ${
+                        product.stock <= 0 ? 'bg-slate-400 cursor-not-allowed' : theme.button
+                      }`}
+                    >
+                      {isLabTestsSection ? 'Book' : 'Buy Now'}
+                    </button>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default function HomePage() {
+  const router = useRouter();
+  const trustSectionRef = useRef<HTMLElement | null>(null);
+
+  // All products state
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [reviewSummaries, setReviewSummaries] = useState<Record<string, ReviewSummary>>({});
+  const [loading, setLoading] = useState(true);
+  const [trustVisible, setTrustVisible] = useState(false);
+
+  useEffect(() => {
+    const fetchAllProducts = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/products?limit=500', { cache: 'no-store' });
+        const data = await res.json();
+        setAllProducts(data.products || []);
+
+        // Fetch review summaries for all products
+        const productIds = (data.products || []).map((p: Product) => p._id).join(',');
+        if (productIds) {
+          const reviewRes = await fetch(`/api/reviews?productIds=${productIds}`, {
+            cache: 'no-store',
+          });
+          const reviewData = await reviewRes.json();
+          setReviewSummaries(reviewData.summaries || {});
+        }
+      } catch (error) {
+        console.error('Failed to fetch products:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAllProducts();
+  }, []);
+
+  useEffect(() => {
+    const el = trustSectionRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting) {
+          setTrustVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.2 }
+    );
+
+    observer.observe(el);
+
+    return () => observer.disconnect();
+  }, []);
+
+  const addToCart = (product: Product) => {
+    try {
+      const raw = localStorage.getItem('cart') || '[]';
+      const cart = JSON.parse(raw);
+      const existing = cart.find((item: any) => item.id === product._id);
+
+      if (existing) {
+        existing.quantity += 1;
+      } else {
+        cart.push({
+          id: product._id,
+          name: product.name,
+          price: product.price,
+          quantity: 1,
+          brand: product.brand,
+          image: product.image || product.icon || '💊',
+          vendorName: 'MySanjeevani',
+        });
+      }
+
+      localStorage.setItem('cart', JSON.stringify(cart));
+      window.dispatchEvent(new Event('storage'));
+    } catch (error) {
+      console.error('Failed to add to cart:', error);
+    }
+  };
+
+  const handleBuyNow = (product: Product) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push(`/login?redirect=${encodeURIComponent('/')}`);
+      return;
+    }
+    addToCart(product);
+    router.push('/cart');
+  };
+
+  // Normalize values so legacy/lowercase entries are still matched.
+  const normalizeType = (value?: string) => String(value || '').trim().toLowerCase();
+  const normalizeCategory = (value?: string) => String(value || '').trim().toLowerCase();
+
+  // Filter products by type and popularity.
+  const genericMedicines = allProducts.filter(
+    (p) =>
+      (!p.productType || normalizeType(p.productType) === 'generic medicine') &&
+      ((p as any).isPopularGeneric || p.isPopular)
+  );
+  const ayurveda = allProducts.filter(
+    (p) => {
+      const type = normalizeType(p.productType);
+      const category = normalizeCategory(p.category);
+      const isAyurvedaType = type === 'ayurveda medicine' || type === 'ayurveda';
+      const isAyurvedaCategory = category.includes('ayurveda');
+      return Boolean((p as any).isPopularAyurveda) || ((isAyurvedaType || isAyurvedaCategory) && Boolean(p.isPopular));
+    }
+  );
+  const homeopathy = allProducts.filter(
+    (p) => {
+      const type = normalizeType(p.productType);
+      const category = normalizeCategory(p.category);
+      const isHomeopathyType = type === 'homeopathy' || type === 'homeopathy medicine';
+      const isHomeopathyCategory = category.includes('homeopathy');
+      return Boolean((p as any).isPopularHomeopathy) || ((isHomeopathyType || isHomeopathyCategory) && Boolean(p.isPopular));
+    }
+  );
+  const labTests = allProducts.filter(
+    (p) => {
+      const type = normalizeType(p.productType);
+      const category = normalizeCategory(p.category);
+      const isLabType = type === 'lab tests' || type === 'lab test';
+      const isLabCategory = category.includes('lab');
+      return Boolean((p as any).isPopularLabTests) || ((isLabType || isLabCategory) && Boolean(p.isPopular));
+    }
+  );
+
+  return (
+    <div className="min-h-screen flex flex-col bg-white">
+      <Header />
+
+      {/* Hero Section */}
+      <HeroCarousel />
+
+      {/* Primary Services */}
+      <PrimaryServicesCarousel />
+
+      {/* Popular Medicines Section */}
+      <PopularProductsDisplay
+        title="Popular Medicines"
+        subtitle="Most ordered and trusted products by our customers"
+        productType="Generic Medicine"
+        products={genericMedicines}
+        reviewSummaries={reviewSummaries}
+        loading={loading}
+        onAddToCart={addToCart}
+        onBuyNow={handleBuyNow}
+        onProductClick={(id) => router.push(`/medicines/${id}`)}
+      />
+
+      {/* Between Popular Medicines and Ayurveda */}
+      <section className="max-w-7xl mx-auto px-4 pb-10 w-full">
+        <div className="rounded-3xl border border-emerald-200 bg-linear-to-r from-emerald-600 via-teal-600 to-cyan-600 p-6 sm:p-7 text-white shadow-lg">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-center">
+            <div className="lg:col-span-2">
+              <p className="text-xs uppercase tracking-[0.2em] text-white/80">Quick Healthcare Access</p>
+              <h3 className="mt-2 text-2xl sm:text-3xl font-black">Need More Than Medicines?</h3>
+              <p className="mt-2 text-white/90 text-sm sm:text-base">Consult doctors, book lab tests, and unlock fresh offers in one tap.</p>
+            </div>
+            <div className="flex flex-wrap lg:justify-end gap-2">
+              <button onClick={() => router.push('/doctor-consultation')} className="rounded-lg bg-white text-teal-700 px-4 py-2 text-sm font-bold hover:bg-teal-50 transition">Consult Doctor</button>
+              <button onClick={() => router.push('/lab-tests')} className="rounded-lg bg-white text-teal-700 px-4 py-2 text-sm font-bold hover:bg-teal-50 transition">Book Lab Test</button>
+              <button onClick={() => router.push('/offers')} className="rounded-lg border border-white/70 text-white px-4 py-2 text-sm font-bold hover:bg-white/10 transition">View Offers</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Popular Ayurveda Section */}
+      <PopularProductsDisplay
+        title="Popular Ayurveda Products"
+        subtitle="Traditional wellness products trusted by customers"
+        productType="Ayurveda Medicine"
+        products={ayurveda}
+        reviewSummaries={reviewSummaries}
+        loading={loading}
+        onAddToCart={addToCart}
+        onBuyNow={handleBuyNow}
+        onProductClick={(id) => router.push(`/medicines/${id}`)}
+      />
+
+      {/* Between Ayurveda and Homeopathy */}
+      <section className="max-w-7xl mx-auto px-4 pb-10 w-full">
+        <div className="rounded-3xl border border-amber-200 bg-linear-to-r from-amber-50 via-lime-50 to-emerald-50 p-6 sm:p-7">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-amber-700 font-semibold">Daily Wellness Ritual</p>
+              <h3 className="mt-2 text-2xl font-black text-slate-900">Build a Better Morning Routine</h3>
+              <p className="mt-1 text-sm text-slate-600">Start with immunity support, digestive care, and stress-balancing solutions.</p>
+            </div>
+            <button
+              onClick={() => router.push('/ayurveda')}
+              className="rounded-xl bg-amber-600 hover:bg-amber-700 text-white px-5 py-3 text-sm font-bold transition"
+            >
+              Explore Ayurveda
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Popular Homeopathy Section */}
+      <PopularProductsDisplay
+        title="Popular Homeopathy Products"
+        subtitle="Natural and safe homeopathic remedies"
+        productType="Homeopathy"
+        products={homeopathy}
+        reviewSummaries={reviewSummaries}
+        loading={loading}
+        onAddToCart={addToCart}
+        onBuyNow={handleBuyNow}
+        onProductClick={(id) => router.push(`/medicines/${id}`)}
+      />
+
+      {/* Between Homeopathy and Lab Tests */}
+      <section className="max-w-7xl mx-auto px-4 pb-10 w-full">
+        <div className="rounded-3xl border border-sky-200 bg-linear-to-r from-sky-50 via-cyan-50 to-blue-50 p-6 sm:p-7">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-center">
+            <div className="lg:col-span-2">
+              <p className="text-xs uppercase tracking-[0.2em] text-sky-700 font-semibold">Preventive Health</p>
+              <h3 className="mt-2 text-2xl font-black text-slate-900">Track Symptoms with Smart Diagnostics</h3>
+              <p className="mt-1 text-sm text-slate-600">Pair your remedy plan with lab checks to monitor progress and improve outcomes.</p>
+            </div>
+            <div className="flex lg:justify-end">
+              <button
+                onClick={() => router.push('/lab-tests')}
+                className="w-full lg:w-auto rounded-xl bg-sky-600 hover:bg-sky-700 text-white px-5 py-3 text-sm font-bold transition"
+              >
+                Start Health Check
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Popular Lab Tests Section */}
+      <PopularProductsDisplay
+        title="Popular Lab Tests"
+        subtitle="Book health checkups and diagnostic tests online"
+        productType="Lab Tests"
+        products={labTests}
+        reviewSummaries={reviewSummaries}
+        loading={loading}
+        onAddToCart={addToCart}
+        onBuyNow={() => router.push('/lab-tests')}
+        onProductClick={(id) => router.push(`/medicines/${id}`)}
+      />
+
+      {/* Care Journey Section */}
+      <section className="max-w-7xl mx-auto px-4 py-10 sm:py-12 w-full">
+        <div className="rounded-3xl border border-slate-200 bg-linear-to-br from-white via-slate-50 to-emerald-50 p-6 sm:p-8">
+          <div className="text-center max-w-2xl mx-auto">
+            <span className="inline-flex rounded-full bg-slate-900 text-white px-3 py-1 text-xs font-semibold tracking-wide uppercase">
+              How It Works
+            </span>
+            <h2 className="mt-3 text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
+              Your Complete Healthcare Journey in 3 Steps
+            </h2>
+            <p className="mt-2 text-slate-600 text-sm sm:text-base">
+              Discover products, get expert guidance, and receive care at home without friction.
+            </p>
+          </div>
+
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
+            <article className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
+              <div className="h-10 w-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-black">1</div>
+              <h3 className="mt-3 text-lg font-extrabold text-slate-900">Choose Your Care</h3>
+              <p className="mt-1 text-sm text-slate-600">Browse medicines, Ayurveda, Homeopathy, and lab services based on your needs.</p>
+            </article>
+
+            <article className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
+              <div className="h-10 w-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-black">2</div>
+              <h3 className="mt-3 text-lg font-extrabold text-slate-900">Get Expert Support</h3>
+              <p className="mt-1 text-sm text-slate-600">Book doctor consultations and receive recommendations tailored to your symptoms.</p>
+            </article>
+
+            <article className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
+              <div className="h-10 w-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-black">3</div>
+              <h3 className="mt-3 text-lg font-extrabold text-slate-900">Fast Doorstep Delivery</h3>
+              <p className="mt-1 text-sm text-slate-600">Track every order and receive trusted healthcare products quickly and safely.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      {/* Personalized Care Programs */}
+      <section className="max-w-7xl mx-auto px-4 pb-12 w-full">
+        <div className="relative overflow-hidden rounded-3xl border border-violet-200 bg-linear-to-r from-violet-600 via-fuchsia-600 to-rose-500 p-6 sm:p-8 text-white">
+          <div className="absolute -top-10 -right-8 h-32 w-32 rounded-full bg-white/20 blur-2xl" />
+          <div className="absolute -bottom-12 -left-10 h-36 w-36 rounded-full bg-white/15 blur-2xl" />
+
+          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+            <div className="lg:col-span-2">
+              <p className="text-xs uppercase tracking-[0.2em] text-white/80">Personalized Wellness</p>
+              <h3 className="mt-2 text-2xl sm:text-3xl font-black">Build Your Monthly Health Plan</h3>
+              <p className="mt-2 text-white/90 text-sm sm:text-base max-w-2xl">
+                Combine medicines, diagnostics, and consultations into one routine and manage everything from a single dashboard.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row lg:flex-col gap-3 lg:justify-self-end w-full lg:w-auto">
+              <button
+                onClick={() => router.push('/medicines')}
+                className="rounded-xl bg-white text-violet-700 font-bold px-5 py-3 hover:bg-violet-50 transition"
+              >
+                Explore Medicines
+              </button>
+              <button
+                onClick={() => router.push('/doctor-consultation')}
+                className="rounded-xl border border-white/60 text-white font-bold px-5 py-3 hover:bg-white/10 transition"
+              >
+                Book Consultation
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Health Concerns Section */}
+      <HealthConcernCarousel />
+
+      {/* Trust & Assurance Section */}
+      <section ref={trustSectionRef} className="bg-linear-to-br from-slate-50 via-white to-emerald-50 py-14 sm:py-16 relative overflow-hidden">
+        <div className="absolute -top-24 right-0 h-64 w-64 rounded-full bg-emerald-200/30 blur-3xl" />
+        <div className="absolute -bottom-24 left-0 h-64 w-64 rounded-full bg-sky-200/30 blur-3xl" />
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
+            <span className="inline-flex items-center rounded-full bg-emerald-100 text-emerald-700 px-3 py-1 text-xs font-semibold tracking-wide uppercase">
+              Why Choose MySanjeevani
+            </span>
+            <h2 className="mt-3 text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
+              Trusted Healthcare, Delivered with Care
+            </h2>
+            <p className="mt-3 text-slate-600 text-sm sm:text-base">
+              Every order is backed by verified sourcing, secure transactions, and dependable doorstep delivery.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6">
+            <article
+              className={`rounded-2xl border border-emerald-200 bg-white shadow-sm hover:shadow-lg transition-all duration-700 ease-out p-6 text-center ${
+                trustVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+              }`}
+              style={{ transitionDelay: '50ms' }}
+            >
+              <div className="mx-auto h-14 w-14 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-2xl font-black mb-4">✓</div>
+              <h3 className="font-extrabold text-slate-900 text-lg mb-2">100% Authentic</h3>
+              <p className="text-sm text-slate-600">All medicines sourced from verified pharmacies</p>
+            </article>
+
+            <article
+              className={`rounded-2xl border border-blue-200 bg-white shadow-sm hover:shadow-lg transition-all duration-700 ease-out p-6 text-center ${
+                trustVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+              }`}
+              style={{ transitionDelay: '160ms' }}
+            >
+              <div className="mx-auto h-14 w-14 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center text-2xl mb-4">🛡️</div>
+              <h3 className="font-extrabold text-slate-900 text-lg mb-2">Secure & Safe</h3>
+              <p className="text-sm text-slate-600">SSL encrypted transactions and secure payment</p>
+            </article>
+
+            <article
+              className={`rounded-2xl border border-amber-200 bg-white shadow-sm hover:shadow-lg transition-all duration-700 ease-out p-6 text-center ${
+                trustVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+              }`}
+              style={{ transitionDelay: '260ms' }}
+            >
+              <div className="mx-auto h-14 w-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-2xl mb-4">📦</div>
+              <h3 className="font-extrabold text-slate-900 text-lg mb-2">Fast Delivery</h3>
+              <p className="text-sm text-slate-600">Get medicines delivered to your doorstep</p>
+            </article>
+          </div>
+
+          <div className="mt-8 rounded-2xl border border-white bg-white/70 backdrop-blur px-5 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p className="text-sm sm:text-base text-slate-700 font-medium">
+              Ready to start your care journey with confidence?
+            </p>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button
+                onClick={() => router.push('/signup')}
+                className="flex-1 sm:flex-none rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2.5 transition"
+              >
+                Create Account
+              </button>
+              <button
+                onClick={() => router.push('/offers')}
+                className="flex-1 sm:flex-none rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-bold px-4 py-2.5 hover:bg-slate-50 transition"
+              >
+                View Offers
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <Footer />
+    </div>
+  );
+}
+
