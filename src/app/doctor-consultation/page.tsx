@@ -85,6 +85,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 async function loadRazorpayScript() {
+  if (typeof window === 'undefined') return false;
   if (window.Razorpay) return true;
 
   return new Promise<boolean>((resolve) => {
@@ -116,6 +117,7 @@ export default function DoctorConsultationPage() {
   const [activeCall, setActiveCall] = useState<Consultation | null>(null);
 
   const redirectToLogin = () => {
+    if (typeof window === 'undefined') return;
     const returnTo = `${window.location.pathname}${window.location.search}`;
     router.push(`/login?redirect=${encodeURIComponent(returnTo)}`);
   };
