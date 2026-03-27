@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+export const dynamic = 'force-dynamic';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { LogoImage } from '@/components/Logo';
 import Image from 'next/image';
@@ -11,8 +13,7 @@ import { RecaptchaVerifier, signInWithPhoneNumber, signInWithPopup } from 'fireb
 import { firebaseAuth, googleProvider } from '@/lib/firebaseClient';
 
 export default function LoginPage() {
-  const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirect');
+  const [redirectTo, setRedirectTo] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('user');
@@ -21,6 +22,11 @@ export default function LoginPage() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [phoneLoading, setPhoneLoading] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    const value = new URLSearchParams(window.location.search).get('redirect');
+    setRedirectTo(value || '');
+  }, []);
 
   const persistSession = (data: any) => {
     localStorage.setItem('token', data.token);

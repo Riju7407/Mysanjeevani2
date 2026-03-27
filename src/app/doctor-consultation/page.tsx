@@ -1,12 +1,14 @@
 ﻿'use client';
 
-export const dynamic = 'force-dynamic';
-
 import { useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import AgoraConsultationCall from '@/components/AgoraConsultationCall';
+
+const AgoraConsultationCall = dynamic(() => import('@/components/AgoraConsultationCall'), {
+  ssr: false,
+});
 
 declare global {
   interface Window {
@@ -134,7 +136,6 @@ export default function DoctorConsultationPage() {
   });
 
   const getUserData = () => {
-    if (typeof window === 'undefined') return null;
     try {
       const raw = localStorage.getItem('user');
       return raw ? JSON.parse(raw) : null;

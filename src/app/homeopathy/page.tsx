@@ -1,105 +1,66 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
-interface Product {
-  _id: string;
-  name: string;
-  brand?: string;
-  category: string;
-  productType?: string;
-  price: number;
-  mrp?: number;
-  stock: number;
-  image?: string;
-  icon?: string;
-  benefit?: string;
-  description?: string;
-  rating?: number;
-  reviews?: number;
-}
-
 const CATEGORIES = ['All', 'Cold & Flu', 'Skin', 'Digestive', 'Mental Wellness', 'Joint & Pain', "Women's Health", 'Immunity', 'Children'];
+
+const PRODUCTS = [
+  { id: 1, name: 'Arnica Montana 30C', brand: 'SBL', category: 'Joint & Pain', price: 85, mrp: 110, discount: 23, icon: '🌼', rating: 4.7, reviews: 1892, desc: 'Most popular remedy for bruises, trauma, muscle soreness and shock', tag: 'Best Seller' },
+  { id: 2, name: 'Nux Vomica 200C', brand: 'Dr. Reckeweg', category: 'Digestive', price: 120, mrp: 160, discount: 25, icon: '🫢', rating: 4.6, reviews: 1234, desc: 'For overindulgence, digestive disturbances and irritability', tag: '' },
+  { id: 3, name: 'Calcarea Carbonica 30C', brand: 'Boiron', category: 'Children', price: 165, mrp: 220, discount: 25, icon: '🐚', rating: 4.5, reviews: 876, desc: 'Constitutional remedy for slow-developing children and bone health', tag: '' },
+  { id: 4, name: 'Rhus Toxicodendron 30C', brand: 'SBL', category: 'Joint & Pain', price: 85, mrp: 110, discount: 23, icon: '🍂', rating: 4.6, reviews: 1432, desc: 'For stiffness and pain relieved by movement, arthritis & sprains', tag: '' },
+  { id: 5, name: 'Bryonia Alba 30C', brand: 'Masood', category: 'Cold & Flu', price: 75, mrp: 100, discount: 25, icon: '🌡️', rating: 4.4, reviews: 987, desc: 'For dry cough, headache worse by movement, fever', tag: '' },
+  { id: 6, name: 'Belladonna 30C', brand: 'Dr. Reckeweg', category: 'Cold & Flu', price: 120, mrp: 160, discount: 25, icon: '🔴', rating: 4.5, reviews: 765, desc: 'Sudden high fever, throbbing headache, red face and sore throat', tag: '' },
+  { id: 7, name: 'Pulsatilla 200C', brand: 'Boiron', category: "Women's Health", price: 175, mrp: 230, discount: 24, icon: '💜', rating: 4.7, reviews: 2109, desc: 'For irregular periods, weeping disposition and hormonal imbalances', tag: 'Top Rated' },
+  { id: 8, name: 'Sulphur 200C', brand: 'SBL', category: 'Skin', price: 95, mrp: 130, discount: 27, icon: '🌟', rating: 4.4, reviews: 1567, desc: 'Constitutional remedy for chronic skin conditions like eczema, psoriasis', tag: '' },
+  { id: 9, name: 'Gelsemium 30C', brand: 'Masood', category: 'Mental Wellness', price: 75, mrp: 99, discount: 24, icon: '🎑', rating: 4.5, reviews: 843, desc: 'For anticipation anxiety, stage fright, weakness and trembling', tag: '' },
+  { id: 10, name: 'Arsenicum Album 30C', brand: 'Dr. Reckeweg', category: 'Immunity', price: 120, mrp: 160, discount: 25, icon: '🛡️', rating: 4.8, reviews: 3241, desc: 'For food poisoning, weakness, restlessness, fear of disease', tag: 'Top Rated' },
+  { id: 11, name: 'Lycopodium 200C', brand: 'Boiron', category: 'Digestive', price: 175, mrp: 230, discount: 24, icon: '🌾', rating: 4.6, reviews: 1109, desc: 'Bloating, flatulence, liver complaints, lack of confidence', tag: '' },
+  { id: 12, name: 'Thuja Occidentalis 30C', brand: 'SBL', category: 'Skin', price: 85, mrp: 110, discount: 23, icon: '🌲', rating: 4.5, reviews: 987, desc: 'For warts, polyps, oily skin and ill-effects of vaccination', tag: '' },
+];
 
 export default function HomeopathyPage() {
   const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [cart, setCart] = useState<number[]>([]);
   const [search, setSearch] = useState('');
-  const [cartItems, setCartItems] = useState<Record<string, number>>({});
 
   const redirectToLogin = () => {
     const returnTo = `${window.location.pathname}${window.location.search}`;
     router.push(`/login?redirect=${encodeURIComponent(returnTo)}`);
   };
 
-  const fetchProducts = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/products?limit=200', { cache: 'no-store' });
-      const data = await res.json();
-      const homeoProducts = (data.products || []).filter(
-        (p: Product) => p.productType === 'Homeopathy' && p.category
-      );
-      setProducts(homeoProducts);
-    } catch (error) {
-      console.error('Failed to fetch products:', error);
-      setProducts([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
-
-  const filtered = products.filter((p) => {
+  const filtered = PRODUCTS.filter((p) => {
     const matchCat = selectedCategory === 'All' || p.category === selectedCategory;
-    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || (p.brand || '').toLowerCase().includes(search.toLowerCase());
+    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.brand.toLowerCase().includes(search.toLowerCase());
     return matchCat && matchSearch;
   });
 
-  const addToCart = (product: Product) => {
-    setCartItems((prev) => ({ ...prev, [product._id]: (prev[product._id] || 0) + 1 }));
+  const addToCart = (id: number) => {
+    setCart((prev) => [...prev, id]);
     try {
       const raw = localStorage.getItem('cart') || '[]';
-      const cart = JSON.parse(raw);
-      const existing = cart.find((i: any) => i.id === product._id);
+      const c = JSON.parse(raw);
+      const prod = PRODUCTS.find((p) => p.id === id)!;
+      const existing = c.find((i: any) => i.id === `homeo-${id}`);
       if (existing) existing.quantity += 1;
-      else {
-        cart.push({
-          id: product._id,
-          name: product.name,
-          price: product.price,
-          quantity: 1,
-          brand: product.brand,
-          image: product.image || product.icon || '🌸',
-          vendorName: 'MySanjeevani',
-        });
-      }
-      localStorage.setItem('cart', JSON.stringify(cart));
+      else c.push({ id: `homeo-${id}`, name: prod.name, price: prod.price, quantity: 1 });
+      localStorage.setItem('cart', JSON.stringify(c));
       window.dispatchEvent(new Event('storage'));
     } catch {}
   };
 
-  const handleBuyNow = (product: Product) => {
+  const handleBuyNow = (id: number) => {
     const token = localStorage.getItem('token');
     if (!token) {
       redirectToLogin();
       return;
     }
-    addToCart(product);
+    addToCart(id);
     router.push('/cart');
-  };
-
-  const discountPercent = (product: Product) => {
-    if (!product.mrp || product.mrp <= product.price) return 0;
-    return Math.round(((product.mrp - product.price) / product.mrp) * 100);
   };
 
   return (
@@ -176,86 +137,63 @@ export default function HomeopathyPage() {
 
           {/* Products Grid */}
           <div className="flex-1">
-            {loading ? (
-              <div className="text-center py-12">
-                <p className="text-gray-500">Loading remedies...</p>
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-500">No remedies found. Check back soon!</p>
-              </div>
-            ) : (
-              <>
-                <p className="text-sm text-gray-500 mb-4">{filtered.length} remedies found</p>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {filtered.map((p) => (
-                    <article key={p._id} className="bg-white rounded-2xl border border-pink-200 overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex flex-col">
-                      <div className="relative h-40 bg-gradient-to-br from-pink-50 to-rose-50 flex items-center justify-center">
-                        {p.image ? (
-                          <img src={p.image} alt={p.name} className="h-full w-full object-contain p-4" />
-                        ) : (
-                          <span className="text-6xl">{p.icon || '🌸'}</span>
-                        )}
-                        {discountPercent(p) > 0 && (
-                          <span className="absolute top-2 right-2 bg-green-600 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
-                            {discountPercent(p)}% OFF
-                          </span>
-                        )}
-                      </div>
+            <p className="text-sm text-gray-500 mb-4">{filtered.length} remedies found</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {filtered.map((p) => (
+                <article key={p.id} className="bg-white rounded-2xl border border-pink-200 overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex flex-col">
+                  <div className="relative h-40 bg-gradient-to-br from-pink-50 to-rose-50 flex items-center justify-center">
+                    <span className="text-6xl">{p.icon}</span>
+                    {!!p.discount && (
+                      <span className="absolute top-2 right-2 bg-green-600 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
+                        {p.discount}% OFF
+                      </span>
+                    )}
+                    {p.tag && (
+                      <span className="absolute top-2 left-2 text-[10px] px-2 py-1 rounded-full font-semibold bg-white/90 text-pink-700 border border-pink-200">
+                        {p.tag}
+                      </span>
+                    )}
+                  </div>
 
-                      <div className="p-4 flex flex-col flex-1">
-                        <p className="text-[11px] uppercase tracking-wide text-pink-700 font-medium">
-                          {p.brand || 'MySanjeevani'} • {p.category}
-                        </p>
-                        <h3 className="mt-1 text-sm font-semibold text-slate-900 leading-5 line-clamp-2 min-h-[2.5rem]">{p.name}</h3>
-                        <p className="text-xs text-slate-500 mt-1 line-clamp-2 min-h-[2rem]">{p.benefit || p.description || ''}</p>
+                  <div className="p-4 flex flex-col flex-1">
+                    <p className="text-[11px] uppercase tracking-wide text-pink-700 font-medium">{p.brand} • {p.category}</p>
+                    <h3 className="mt-1 text-sm font-semibold text-slate-900 leading-5 line-clamp-2 min-h-[2.5rem]">{p.name}</h3>
+                    <p className="text-xs text-slate-500 mt-1 line-clamp-2 min-h-[2rem]">{p.desc}</p>
 
-                        <div className="mt-2 flex items-center gap-2 text-xs text-slate-600">
-                          <span className="inline-flex items-center gap-1">
-                            <span className="text-amber-500">★</span>
-                            <span className="font-medium">{(p.rating || 0).toFixed(1)}</span>
-                          </span>
-                          <span className="text-slate-300">|</span>
-                          <span>{p.reviews || 0} reviews</span>
-                        </div>
+                    <div className="mt-2 flex items-center gap-2 text-xs text-slate-600">
+                      <span className="inline-flex items-center gap-1">
+                        <span className="text-amber-500">★</span>
+                        <span className="font-medium">{p.rating.toFixed(1)}</span>
+                      </span>
+                      <span className="text-slate-300">|</span>
+                      <span>{p.reviews} reviews</span>
+                    </div>
 
-                        <div className="mt-3 flex items-baseline gap-2">
-                          <span className="text-lg font-bold text-slate-900">₹{p.price}</span>
-                          {p.mrp && p.mrp > p.price && (
-                            <span className="text-xs text-slate-400 line-through">₹{p.mrp}</span>
-                          )}
-                        </div>
+                    <div className="mt-3 flex items-baseline gap-2">
+                      <span className="text-lg font-bold text-slate-900">₹{p.price}</span>
+                      <span className="text-xs text-slate-400 line-through">₹{p.mrp}</span>
+                    </div>
 
-                        <div className="grid grid-cols-2 gap-2 mt-4">
-                          <button
-                            onClick={() => addToCart(p)}
-                            disabled={p.stock <= 0}
-                            className={`py-2.5 rounded-xl text-xs font-semibold text-white transition ${
-                              p.stock <= 0
-                                ? 'bg-gray-400 cursor-not-allowed'
-                                : cartItems[p._id]
-                                  ? 'bg-slate-700 hover:bg-slate-800'
-                                  : 'bg-pink-500 hover:bg-pink-600'
-                            }`}
-                          >
-                            {p.stock <= 0 ? 'Out of Stock' : cartItems[p._id] ? 'In Cart' : 'Add to Cart'}
-                          </button>
-                          <button
-                            onClick={() => handleBuyNow(p)}
-                            disabled={p.stock <= 0}
-                            className={`py-2.5 rounded-xl text-xs font-semibold text-white transition ${
-                              p.stock <= 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-500 hover:bg-emerald-600'
-                            }`}
-                          >
-                            💳 Buy Now
-                          </button>
-                        </div>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </>
-            )}
+                    <div className="grid grid-cols-2 gap-2 mt-4">
+                      <button
+                        onClick={() => addToCart(p.id)}
+                        className={`py-2.5 rounded-xl text-xs font-semibold text-white transition ${
+                          cart.includes(p.id) ? 'bg-slate-700 hover:bg-slate-800' : 'bg-pink-500 hover:bg-pink-600'
+                        }`}
+                      >
+                        {cart.includes(p.id) ? 'In Cart' : 'Add to Cart'}
+                      </button>
+                      <button
+                        onClick={() => handleBuyNow(p.id)}
+                        className="py-2.5 rounded-xl text-xs font-semibold text-white transition bg-emerald-500 hover:bg-emerald-600"
+                      >
+                        💳 Buy Now
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
           </div>
         </div>
       </div>

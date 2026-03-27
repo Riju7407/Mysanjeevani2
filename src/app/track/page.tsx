@@ -3,7 +3,7 @@
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 interface Order {
   id: string;
@@ -17,25 +17,29 @@ interface Order {
 const steps = ['confirmed', 'processing', 'shipped', 'delivered'];
 
 export default function TrackPage() {
-  const searchParams = useSearchParams();
   const router = useRouter();
+  const [queryOrderId, setQueryOrderId] = useState('');
   const [orderIdInput, setOrderIdInput] = useState('');
   const [orders, setOrders] = useState<Order[]>([]);
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
+    const value = new URLSearchParams(window.location.search).get('orderId');
+    setQueryOrderId((value || '').trim());
+  }, []);
+
+  useEffect(() => {
     const raw = localStorage.getItem('orders') || '[]';
     const parsed: Order[] = JSON.parse(raw);
     setOrders(parsed);
 
-    const preset = (searchParams.get('orderId') || '').trim();
-    if (preset) {
-      setOrderIdInput(preset);
-      const found = parsed.find((o) => o.id.toLowerCase() === preset.toLowerCase());
+    if (queryOrderId) {
+      setOrderIdInput(queryOrderId);
+      const found = parsed.find((o) => o.id.toLowerCase() === queryOrderId.toLowerCase());
       if (found) setActiveOrder(found);
     }
-  }, [searchParams]);
+  }, [queryOrderId]);
 
   const currentStep = useMemo(() => {
     if (!activeOrder) return -1;

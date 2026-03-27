@@ -103,7 +103,6 @@ const vendorSchema = new mongoose.Schema({
   },
 });
 
-vendorSchema.index({ email: 1 });
 vendorSchema.index({ status: 1 });
 vendorSchema.index({ createdAt: -1 });
 

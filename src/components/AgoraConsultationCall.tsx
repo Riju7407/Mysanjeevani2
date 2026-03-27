@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import AgoraRTC, {
+import type {
   IAgoraRTCClient,
   ICameraVideoTrack,
   IMicrophoneAudioTrack,
@@ -88,6 +88,8 @@ export default function AgoraConsultationCall({
       setErrorMessage('');
 
       try {
+        const { default: AgoraRTC } = await import('agora-rtc-sdk-ng');
+
         const tokenRes = await fetch('/api/agora/token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
