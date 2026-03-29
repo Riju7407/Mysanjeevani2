@@ -2,7 +2,6 @@
 
 import React, { useRef } from 'react';
 import Slider from 'react-slick';
-import Link from 'next/link';
 import Image from 'next/image';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
@@ -15,9 +14,15 @@ interface HeroSlide {
   image: string;
   primaryCTA: { text: string; href: string };
   secondaryCTA: { text: string; href: string };
-  gradient: string;
   stats: string[];
 }
+
+const formatHeroImage = (url: string) => {
+  if (!url.includes('res.cloudinary.com') || !url.includes('/upload/')) {
+    return url;
+  }
+  return url.replace('/upload/', '/upload/f_auto,q_auto,c_fill,ar_16:9,g_auto/');
+};
 
 const HERO_SLIDES: HeroSlide[] = [
   {
@@ -25,10 +30,9 @@ const HERO_SLIDES: HeroSlide[] = [
     title: 'Complete Health Solutions',
     subtitle: "CONNECT WITH YOUR WELLNESS",
     description: 'Comprehensive healthcare services at your fingertips. Medicines, Doctor Consultations, and more.',
-    image: '/Connect.png',
+    image: 'https://res.cloudinary.com/df4x2ygkw/image/upload/v1774689230/Connect_jcwckb.jpg',
     primaryCTA: { text: 'Explore Services', href: '/medicines' },
     secondaryCTA: { text: 'Learn More', href: '/shop' },
-    gradient: 'from-emerald-600/30 via-emerald-500/25 to-teal-600/30',
     stats: ['✓ 2 Crore+ Customers', '✓ 24/7 Support', '✓ Quick Delivery'],
   },
   {
@@ -36,10 +40,9 @@ const HERO_SLIDES: HeroSlide[] = [
     title: 'Complete Health Checkup',
     subtitle: 'COMPREHENSIVE WELLNESS ASSESSMENT',
     description: 'Full body health checkups with lab tests. Get detailed health reports and expert guidance.',
-    image: '/Health-Checkup.png',
+    image: 'https://res.cloudinary.com/df4x2ygkw/image/upload/v1774689231/Health-Checkup_lbfop5.jpg',
     primaryCTA: { text: 'Book Test', href: '/lab-tests' },
     secondaryCTA: { text: 'View Packages', href: '/lab-tests' },
-    gradient: 'from-blue-600/30 via-blue-500/25 to-cyan-600/30',
     stats: ['✓ 500+ Tests', '✓ Home Collection', '✓ Quick Results'],
   },
   {
@@ -47,10 +50,9 @@ const HERO_SLIDES: HeroSlide[] = [
     title: 'Expert Finger Diagnosis',
     subtitle: 'ADVANCED HEALTH MONITORING',
     description: 'Innovative pulse analysis and health assessment. Get personalized health recommendations.',
-    image: '/Finger.png',
+    image: 'https://res.cloudinary.com/df4x2ygkw/image/upload/v1774689231/Finger_na8wjh.jpg',
     primaryCTA: { text: 'Get Assessment', href: '/doctor-consultation' },
     secondaryCTA: { text: 'Consult Doctor', href: '/doctor-consultation' },
-    gradient: 'from-purple-600/30 via-purple-500/25 to-pink-600/30',
     stats: ['✓ AI-Powered', '✓ Accurate Results', '✓ Instant Feedback'],
   },
   {
@@ -58,10 +60,9 @@ const HERO_SLIDES: HeroSlide[] = [
     title: 'Authentic Ayurvedic Products',
     subtitle: 'ANCIENT WISDOM, MODERN WELLNESS',
     description: '100% natural & certified Ayurvedic remedies. Holistic solutions for your health.',
-    image: '/Ayurvedic.png',
+    image: 'https://res.cloudinary.com/df4x2ygkw/image/upload/v1774689231/Ayurvedic_rjqg7e.jpg',
     primaryCTA: { text: 'Shop Ayurveda', href: '/ayurveda' },
     secondaryCTA: { text: 'Consult Vaidya', href: '/doctor-consultation' },
-    gradient: 'from-amber-600/30 via-amber-500/25 to-yellow-600/30',
     stats: ['✓ 100% Natural', '✓ Certified', '✓ Best Prices'],
   },
   {
@@ -69,10 +70,9 @@ const HERO_SLIDES: HeroSlide[] = [
     title: 'Homeopathic Healing',
     subtitle: 'NATURAL & SAFE TREATMENT',
     description: 'FDA-approved homeopathic remedies. Gentle, safe, and effective treatments for your family.',
-    image: '/Homiopethic.png',
+    image: 'https://res.cloudinary.com/df4x2ygkw/image/upload/v1774689232/Homiopethic_lhhovq.jpg',
     primaryCTA: { text: 'Explore Range', href: '/homeopathy' },
     secondaryCTA: { text: 'Expert Guidance', href: '/doctor-consultation' },
-    gradient: 'from-rose-600/30 via-rose-500/25 to-pink-600/30',
     stats: ['✓ FDA Approved', '✓ Expert Support', '✓ Certified Range'],
   },
 ];
@@ -102,69 +102,21 @@ const HeroCarousel: React.FC = () => {
     <div className="relative w-full overflow-hidden">
       <Slider ref={sliderRef} {...settings}>
         {HERO_SLIDES.map((slide) => (
-          <div key={slide.id} className="!flex">
+          <div key={slide.id} className="flex!">
             {/* Full-Screen Background Image with Overlay */}
-            <div className="relative w-full min-h-[500px] md:min-h-[450px] flex items-center overflow-hidden">
+            <div className="relative w-full h-[52vw] min-h-[300px] max-h-[620px] md:h-[46vw] flex items-center overflow-hidden bg-slate-900">
               {/* Background Image */}
               <Image
-                src={slide.image}
+                src={formatHeroImage(slide.image)}
                 alt={slide.title}
                 fill
                 className="object-cover object-center"
                 priority
-                unoptimized={true}
+                sizes="100vw"
+                quality={95}
               />
 
-              {/* Light Gradient Overlay for better visibility */}
-              <div className={`absolute inset-0 bg-gradient-to-br ${slide.gradient}`}></div>
-
-              {/* Dark overlay only on left side for text readability */}
-              <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/20 to-transparent"></div>
-
-              {/* Content Container */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-full px-4 md:px-6 flex justify-center">
-                  <div className="text-center">
-                    {/* Badge - Hidden */}
-                    <span className="hidden">
-                      {slide.subtitle}
-                    </span>
-
-                    {/* Title - Hidden */}
-                    <h1 className="hidden">
-                      {slide.title}
-                    </h1>
-
-                    {/* Description - Hidden */}
-                    <p className="hidden">
-                      {slide.description}
-                    </p>
-
-                    {/* CTA Buttons - Hidden */}
-                    <div className="hidden flex flex-col sm:flex-row gap-4 mb-8 justify-center">
-                      <Link
-                        href={slide.primaryCTA.href}
-                        className="bg-white hover:bg-gray-100 text-gray-900 font-bold px-8 py-4 rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-95 text-center"
-                      >
-                        {slide.primaryCTA.text}
-                      </Link>
-                      <Link
-                        href={slide.secondaryCTA.href}
-                        className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white font-bold px-8 py-4 rounded-xl transition-all border border-white/50 text-center"
-                      >
-                        {slide.secondaryCTA.text}
-                      </Link>
-                    </div>
-
-                    {/* Stats - Hidden */}
-                    <div className="hidden">
-                      {slide.stats.map((stat, idx) => (
-                        <span key={idx}>{stat}</span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {/* Image-only hero per requested design */}
             </div>
           </div>
         ))}
