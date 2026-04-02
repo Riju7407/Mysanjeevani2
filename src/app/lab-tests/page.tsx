@@ -368,7 +368,7 @@ export default function LabTestsPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setBookingModal(test);
+                            router.push(`/lab-tests/${test._id}`);
                           }}
                           disabled={!test.isActive}
                           className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${

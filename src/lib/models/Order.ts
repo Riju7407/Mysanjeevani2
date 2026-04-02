@@ -28,6 +28,9 @@ const orderSchema = new mongoose.Schema(
       enum: ['pending', 'completed', 'failed'],
       default: 'pending',
     },
+    razorpayOrderId: String,
+    razorpayPaymentId: String,
+    razorpaySignature: String,
     orderNotes: String,
   },
   {

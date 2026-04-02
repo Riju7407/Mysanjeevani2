@@ -43,6 +43,7 @@ export default function PrimaryServicesCarousel() {
                     src={service.image}
                     alt={service.label}
                     fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     className="object-cover group-hover:scale-110 transition-transform duration-500"
                   />
 

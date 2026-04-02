@@ -6,10 +6,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { LogoImage } from '@/components/Logo';
-import Image from 'next/image';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { RecaptchaVerifier, signInWithPhoneNumber, signInWithPopup } from 'firebase/auth';
+import { signInWithPopup } from 'firebase/auth';
 import { firebaseAuth, googleProvider } from '@/lib/firebaseClient';
 
 export default function LoginPage() {
@@ -21,12 +20,29 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [phoneLoading, setPhoneLoading] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpStep, setOtpStep] = useState<'phone' | 'otp'>('phone');
+  const [mobileNumber, setMobileNumber] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpCooldown, setOtpCooldown] = useState(0);
+  const [otpStatus, setOtpStatus] = useState('');
+  const [otpError, setOtpError] = useState('');
   const router = useRouter();
 
   useEffect(() => {
     const value = new URLSearchParams(window.location.search).get('redirect');
     setRedirectTo(value || '');
   }, []);
+
+  useEffect(() => {
+    if (otpCooldown <= 0) return;
+
+    const timer = window.setInterval(() => {
+      setOtpCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [otpCooldown]);
 
   const persistSession = (data: any) => {
     localStorage.setItem('token', data.token);
@@ -48,6 +64,15 @@ export default function LoginPage() {
     }
 
     if (data.user?.role === 'admin') {
+      // Store admin token and authentication data
+      localStorage.setItem('adminToken', data.token);
+      localStorage.setItem('tokenExpiresAt', data.expiresAt.toString());
+      localStorage.setItem('adminEmail', data.user.email);
+      console.log('✅ Admin session stored:', { 
+        token: !!data.token, 
+        expiresAt: data.expiresAt, 
+        email: data.user.email 
+      });
       router.push('/admin');
       return;
     }
@@ -120,49 +145,105 @@ export default function LoginPage() {
     }
   };
 
-  const handlePhoneLogin = async () => {
+  const handleOpenOtpModal = () => {
     setError('');
+    setOtpError('');
+    setOtpStatus('');
+
+    if (role === 'admin') {
+      setError('Admin login is available only with email and password.');
+      return;
+    }
+
+    setShowOtpModal(true);
+    setOtpStep('phone');
+    setOtpCode('');
+  };
+
+  const handleCloseOtpModal = () => {
+    setShowOtpModal(false);
+    setOtpError('');
+    setOtpStatus('');
+    setOtpStep('phone');
+    setOtpCode('');
+    setPhoneLoading(false);
+  };
+
+  const handleSendOtp = async () => {
+    setOtpError('');
+    setOtpStatus('');
     setPhoneLoading(true);
 
-    let verifier: RecaptchaVerifier | null = null;
     try {
-      const phoneInput = window.prompt('Enter phone in international format (example: +919876543210):', '');
-      const phoneNumber = String(phoneInput || '').trim();
-      if (!phoneNumber) {
-        setPhoneLoading(false);
+      const trimmedPhone = mobileNumber.trim();
+      if (!trimmedPhone) {
+        setOtpError('Phone number is required.');
         return;
       }
 
-      verifier = new RecaptchaVerifier(firebaseAuth, 'firebase-phone-recaptcha', {
-        size: 'invisible',
-      });
-
-      const confirmation = await signInWithPhoneNumber(firebaseAuth, phoneNumber, verifier);
-      const otp = window.prompt('Enter the OTP sent to your phone:', '');
-      if (!otp) {
-        throw new Error('OTP is required to continue.');
-      }
-
-      const result = await confirmation.confirm(otp.trim());
-      const idToken = await result.user.getIdToken(true);
-
-      const response = await fetch('/api/auth/google', {
+      const sendOtpResponse = await fetch('/api/auth/phone/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
+        body: JSON.stringify({ phone: trimmedPhone, role }),
+      });
+      const sendOtpData = await sendOtpResponse.json();
+
+      if (!sendOtpResponse.ok) {
+        setOtpError(sendOtpData.error || 'Failed to send OTP');
+        if (Number(sendOtpData.retryAfterSeconds) > 0) {
+          setOtpCooldown(Number(sendOtpData.retryAfterSeconds));
+        }
+        return;
+      }
+
+      setOtpStep('otp');
+      setOtpCode('');
+      setOtpStatus(`OTP sent to ${trimmedPhone}`);
+      setOtpCooldown(Number(sendOtpData.cooldownSeconds || 60));
+    } catch (err: any) {
+      setOtpError(err?.message || 'Failed to send OTP');
+    } finally {
+      setPhoneLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    setOtpError('');
+    setOtpStatus('');
+    setPhoneLoading(true);
+
+    try {
+      const trimmedPhone = mobileNumber.trim();
+      const trimmedOtp = otpCode.trim();
+
+      if (!trimmedPhone) {
+        setOtpError('Phone number is required.');
+        setOtpStep('phone');
+        return;
+      }
+
+      if (!trimmedOtp || trimmedOtp.length !== 6) {
+        setOtpError('Please enter a valid 6-digit OTP.');
+        return;
+      }
+
+      const response = await fetch('/api/auth/phone/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: trimmedPhone, otp: trimmedOtp, role }),
       });
 
       const data = await response.json();
       if (!response.ok) {
-        setError(data.error || 'Phone login failed');
+        setOtpError(data.error || 'Phone login failed');
         return;
       }
 
+      handleCloseOtpModal();
       persistSession(data);
     } catch (err: any) {
-      setError(err?.message || 'Phone login failed');
+      setOtpError(err?.message || 'Phone login failed');
     } finally {
-      verifier?.clear();
       setPhoneLoading(false);
     }
   };
@@ -302,17 +383,16 @@ export default function LoginPage() {
               </button>
               <button
                 type="button"
-                onClick={handlePhoneLogin}
-                disabled={phoneLoading}
+                onClick={handleOpenOtpModal}
+                disabled={phoneLoading || role === 'admin'}
                 className="w-full border border-gray-300 text-gray-700 font-medium py-3 px-4 rounded-lg hover:bg-gray-50 transition disabled:opacity-60"
               >
                 <span className="flex items-center justify-center gap-2">
-                  <span>📱</span> {phoneLoading ? 'Verifying phone...' : 'Continue with Phone'}
+                  <span>📱</span>
+                  {phoneLoading ? 'Verifying OTP...' : 'Login with Mobile OTP'}
                 </span>
               </button>
             </div>
-
-            <div id="firebase-phone-recaptcha" className="hidden" />
 
             {/* Sign Up Link */}
             <div className="mt-8 text-center border-t border-gray-200 pt-8">
@@ -336,6 +416,116 @@ export default function LoginPage() {
       </div>
 
       <Footer />
+
+      {showOtpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/50" onClick={handleCloseOtpModal} />
+          <div className="relative w-full max-w-md rounded-2xl border border-emerald-100 bg-white shadow-2xl overflow-hidden">
+            <div className="bg-linear-to-r from-emerald-600 to-teal-500 px-6 py-4 text-white">
+              <h2 className="text-lg font-bold">Login with Mobile OTP</h2>
+              <p className="text-sm text-emerald-50">Secure and quick sign-in for your account</p>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {otpStep === 'phone' && (
+                <>
+                  <label htmlFor="mobile-number" className="block text-sm font-medium text-gray-700">
+                    Registered Mobile Number
+                  </label>
+                  <input
+                    id="mobile-number"
+                    type="tel"
+                    value={mobileNumber}
+                    onChange={(e) => setMobileNumber(e.target.value)}
+                    placeholder="+919876543210"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
+                  />
+                </>
+              )}
+
+              {otpStep === 'otp' && (
+                <>
+                  <div className="text-sm text-gray-700">
+                    OTP sent to <span className="font-semibold">{mobileNumber}</span>
+                  </div>
+                  <label htmlFor="otp-code" className="block text-sm font-medium text-gray-700">
+                    Enter 6-digit OTP
+                  </label>
+                  <input
+                    id="otp-code"
+                    type="text"
+                    value={otpCode}
+                    inputMode="numeric"
+                    maxLength={6}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="123456"
+                    className="w-full px-4 py-3 tracking-widest text-center text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
+                  />
+                </>
+              )}
+
+              {otpStatus && (
+                <div className="text-sm rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700">
+                  {otpStatus}
+                </div>
+              )}
+
+              {otpError && (
+                <div className="text-sm rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-700">
+                  {otpError}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={handleCloseOtpModal}
+                  className="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+
+                {otpStep === 'phone' ? (
+                  <button
+                    type="button"
+                    onClick={handleSendOtp}
+                    disabled={phoneLoading}
+                    className="px-4 py-2.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-60"
+                  >
+                    {phoneLoading ? 'Sending...' : 'Send OTP'}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleVerifyOtp}
+                    disabled={phoneLoading}
+                    className="px-4 py-2.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-60"
+                  >
+                    {phoneLoading ? 'Verifying...' : 'Verify & Login'}
+                  </button>
+                )}
+              </div>
+
+              {otpStep === 'otp' && (
+                <div className="text-center text-sm text-gray-600">
+                  {otpCooldown > 0 ? (
+                    <span>Resend OTP in {otpCooldown}s</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSendOtp}
+                      disabled={phoneLoading}
+                      className="text-emerald-700 font-medium hover:text-emerald-800"
+                    >
+                      Resend OTP
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

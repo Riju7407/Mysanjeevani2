@@ -12,7 +12,7 @@ const StatIcon = {
   ),
   vendors: (
     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5.581m0 0H9m5.581 0cm0 1.414-1.895 2.561-4.243 0-1.414M9 7h2m2 0h2M9 11h6M9 15h6" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5.581m0 0H9m5.581 0v1.414c0 1.349-1.895 2.561-4.243 2.561S7.095 23.763 7.095 22.414V21M9 7h2m2 0h2M9 11h6M9 15h6" />
     </svg>
   ),
   medicines: (

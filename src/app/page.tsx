@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import HeroCarousel from '@/components/HeroCarousel';
 import PrimaryServicesCarousel from '@/components/PrimaryServicesCarousel';
 import HealthConcernCarousel from '@/components/HealthConcernCarousel';
+import FeaturedProductsSection from '@/components/FeaturedProductsSection';
 
 interface Product {
   _id: string;
@@ -395,8 +397,35 @@ export default function HomePage() {
     <div className="min-h-screen flex flex-col bg-white">
       <Header />
 
+      {/* Featured Products Section */}
+      <FeaturedProductsSection />
+
       {/* Hero Section */}
-      <HeroCarousel />
+      <section className="w-full px-4 py-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex gap-4 h-56">
+            {/* Left Image Section - 30% Container */}
+            <div className="w-[30%] rounded-2xl overflow-hidden shadow-lg bg-gray-100">
+              <img
+                src="/h2.jpeg"
+                alt="Hero Left Banner"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  objectPosition: 'center',
+                  display: 'block',
+                }}
+              />
+            </div>
+
+            {/* Carousel Section - 70% Container */}
+            <div className="w-[70%] rounded-2xl overflow-hidden shadow-lg bg-white">
+              <HeroCarousel />
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Primary Services */}
       <PrimaryServicesCarousel />

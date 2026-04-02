@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { DoctorConsultation } from '@/lib/models/DoctorConsultation';
 import { LabTestBooking } from '@/lib/models/LabTestBooking';
+import { Order } from '@/lib/models/Order';
 
 const WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
 
@@ -55,6 +56,10 @@ export async function POST(request: NextRequest) {
           { razorpayOrderId: orderId },
           { paymentStatus: 'completed', razorpayPaymentId: paymentId }
         ),
+        Order.updateMany(
+          { razorpayOrderId: orderId },
+          { paymentStatus: 'completed', razorpayPaymentId: paymentId, status: 'confirmed' }
+        ),
       ]);
     }
 
@@ -65,6 +70,10 @@ export async function POST(request: NextRequest) {
           { paymentStatus: 'failed', razorpayPaymentId: paymentId }
         ),
         LabTestBooking.updateMany(
+          { razorpayOrderId: orderId },
+          { paymentStatus: 'failed', razorpayPaymentId: paymentId }
+        ),
+        Order.updateMany(
           { razorpayOrderId: orderId },
           { paymentStatus: 'failed', razorpayPaymentId: paymentId }
         ),
