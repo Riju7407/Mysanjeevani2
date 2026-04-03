@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -58,6 +58,13 @@ const CATEGORY_LABELS: Record<string, string> = {
   liver: '🫘 Liver', kidney: '💧 Kidney', vitamin: '☀️ Vitamins', infection: '🦠 Infection', 'womens-health': '💜 Women',
 };
 
+const SORT_OPTIONS = [
+  { value: 'featured', label: 'Featured' },
+  { value: 'price-low', label: 'Price: Low to High' },
+  { value: 'price-high', label: 'Price: High to Low' },
+  { value: 'rating', label: 'Highest Rated' },
+];
+
 const TIME_SLOTS = ['7:00 AM – 9:00 AM', '9:00 AM – 11:00 AM', '11:00 AM – 1:00 PM', '2:00 PM – 4:00 PM', '4:00 PM – 6:00 PM'];
 
 const STATUS_COLORS: Record<string, string> = {
@@ -87,6 +94,7 @@ export default function LabTestsPage() {
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('all');
   const [search, setSearch] = useState('');
+  const [sortOrder, setSortOrder] = useState('featured');
   const [bookingModal, setBookingModal] = useState<LabTest | null>(null);
   const [bookingForm, setBookingForm] = useState<BookingForm>({ testId: '', testName: '', testPrice: 0, collectionType: 'home', collectionDate: '', collectionTime: '', address: '', notes: '' });
   const [bookingSuccess, setBookingSuccess] = useState(false);
@@ -240,162 +248,249 @@ export default function LabTestsPage() {
     return Math.round(((test.mrp - test.price) / test.mrp) * 100);
   };
 
+  const filteredAndSortedTests = useMemo(() => {
+    let result = tests.filter((test) => {
+      const matchesCategory = category === 'all' || test.category === category;
+      const searchText = search.trim().toLowerCase();
+      const matchesSearch =
+        !searchText ||
+        test.name.toLowerCase().includes(searchText) ||
+        (test.description || '').toLowerCase().includes(searchText);
+      return matchesCategory && matchesSearch && test.isActive;
+    });
+
+    // Apply sorting
+    if (sortOrder === 'price-low') result.sort((a, b) => a.price - b.price);
+    else if (sortOrder === 'price-high') result.sort((a, b) => b.price - a.price);
+    else if (sortOrder === 'rating') result.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+
+    return result;
+  }, [tests, category, search, sortOrder]);
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-teal-50 to-white flex flex-col">
       <Header />
 
       {/* Hero */}
-      <div className="bg-gradient-to-r from-emerald-600 to-teal-500 text-white py-10">
-        <div className="max-w-7xl mx-auto px-4">
-          <h1 className="text-4xl font-extrabold mb-2">🧪 Book Lab Tests at Home</h1>
-          <p className="text-emerald-100 text-lg mb-4">Free sample collection · ISO certified labs · Reports in 24-48 hrs</p>
-          <div className="flex flex-wrap gap-4 text-sm">
-            {[['🏠', 'Free Home Collection'], ['⚡', 'Quick Reports'], ['💯', 'Accurate Results'], ['🔒', 'Secure & Private']].map(([icon, text]) => (
-              <div key={text} className="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-full">
-                <span>{icon}</span><span>{text}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="w-full -mt-48">
+        <img src="/LB.png" alt="Lab Tests" className="w-full h-auto object-cover block" />
       </div>
 
-      {/* Tabs */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex gap-0">
-            {['tests', 'bookings'].map((tab) => (
-              <button key={tab} onClick={() => setActiveTab(tab as 'tests' | 'bookings')}
-                className={`px-6 py-4 text-sm font-semibold border-b-2 transition ${activeTab === tab ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-                {tab === 'tests' ? '🔬 Browse Tests' : '📋 My Bookings'}
+      {/* Search & Filter Bar */}
+      <div className="sticky top-0 z-30 bg-white border-b border-emerald-200 shadow-sm -mt-40">
+        <div className="max-w-7xl mx-auto px-4 py-1">
+          <div className="flex flex-col gap-4 md:gap-0 md:flex-row md:items-center md:justify-between">
+            {/* Search Bar */}
+            <div className="flex-1 md:mr-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="🔍 Search lab tests, health packages, categories..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full border-2 border-emerald-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Sort Dropdown */}
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              className="border-2 border-emerald-200 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 transition text-sm font-medium text-gray-700"
+            >
+              {SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Horizontal Category Scroll */}
+        <div className="max-w-7xl mx-auto px-4 pb-4">
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setCategory(cat)}
+                className={`whitespace-nowrap px-4 py-2 rounded-full font-medium text-sm transition-all flex-shrink-0 ${
+                  category === cat
+                    ? 'bg-emerald-500 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-700 hover:bg-emerald-100'
+                }`}
+              >
+                {CATEGORY_LABELS[cat]}
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="flex-1 max-w-7xl mx-auto px-4 py-8 w-full">
+      {/* Main Content */}
+      <div className="flex-1 max-w-7xl mx-auto px-4 py-10 w-full">
         {activeTab === 'tests' && (
           <>
-            {/* Search */}
-            <div className="flex flex-col sm:flex-row gap-3 mb-6">
-              <input type="text" placeholder="Search tests..." value={search} onChange={(e) => setSearch(e.target.value)}
-                className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-              <button onClick={fetchTests} className="bg-emerald-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-emerald-700 transition">Search</button>
-              {tests.length === 0 && !loading && (
-                <button onClick={seedTests} disabled={seeding}
-                  className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-orange-600 transition disabled:opacity-60">
-                  {seeding ? 'Loading...' : '+ Load Sample Tests'}
-                </button>
-              )}
-            </div>
-
-            {/* Category pills */}
-            <div className="flex flex-wrap gap-2 mb-6">
-              {CATEGORIES.map((cat) => (
-                <button key={cat} onClick={() => setCategory(cat)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${category === cat ? 'bg-emerald-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-emerald-400'}`}>
-                  {CATEGORY_LABELS[cat]}
-                </button>
-              ))}
+            {/* Results Header */}
+            <div className="mb-8">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900">
+                    {category === 'all' ? '🧪 All Lab Tests' : `${CATEGORY_LABELS[category]}`}
+                  </h1>
+                  <p className="text-gray-600 mt-1 text-sm">
+                    {filteredAndSortedTests.length} {filteredAndSortedTests.length === 1 ? 'test' : 'tests'} available
+                  </p>
+                </div>
+              </div>
             </div>
 
             {loading ? (
-              <div className="text-center py-20 text-gray-400">Loading tests...</div>
-            ) : tests.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="text-5xl mb-4">🧪</div>
-                <p className="text-gray-500 mb-4">No tests found. Click &ldquo;Load Sample Tests&rdquo; to add tests to the database.</p>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="bg-white rounded-2xl border border-emerald-100 p-4 shadow-sm animate-pulse"
+                  >
+                    <div className="h-40 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-xl mb-4" />
+                    <div className="h-4 bg-gray-200 rounded mb-3 w-3/4" />
+                    <div className="h-3 bg-gray-200 rounded mb-2 w-full" />
+                    <div className="h-3 bg-gray-200 rounded mb-4 w-1/2" />
+                    <div className="h-10 bg-emerald-100 rounded-lg" />
+                  </div>
+                ))}
+              </div>
+            ) : filteredAndSortedTests.length === 0 ? (
+              <div className="text-center py-20 bg-white border-2 border-dashed border-emerald-200 rounded-3xl shadow-sm">
+                <div className="text-7xl mb-4 opacity-50">🧪</div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">No tests found</h3>
+                <p className="text-gray-600 mb-6">
+                  {search
+                    ? `We couldn't find any tests matching "${search}"`
+                    : tests.length === 0
+                    ? 'No tests available. Click "Load Sample Tests" to add tests to the database.'
+                    : 'No tests available in this category'}
+                </p>
+                {search && (
+                  <button
+                    onClick={() => setSearch('')}
+                    className="px-6 py-2 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 transition"
+                  >
+                    Clear Search
+                  </button>
+                )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
-                {tests.map((test) => (
-                  <article
-                    key={test._id}
-                    className="group h-full w-full max-w-72 mx-auto bg-white/95 border border-slate-300 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition duration-300 cursor-pointer flex flex-col"
-                    onClick={() => setBookingModal(test)}
-                  >
-                    <div className="relative bg-linear-to-br from-white to-slate-50 h-44 flex items-center justify-center overflow-hidden">
-                      <span className="absolute top-3 left-3 rounded-full px-2.5 py-1 text-[10px] font-bold bg-violet-600 text-white">
-                        Popular
-                      </span>
-                      {test.image ? (
-                        <img
-                          src={test.image}
-                          alt={test.name}
-                          className="h-full w-full object-contain p-4 group-hover:scale-105 transition duration-300"
-                        />
-                      ) : (
-                        <div className="text-5xl">{test.icon || '🔬'}</div>
-                      )}
-                    </div>
-
-                    <div className="p-4 flex flex-col flex-1">
-                      <p className="text-xs font-medium text-slate-500 mb-1 uppercase tracking-wide">MySanjeevani</p>
-                      <h3 className="font-bold text-slate-900 text-sm leading-snug line-clamp-2 min-h-10 mb-2">{test.name}</h3>
-
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-1">
-                          <span className="text-amber-500">★</span>
-                          <span className="text-xs font-semibold text-slate-900">{Number(test.rating || 0).toFixed(1)}</span>
-                          <span className="text-xs text-slate-500">({test.reviews || 0})</span>
-                        </div>
-                        <span
-                          className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
-                            test.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
-                          }`}
-                        >
-                          {test.isActive ? 'In Stock' : 'Out of Stock'}
-                        </span>
-                      </div>
-
-                      {test.description && (
-                        <p className="text-xs text-slate-600 mb-2 line-clamp-2">"{test.description}"</p>
-                      )}
-
-                      <div className="mb-3 flex items-end justify-between">
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-lg font-bold text-slate-900">₹{test.price}</span>
-                          {test.mrp && test.mrp > test.price && (
-                            <span className="text-xs text-slate-400 line-through">₹{test.mrp}</span>
-                          )}
-                        </div>
+              <>
+                {/* Tests Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+                  {filteredAndSortedTests.map((test) => (
+                    <article
+                      key={test._id}
+                      className="bg-white rounded-2xl border border-emerald-100 overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col group cursor-pointer"
+                      onClick={() => {
+                        const token = localStorage.getItem('token');
+                        if (!token) redirectToLogin();
+                        else setBookingModal(test);
+                      }}
+                    >
+                      {/* Image Container */}
+                      <div className="relative h-40 bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center overflow-hidden group-hover:brightness-95 transition-all">
+                        {test.image ? (
+                          <img
+                            src={test.image}
+                            alt={test.name}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <span className="text-7xl group-hover:scale-125 transition-transform duration-300">
+                            {test.icon || '🧪'}
+                          </span>
+                        )}
+                        
+                        {/* Discount Badge */}
                         {test.mrp && test.mrp > test.price && (
-                          <span className="text-xs font-bold text-emerald-600">{discountPercent(test)}% OFF</span>
+                          <div className="absolute top-3 right-3">
+                            <span className="bg-green-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md">
+                              {discountPercent(test)}% OFF
+                            </span>
+                          </div>
                         )}
                       </div>
 
-                      <div className="flex gap-2 mt-auto">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/lab-tests/${test._id}`);
-                          }}
-                          disabled={!test.isActive}
-                          className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${
-                            !test.isActive
-                              ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                              : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
-                          }`}
-                        >
-                          View Details
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openBooking(test);
-                          }}
-                          disabled={!test.isActive}
-                          className={`flex-1 py-2 rounded-lg text-xs font-bold text-white transition ${
-                            !test.isActive ? 'bg-slate-400 cursor-not-allowed' : 'bg-violet-600 hover:bg-violet-700'
-                          }`}
-                        >
-                          Book
-                        </button>
+                      {/* Content */}
+                      <div className="p-4 flex flex-col flex-1">
+                        {/* Category Badge */}
+                        <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full w-fit mb-2">
+                          {test.category}
+                        </span>
+
+                        {/* Test Name */}
+                        <h3 className="text-sm font-bold text-gray-900 line-clamp-2 min-h-9 leading-tight">
+                          {test.name}
+                        </h3>
+
+                        {/* Description */}
+                        <p className="text-xs text-gray-600 mt-1 line-clamp-2 min-h-8">
+                          {test.description || 'Professional lab test with certified results'}
+                        </p>
+
+                        {/* Ratings */}
+                        <div className="flex items-center gap-3 mt-2 py-2 border-t border-gray-100">
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold">
+                            <span className="text-emerald-400">★</span>
+                            <span className="text-gray-900">{Number(test.rating || 0).toFixed(1)}</span>
+                          </span>
+                          <span className="text-[10px] text-gray-500">
+                            ({test.reviews || 0} reviews)
+                          </span>
+                        </div>
+
+                        {/* Price */}
+                        <div className="mt-3 flex items-center gap-2 py-2 border-t border-gray-100">
+                          <span className="text-xl font-bold text-gray-900">₹{test.price}</span>
+                          {test.mrp && test.mrp > test.price && (
+                            <span className="text-xs text-gray-500 line-through">₹{test.mrp}</span>
+                          )}
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-gray-100">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/lab-tests/${test._id}`);
+                            }}
+                            className="py-2.5 rounded-xl text-xs font-bold bg-white border border-emerald-300 text-emerald-700 hover:bg-emerald-50 transition-all transform hover:scale-105 active:scale-95"
+                          >
+                            Details
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const token = localStorage.getItem('token');
+                              if (!token) redirectToLogin();
+                              else setBookingModal(test);
+                            }}
+                            className="py-2.5 rounded-xl text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition-all transform hover:scale-105 active:scale-95"
+                          >
+                            💳 Book
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
+                    </article>
+                  ))}
+                </div>
+
+                {/* Results Footer */}
+                <div className="mt-12 text-center">
+                  <p className="text-gray-600 text-sm">
+                    Showing {filteredAndSortedTests.length} of {tests.filter(t => t.isActive).length} tests • Certified laboratory partners
+                  </p>
+                </div>
+              </>
             )}
           </>
         )}

@@ -3,101 +3,252 @@
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
+import { useState, useMemo } from 'react';
 
 const wellnessPillars = [
   {
+    id: 'immunity',
     title: 'Daily Immunity Care',
     desc: 'Build strong resistance with expert-curated daily wellness essentials.',
     icon: '🛡️',
+    benefits: 'Strengthen immunity, fight infections naturally',
+    rating: 4.7,
+    reviews: 328,
+    price: 499,
+    mrp: 699,
   },
   {
+    id: 'mindBody',
     title: 'Mind & Body Balance',
     desc: 'Support stress, sleep, and mood with personalized holistic routines.',
     icon: '🧘',
+    benefits: 'Reduce stress, improve sleep quality',
+    rating: 4.8,
+    reviews: 456,
+    price: 599,
+    mrp: 799,
   },
   {
+    id: 'screening',
     title: 'Preventive Screening',
     desc: 'Track health markers early with timely tests and guided follow-ups.',
     icon: '🧪',
+    benefits: 'Early detection of health issues',
+    rating: 4.6,
+    reviews: 212,
+    price: 1299,
+    mrp: 1799,
   },
   {
+    id: 'nutrition',
     title: 'Nutrition Support',
     desc: 'Choose supplements and food-support solutions for long-term vitality.',
     icon: '🥗',
+    benefits: 'Balanced nutrition, sustained energy',
+    rating: 4.9,
+    reviews: 534,
+    price: 399,
+    mrp: 599,
   },
 ];
 
-const programs = [
-  {
-    name: '30-Day Energy Reset',
-    focus: 'Low energy and lifestyle fatigue',
-    cta: 'Start Energy Plan',
-  },
-  {
-    name: 'Immunity Build Program',
-    focus: 'Seasonal wellness and resilience',
-    cta: 'Build Immunity',
-  },
-  {
-    name: 'Stress & Sleep Care',
-    focus: 'Calm mind and better sleep quality',
-    cta: 'Improve Sleep',
-  },
+const SORT_OPTIONS = [
+  { value: 'featured', label: 'Featured' },
+  { value: 'price-low', label: 'Price: Low to High' },
+  { value: 'price-high', label: 'Price: High to Low' },
+  { value: 'rating', label: 'Highest Rated' },
 ];
 
 export default function WellnessPage() {
+  const [sortOrder, setSortOrder] = useState('featured');
+  const [search, setSearch] = useState('');
+
+  const sortedPillars = useMemo(() => {
+    let result = wellnessPillars.filter((pillar) => {
+      const searchText = search.trim().toLowerCase();
+      return (
+        !searchText ||
+        pillar.title.toLowerCase().includes(searchText) ||
+        pillar.desc.toLowerCase().includes(searchText) ||
+        pillar.benefits.toLowerCase().includes(searchText)
+      );
+    });
+
+    // Apply sorting
+    if (sortOrder === 'price-low') result.sort((a, b) => a.price - b.price);
+    else if (sortOrder === 'price-high') result.sort((a, b) => b.price - a.price);
+    else if (sortOrder === 'rating') result.sort((a, b) => b.rating - a.rating);
+
+    return result;
+  }, [search, sortOrder]);
+
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-emerald-50 flex flex-col">
       <Header />
 
-      <main className="flex-1">
-        <section className="relative overflow-hidden bg-linear-to-br from-emerald-50 via-white to-orange-50">
-          <div className="absolute -top-16 -right-8 h-44 w-44 rounded-full bg-orange-200/50 blur-3xl" />
-          <div className="absolute -bottom-20 -left-12 h-48 w-48 rounded-full bg-emerald-200/50 blur-3xl" />
+      {/* Hero */}
+      <div className="w-full -mt-48">
+        <img src="/WB.png" alt="Wellness" className="w-full h-auto object-cover block" />
+      </div>
 
-          <div className="max-w-7xl mx-auto px-4 py-16 sm:py-20 relative z-10">
-            <p className="text-xs font-semibold tracking-[0.25em] uppercase text-orange-500">MySanjeevani Wellness</p>
-            <h1 className="mt-3 text-4xl sm:text-5xl font-black leading-tight text-emerald-700">
-              Your Daily Wellness,
-              <span className="text-orange-500"> Designed With Care</span>
-            </h1>
-            <p className="mt-4 max-w-2xl text-base sm:text-lg text-emerald-600">
-              Explore complete wellness support including preventive care, habit-based health plans, and trusted products.
-            </p>
+      {/* Search & Filter Bar */}
+      <div className="sticky top-0 z-30 bg-white border-b border-orange-200 shadow-sm -mt-40">
+        <div className="max-w-7xl mx-auto px-4 py-1">
+          <div className="flex flex-col gap-4 md:gap-0 md:flex-row md:items-center md:justify-between">
+            {/* Search Bar */}
+            <div className="flex-1 md:mr-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="🔍 Search wellness programs, benefits, solutions..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full border-2 border-orange-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition text-sm"
+                />
+              </div>
+            </div>
 
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/medicines" className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-3 transition">
-                Explore Wellness Products
-              </Link>
-              <Link href="/doctor-consultation" className="rounded-xl border-2 border-orange-400 text-orange-500 font-bold px-5 py-3 hover:bg-orange-50 transition">
-                Talk to a Wellness Expert
-              </Link>
+            {/* Sort Dropdown */}
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              className="border-2 border-orange-200 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 transition text-sm font-medium text-gray-700"
+            >
+              {SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <main className="flex-1 max-w-7xl mx-auto px-4 py-10 w-full">
+        {/* Results Header */}
+        <div className="mb-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                💚 Wellness Pillars
+              </h1>
+              <p className="text-gray-600 mt-1 text-sm">
+                {sortedPillars.length} {sortedPillars.length === 1 ? 'program' : 'programs'} available
+              </p>
             </div>
           </div>
-        </section>
+        </div>
 
-        <section className="max-w-7xl mx-auto px-4 py-12 sm:py-14">
-          <div className="text-center max-w-2xl mx-auto">
-            <h2 className="text-3xl sm:text-4xl font-black text-emerald-700">Wellness Pillars</h2>
-            <p className="mt-2 text-orange-500 font-medium">
-              Four essentials that keep your long-term health strong and consistent.
+        {sortedPillars.length === 0 ? (
+          <div className="text-center py-20 bg-white border-2 border-dashed border-orange-200 rounded-3xl shadow-sm">
+            <div className="text-7xl mb-4 opacity-50">💚</div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">No wellness programs found</h3>
+            <p className="text-gray-600 mb-6">
+              {search
+                ? `We couldn't find any programs matching "${search}"`
+                : 'No wellness programs available'}
             </p>
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="px-6 py-2 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 transition"
+              >
+                Clear Search
+              </button>
+            )}
           </div>
+        ) : (
+          <>
+            {/* Wellness Programs Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+              {sortedPillars.map((pillar) => {
+                const discount = pillar.mrp && pillar.mrp > pillar.price
+                  ? Math.round(((pillar.mrp - pillar.price) / pillar.mrp) * 100)
+                  : 0;
 
-          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {wellnessPillars.map((item) => (
-              <article key={item.title} className="rounded-2xl border border-emerald-200 bg-white p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-                <div className="h-12 w-12 rounded-xl bg-orange-100 text-orange-500 flex items-center justify-center text-2xl">
-                  {item.icon}
-                </div>
-                <h3 className="mt-4 text-lg font-extrabold text-emerald-700">{item.title}</h3>
-                <p className="mt-2 text-sm text-orange-500">{item.desc}</p>
-              </article>
-            ))}
-          </div>
-        </section>
+                return (
+                  <article
+                    key={pillar.id}
+                    className="bg-white rounded-2xl border border-orange-100 overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col group"
+                  >
+                    {/* Image Container */}
+                    <div className="relative h-40 bg-gradient-to-br from-orange-50 to-emerald-50 flex items-center justify-center overflow-hidden group-hover:brightness-95 transition-all">
+                      <span className="text-7xl group-hover:scale-125 transition-transform duration-300">
+                        {pillar.icon}
+                      </span>
+                      
+                      {/* Discount Badge */}
+                      {discount > 0 && (
+                        <div className="absolute top-3 right-3">
+                          <span className="bg-green-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md">
+                            {discount}% OFF
+                          </span>
+                        </div>
+                      )}
+                    </div>
 
-        <section className="max-w-7xl mx-auto px-4 pb-12 sm:pb-14">
+                    {/* Content */}
+                    <div className="p-4 flex flex-col flex-1">
+                      {/* Category Badge */}
+                      <span className="text-[10px] uppercase tracking-wider font-bold text-orange-700 bg-orange-50 px-2 py-1 rounded-full w-fit mb-2">
+                        Wellness Care
+                      </span>
+
+                      {/* Program Name */}
+                      <h3 className="text-sm font-bold text-gray-900 line-clamp-2 min-h-9 leading-tight">
+                        {pillar.title}
+                      </h3>
+
+                      {/* Description */}
+                      <p className="text-xs text-gray-600 mt-1 line-clamp-2 min-h-8">
+                        {pillar.benefits}
+                      </p>
+
+                      {/* Ratings */}
+                      <div className="flex items-center gap-3 mt-2 py-2 border-t border-gray-100">
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold">
+                          <span className="text-orange-400">★</span>
+                          <span className="text-gray-900">{Number(pillar.rating).toFixed(1)}</span>
+                        </span>
+                        <span className="text-[10px] text-gray-500">
+                          ({pillar.reviews} reviews)
+                        </span>
+                      </div>
+
+                      {/* Price */}
+                      <div className="mt-3 flex items-center gap-2 py-2 border-t border-gray-100">
+                        <span className="text-xl font-bold text-gray-900">₹{pillar.price}</span>
+                        {pillar.mrp && pillar.mrp > pillar.price && (
+                          <span className="text-xs text-gray-500 line-through">₹{pillar.mrp}</span>
+                        )}
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-gray-100">
+                        <button className="py-2.5 rounded-xl text-xs font-bold bg-white border border-orange-300 text-orange-700 hover:bg-orange-50 transition-all transform hover:scale-105 active:scale-95">
+                          Learn More
+                        </button>
+                        <button className="py-2.5 rounded-xl text-xs font-bold bg-orange-500 text-white hover:bg-orange-600 transition-all transform hover:scale-105 active:scale-95">
+                          🛒 Start
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            {/* Results Footer */}
+            <div className="mt-12 text-center">
+              <p className="text-gray-600 text-sm">
+                Showing {sortedPillars.length} of {wellnessPillars.length} wellness programs • Expert-curated packages
+              </p>
+            </div>
+          </>
+        )}
+
+        {/* Featured Plans Section */}
+        <section className="mt-16">
           <div className="rounded-3xl border border-orange-200 bg-linear-to-r from-orange-50 via-white to-emerald-50 p-6 sm:p-8">
             <div className="text-center">
               <h2 className="text-3xl sm:text-4xl font-black text-emerald-700">Featured Wellness Plans</h2>
@@ -105,7 +256,23 @@ export default function WellnessPage() {
             </div>
 
             <div className="mt-7 grid grid-cols-1 md:grid-cols-3 gap-4">
-              {programs.map((plan) => (
+              {[
+                {
+                  name: '30-Day Energy Reset',
+                  focus: 'Low energy and lifestyle fatigue',
+                  cta: 'Start Energy Plan',
+                },
+                {
+                  name: 'Immunity Build Program',
+                  focus: 'Seasonal wellness and resilience',
+                  cta: 'Build Immunity',
+                },
+                {
+                  name: 'Stress & Sleep Care',
+                  focus: 'Calm mind and better sleep quality',
+                  cta: 'Improve Sleep',
+                },
+              ].map((plan) => (
                 <article key={plan.name} className="rounded-2xl border border-orange-200 bg-white p-5">
                   <h3 className="text-lg font-extrabold text-emerald-700">{plan.name}</h3>
                   <p className="mt-2 text-sm text-orange-500">{plan.focus}</p>
@@ -117,8 +284,8 @@ export default function WellnessPage() {
             </div>
           </div>
         </section>
-
-        <section className="max-w-7xl mx-auto px-4 pb-16">
+        {/* CTA Section */}
+        <section className="mt-16">
           <div className="rounded-3xl bg-linear-to-r from-emerald-600 to-orange-500 p-7 sm:p-9 text-white text-center">
             <p className="text-sm uppercase tracking-[0.2em] text-white/85">Start Today</p>
             <h2 className="mt-2 text-3xl sm:text-4xl font-black">Small Daily Steps, Big Health Results</h2>

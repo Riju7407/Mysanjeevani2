@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
@@ -36,6 +36,14 @@ const DEPARTMENTS = [
   'Gastroenterology',
   'Endocrinology',
   'Pulmonology',
+];
+
+const SORT_OPTIONS = [
+  { value: 'featured', label: 'Featured' },
+  { value: 'fee-low', label: 'Fee: Low to High' },
+  { value: 'fee-high', label: 'Fee: High to Low' },
+  { value: 'rating', label: 'Highest Rated' },
+  { value: 'experience', label: 'Most Experienced' },
 ];
 
 interface TimeSlot {
@@ -107,6 +115,7 @@ export default function DoctorConsultationPage() {
   const isImageUrl = (value?: string) => !!value && /^(https?:\/\/|\/)/i.test(value);
 
   const [activeTab, setActiveTab] = useState<'find' | 'mine'>('find');
+  const [sortOrder, setSortOrder] = useState('featured');
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loadingDoctors, setLoadingDoctors] = useState(false);
@@ -322,41 +331,79 @@ export default function DoctorConsultationPage() {
 
   const todayStr = new Date().toISOString().split('T')[0];
 
+  // Apply sorting to doctors
+  const sortedDoctors = useMemo(() => {
+    let result = [...doctors];
+    if (sortOrder === 'fee-low') result.sort((a, b) => a.consultationFee - b.consultationFee);
+    else if (sortOrder === 'fee-high') result.sort((a, b) => b.consultationFee - a.consultationFee);
+    else if (sortOrder === 'rating') result.sort((a, b) => b.rating - a.rating);
+    else if (sortOrder === 'experience') result.sort((a, b) => b.experience - a.experience);
+    return result;
+  }, [doctors, sortOrder]);
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-teal-50 to-white flex flex-col">
       <Header />
 
       {/* Hero */}
-      <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4">
-          <h1 className="text-4xl font-bold mb-2">Book a Doctor Consultation</h1>
-          <p className="text-emerald-100 text-lg">
-            Choose from verified doctors across specializations. See your queue position instantly.
-          </p>
-          <div className="flex gap-4 mt-6">
-            <button
-              onClick={() => setActiveTab('find')}
-              className={`px-6 py-2 rounded-full font-medium transition ${
-                activeTab === 'find' ? 'bg-white text-emerald-700' : 'bg-emerald-700 text-white hover:bg-emerald-800'
-              }`}
+      <div className="w-full -mt-48">
+        <img src="/CD.png" alt="Doctor Consultation" className="w-full h-auto object-cover block" />
+      </div>
+
+      {/* Search & Filter Bar */}
+      <div className="sticky top-0 z-30 bg-white border-b border-emerald-200 shadow-sm -mt-40">
+        <div className="max-w-7xl mx-auto px-4 py-1">
+          <div className="flex flex-col gap-4 md:gap-0 md:flex-row md:items-center md:justify-between">
+            {/* Search Bar */}
+            <div className="flex-1 md:mr-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="🔍 Search by doctor name, specialization, department..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && fetchDoctors()}
+                  className="w-full border-2 border-emerald-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Sort Dropdown */}
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              className="border-2 border-emerald-200 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 transition text-sm font-medium text-gray-700"
             >
-              Find Doctors
-            </button>
-            <button
-              onClick={() => setActiveTab('mine')}
-              className={`px-6 py-2 rounded-full font-medium transition ${
-                activeTab === 'mine' ? 'bg-white text-emerald-700' : 'bg-emerald-700 text-white hover:bg-emerald-800'
-              }`}
-            >
-              My Consultations
-            </button>
+              {SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Horizontal Category Scroll */}
+        <div className="max-w-7xl mx-auto px-4 pb-4">
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {DEPARTMENTS.map((dept) => (
+              <button
+                key={dept}
+                onClick={() => setSelectedDept(dept)}
+                className={`whitespace-nowrap px-4 py-2 rounded-full font-medium text-sm transition-all flex-shrink-0 ${
+                  selectedDept === dept
+                    ? 'bg-emerald-500 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-700 hover:bg-emerald-100'
+                }`}
+              >
+                {dept}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      <div className="flex-1 max-w-7xl mx-auto px-4 py-10 w-full">
-
-        {/* Booking success banner */}
+      {/* Booking success banner */}
         {bookingSuccess && (
           <div className="mb-6 bg-green-50 border border-green-200 rounded-xl p-5 flex items-start justify-between gap-4">
             <div>
@@ -377,133 +424,206 @@ export default function DoctorConsultationPage() {
           </div>
         )}
 
-        {/* FIND DOCTORS TAB */}
+      <div className="flex-1 max-w-7xl mx-auto px-4 py-10 w-full">
+
+        {/* Tab Navigation */}
+        <div className="flex gap-2 mb-8 border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab('find')}
+            className={`px-6 py-3 font-semibold text-base transition-colors border-b-2 ${
+              activeTab === 'find' 
+                ? 'text-emerald-700 border-emerald-700' 
+                : 'text-gray-600 border-transparent hover:text-emerald-600'
+            }`}
+          >
+            🔍 Find Doctors
+          </button>
+          <button
+            onClick={() => setActiveTab('mine')}
+            className={`px-6 py-3 font-semibold text-base transition-colors border-b-2 ${
+              activeTab === 'mine' 
+                ? 'text-emerald-700 border-emerald-700' 
+                : 'text-gray-600 border-transparent hover:text-emerald-600'
+            }`}
+          >
+            📋 My Consultations
+          </button>
+        </div>
         {activeTab === 'find' && (
           <>
-            <div className="flex flex-col md:flex-row gap-4 mb-8">
-              <input
-                type="text"
-                placeholder="Search by name, specialization, department..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && fetchDoctors()}
-                className="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-              />
-              <button
-                onClick={fetchDoctors}
-                className="bg-emerald-600 text-white px-6 py-3 rounded-lg hover:bg-emerald-700 font-medium transition"
-              >
-                Search
-              </button>
-            </div>
-
-            {/* Department pills */}
-            <div className="flex flex-wrap gap-2 mb-8">
-              {DEPARTMENTS.map((dept) => (
-                <button
-                  key={dept}
-                  onClick={() => setSelectedDept(dept)}
-                  className={`px-4 py-1.5 rounded-full text-sm font-medium border transition ${
-                    selectedDept === dept
-                      ? 'bg-emerald-600 text-white border-emerald-600'
-                      : 'bg-white text-gray-600 border-gray-300 hover:border-emerald-400'
-                  }`}
-                >
-                  {dept}
-                </button>
-              ))}
+            {/* Results Header */}
+            <div className="mb-8">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900">
+                    {selectedDept === 'All' ? '👨‍⚕️ Find a Doctor' : `🏥 ${selectedDept}`}
+                  </h1>
+                  <p className="text-gray-600 mt-1 text-sm">
+                    {sortedDoctors.length} {sortedDoctors.length === 1 ? 'doctor' : 'doctors'} available
+                  </p>
+                </div>
+              </div>
             </div>
 
             {loadingDoctors ? (
-              <div className="text-center py-20 text-gray-500">Loading doctors...</div>
-            ) : doctors.length === 0 ? (
-              <div className="text-center py-20 text-gray-400">
-                <div className="text-6xl mb-4">👨‍⚕️</div>
-                <p className="text-lg font-medium">No doctors found</p>
-                <p className="text-sm">Try a different department or check back later</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {doctors.map((doctor) => (
-                  <article key={doctor._id} className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 flex flex-col h-full min-h-[420px]">
-                    <div className="relative h-52 bg-slate-100 overflow-hidden">
-                      {isImageUrl(doctor.avatar) ? (
-                        <img src={doctor.avatar} alt={doctor.name} className="w-full h-full object-cover" loading="lazy" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-100 text-6xl">
-                          {doctor.avatar || '👨‍⚕️'}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="p-3 flex-1 flex flex-col">
-                      <h3 className="font-bold text-slate-900 text-sm leading-4 line-clamp-2 min-h-[2rem]">{doctor.name}</h3>
-                      <p className="text-emerald-700 text-xs font-semibold mt-0.5 line-clamp-1">{doctor.specialization}</p>
-
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className="bg-blue-50 text-blue-700 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-blue-100">
-                          {doctor.department}
-                        </span>
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${doctor.isAvailable ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-red-100 text-red-700 border-red-200'}`}>
-                          {doctor.isAvailable ? 'Available' : 'Unavailable'}
-                        </span>
-                      </div>
-
-                      {doctor.qualification && (
-                        <p className="text-[11px] text-slate-600 mt-1 line-clamp-1">{doctor.qualification}</p>
-                      )}
-
-                      <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-600">
-                        <span>🏥 {doctor.experience} yrs</span>
-                        <span className="text-slate-300">|</span>
-                        <span>⭐ {doctor.rating > 0 ? doctor.rating.toFixed(1) : 'New'}</span>
-                      </div>
-
-                      {doctor.timeSlots?.some((s) => s.isActive) && (
-                        <div className="mt-2 flex flex-wrap gap-1 min-h-[20px]">
-                          {doctor.timeSlots
-                            .filter((s) => s.isActive)
-                            .slice(0, 1)
-                            .map((slot) => (
-                              <span key={slot._id} className="bg-blue-50 text-blue-700 text-[10px] px-1.5 py-0.5 rounded-full border border-blue-100">
-                                {slot.day.slice(0, 3)} {slot.startTime}
-                              </span>
-                            ))}
-                        </div>
-                      )}
-
-                      {doctor.bio ? (
-                        <p className="text-[10px] text-slate-500 mt-1 line-clamp-1">{doctor.bio}</p>
-                      ) : (
-                        <div className="h-[14px] mt-1" />
-                      )}
-
-                      <div className="mt-auto pt-2 border-t border-slate-100">
-                        <div className="mb-2">
-                          <p className="text-[10px] text-slate-500">Fee</p>
-                          <p className="text-lg font-bold text-slate-900">₹{doctor.consultationFee}</p>
-                        </div>
-
-                        {doctor.isAvailable ? (
-                          <button
-                            onClick={() => openBooking(doctor)}
-                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 rounded-lg text-xs font-semibold transition"
-                          >
-                            Book
-                          </button>
-                        ) : (
-                          <button
-                            disabled
-                            className="w-full bg-slate-200 text-slate-500 py-1.5 rounded-lg text-xs font-semibold cursor-not-allowed"
-                          >
-                            Unavailable
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </article>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="bg-white rounded-2xl border border-emerald-100 p-4 shadow-sm animate-pulse"
+                  >
+                    <div className="h-48 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-xl mb-4" />
+                    <div className="h-4 bg-gray-200 rounded mb-3 w-3/4" />
+                    <div className="h-3 bg-gray-200 rounded mb-2 w-full" />
+                    <div className="h-3 bg-gray-200 rounded mb-4 w-1/2" />
+                    <div className="h-10 bg-emerald-100 rounded-lg" />
+                  </div>
                 ))}
               </div>
+            ) : sortedDoctors.length === 0 ? (
+              <div className="text-center py-20 bg-white border-2 border-dashed border-emerald-200 rounded-3xl shadow-sm">
+                <div className="text-7xl mb-4 opacity-50">👨‍⚕️</div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">No doctors found</h3>
+                <p className="text-gray-600 mb-6">
+                  {search
+                    ? `We couldn't find any doctors matching "${search}"`
+                    : 'No doctors available in this department'}
+                </p>
+                {search && (
+                  <button
+                    onClick={() => setSearch('')}
+                    className="px-6 py-2 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 transition"
+                  >
+                    Clear Search
+                  </button>
+                )}
+              </div>
+            ) : (
+              <>
+                {/* Doctors Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                  {sortedDoctors.map((doctor) => (
+                    <article
+                      key={doctor._id}
+                      className="bg-white rounded-2xl border border-emerald-100 overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col group"
+                    >
+                      {/* Avatar Container */}
+                      <div className="relative h-48 bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center overflow-hidden">
+                        {isImageUrl(doctor.avatar) ? (
+                          <img
+                            src={doctor.avatar}
+                            alt={doctor.name}
+                            className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-300"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <span className="text-7xl group-hover:scale-125 transition-transform duration-300">
+                            {doctor.avatar || '👨‍⚕️'}
+                          </span>
+                        )}
+
+                        {/* Status Badge */}
+                        <div className="absolute top-3 right-3">
+                          <span
+                            className={`text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md ${
+                              doctor.isAvailable
+                                ? 'bg-green-500 text-white'
+                                : 'bg-red-500 text-white'
+                            }`}
+                          >
+                            {doctor.isAvailable ? '🟢 Available' : 'Unavailable'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Content */}
+                      <div className="p-4 flex flex-col flex-1">
+                        {/* Doctor Name */}
+                        <h3 className="text-sm font-bold text-gray-900 line-clamp-2 min-h-9 leading-tight">
+                          {doctor.name}
+                        </h3>
+
+                        {/* Specialization */}
+                        <p className="text-xs font-semibold text-emerald-700 mt-1">
+                          {doctor.specialization}
+                        </p>
+
+                        {/* Department & Qualification */}
+                        <div className="flex items-center gap-1 mb-2 mt-2 flex-wrap">
+                          <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full">
+                            {doctor.department}
+                          </span>
+                          {doctor.qualification && (
+                            <span className="text-[10px] uppercase tracking-wider font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-full">
+                              {doctor.qualification.split(' ')[0]}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Stats */}
+                        <div className="flex items-center gap-3 mt-2 py-2 border-t border-gray-100 text-xs">
+                          <span>🏥 {doctor.experience} yrs</span>
+                          <span className="text-gray-300">|</span>
+                          <span className="font-semibold">
+                            ⭐ {doctor.rating > 0 ? doctor.rating.toFixed(1) : 'New'}
+                          </span>
+                          {doctor.totalReviews > 0 && (
+                            <span className="text-gray-500">({doctor.totalReviews})</span>
+                          )}
+                        </div>
+
+                        {/* Time Slots */}
+                        {doctor.timeSlots?.some((s) => s.isActive) && (
+                          <div className="mt-2 flex flex-wrap gap-1 min-h-[20px]">
+                            {doctor.timeSlots
+                              .filter((s) => s.isActive)
+                              .slice(0, 2)
+                              .map((slot) => (
+                                <span
+                                  key={slot._id}
+                                  className="bg-teal-50 text-teal-700 text-[10px] px-2 py-1 rounded-full border border-teal-200 font-medium"
+                                >
+                                  {slot.day.slice(0, 3)} {slot.startTime}
+                                </span>
+                              ))}
+                          </div>
+                        )}
+
+                        {/* Fee & Button */}
+                        <div className="mt-auto pt-3 border-t border-gray-100">
+                          <div className="mb-3">
+                            <p className="text-[10px] text-gray-500">Consultation Fee</p>
+                            <p className="text-xl font-bold text-gray-900">₹{doctor.consultationFee}</p>
+                          </div>
+
+                          {doctor.isAvailable ? (
+                            <button
+                              onClick={() => openBooking(doctor)}
+                              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-2.5 rounded-xl text-sm font-bold transition-all transform hover:scale-105 active:scale-95"
+                            >
+                              📅 Book Now
+                            </button>
+                          ) : (
+                            <button
+                              disabled
+                              className="w-full bg-gray-200 text-gray-500 py-2.5 rounded-xl text-sm font-bold cursor-not-allowed"
+                            >
+                              Unavailable
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+
+                {/* Results Footer */}
+                <div className="mt-12 text-center">
+                  <p className="text-gray-600 text-sm">
+                    Showing all {sortedDoctors.length} doctors • Verified & experienced professionals
+                  </p>
+                </div>
+              </>
             )}
           </>
         )}

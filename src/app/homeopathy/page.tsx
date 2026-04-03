@@ -34,12 +34,20 @@ const DEFAULT_CATEGORIES = [
   'Children',
 ];
 
+const SORT_OPTIONS = [
+  { value: 'featured', label: 'Featured' },
+  { value: 'price-low', label: 'Price: Low to High' },
+  { value: 'price-high', label: 'Price: High to Low' },
+  { value: 'rating', label: 'Highest Rated' },
+];
+
 export default function HomeopathyPage() {
   const router = useRouter();
 
   const [products, setProducts] = useState<HomeopathyProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [sortOrder, setSortOrder] = useState('featured');
 
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [search, setSearch] = useState('');
@@ -59,7 +67,7 @@ export default function HomeopathyPage() {
   }, [products]);
 
   const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
+    let result = products.filter((product) => {
       const matchesCategory =
         selectedCategory === 'All' || product.category === selectedCategory;
 
@@ -72,7 +80,14 @@ export default function HomeopathyPage() {
 
       return matchesCategory && matchesSearch;
     });
-  }, [products, selectedCategory, search]);
+
+    // Apply sorting
+    if (sortOrder === 'price-low') result.sort((a, b) => a.price - b.price);
+    else if (sortOrder === 'price-high') result.sort((a, b) => b.price - a.price);
+    else if (sortOrder === 'rating') result.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+
+    return result;
+  }, [products, selectedCategory, search, sortOrder]);
 
   useEffect(() => {
     const fetchHomeopathyProducts = async () => {
@@ -147,205 +162,243 @@ export default function HomeopathyPage() {
   };
 
   return (
-    <div className="min-h-screen bg-pink-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white flex flex-col">
       <Header />
 
-      <div className="bg-linear-to-r from-pink-600 to-rose-400 text-white py-10">
-        <div className="max-w-7xl mx-auto px-4">
-          <h1 className="text-4xl font-extrabold mb-2">🌸 Homeopathy Store</h1>
-          <p className="text-pink-100 text-lg mb-4">
-            Dynamic catalog powered by products added from admin and vendor panel.
-          </p>
-          <div className="flex flex-wrap gap-3 text-sm">
-            {['GMP Certified', '0% Side Effects', 'Safe for Kids', 'Expert Formulated'].map((badge) => (
-              <span key={badge} className="bg-white/20 px-3 py-1 rounded-full">
-                {badge}
-              </span>
+      {/* Hero */}
+      <div className="w-full -mt-48">
+        <img src="/HB.png" alt="Homeopathy Store" className="w-full h-auto object-cover block" />
+      </div>
+
+      {/* Search & Filter Bar */}
+      <div className="sticky top-0 z-30 bg-white border-b border-pink-200 shadow-sm -mt-40">
+        <div className="max-w-7xl mx-auto px-4 py-1">
+          <div className="flex flex-col gap-4 md:gap-0 md:flex-row md:items-center md:justify-between">
+            {/* Search Bar */}
+            <div className="flex-1 md:mr-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="🔍 Search homeopathy remedies, brands, benefits..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full border-2 border-pink-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent transition text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Sort Dropdown */}
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              className="border-2 border-pink-200 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-pink-400 transition text-sm font-medium text-gray-700"
+            >
+              {SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Horizontal Category Scroll */}
+        <div className="max-w-7xl mx-auto px-4 pb-4">
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`whitespace-nowrap px-4 py-2 rounded-full font-medium text-sm transition-all flex-shrink-0 ${
+                  selectedCategory === cat
+                    ? 'bg-pink-500 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-700 hover:bg-pink-100'
+                }`}
+              >
+                {cat}
+              </button>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex flex-wrap gap-6 text-sm text-gray-600">
-          <div className="flex items-center gap-2"><span className="text-xl">💧</span><span>Ultra-diluted medicines trigger the body's natural healing</span></div>
-          <div className="flex items-center gap-2"><span className="text-xl">🧪</span><span>No chemical reactions or drug interactions</span></div>
-          <div className="flex items-center gap-2"><span className="text-xl">👨‍⚕️</span><span>Seek a homeopathic doctor for chronic conditions</span></div>
-        </div>
-      </div>
-
-      <div className="bg-white border-b border-gray-200 py-4">
-        <div className="max-w-7xl mx-auto px-4">
-          <input
-            type="text"
-            placeholder="Search homeopathy remedies..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full md:w-96 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-pink-400"
-          />
-        </div>
-      </div>
-
-      <div className="flex-1 max-w-7xl mx-auto px-4 py-8 w-full">
-        <div className="flex flex-col md:flex-row gap-6">
-          <aside className="w-full md:w-52 shrink-0">
-            <div className="bg-white rounded-xl border border-gray-200 p-4 sticky top-20">
-              <h3 className="font-bold text-gray-900 mb-3 text-sm">Category</h3>
-              <div className="space-y-1">
-                {categories.map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => setSelectedCategory(category)}
-                    className={`w-full text-left text-sm px-3 py-2 rounded-lg transition ${
-                      selectedCategory === category
-                        ? 'bg-pink-100 text-pink-800 font-semibold'
-                        : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    {category}
-                    <span className="float-right text-xs text-gray-400">
-                      {category === 'All'
-                        ? products.length
-                        : products.filter((product) => product.category === category).length}
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="mt-6 p-3 bg-pink-50 rounded-lg">
-                <h4 className="font-semibold text-xs text-pink-800 mb-2">Potency Guide</h4>
-                <div className="space-y-1 text-xs text-gray-600">
-                  <div><span className="font-medium">6C, 12C:</span> Acute use</div>
-                  <div><span className="font-medium">30C:</span> Most common</div>
-                  <div><span className="font-medium">200C:</span> Constitutional</div>
-                  <div><span className="font-medium">1M+:</span> Deep chronic</div>
-                </div>
-              </div>
+      {/* Main Content */}
+      <div className="flex-1 max-w-7xl mx-auto px-4 py-10 w-full">
+        {/* Results Header */}
+        <div className="mb-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                {selectedCategory === 'All' ? '🌸 All Homeopathy Remedies' : `${selectedCategory}`}
+              </h1>
+              <p className="text-gray-600 mt-1 text-sm">
+                {filteredProducts.length} {filteredProducts.length === 1 ? 'remedy' : 'remedies'} available
+              </p>
             </div>
-          </aside>
-
-          <div className="flex-1">
-            {loading ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {Array.from({ length: 8 }).map((_, index) => (
-                  <div key={index} className="bg-white rounded-xl border border-gray-200 p-4 animate-pulse">
-                    <div className="h-28 bg-gray-100 rounded mb-3" />
-                    <div className="h-4 bg-gray-100 rounded mb-2" />
-                    <div className="h-3 bg-gray-100 rounded w-2/3 mb-3" />
-                    <div className="h-8 bg-gray-100 rounded" />
-                  </div>
-                ))}
-              </div>
-            ) : error ? (
-              <div className="rounded-xl border border-red-200 bg-red-50 text-red-700 p-4 text-sm">
-                {error}
-              </div>
-            ) : (
-              <>
-                <p className="text-sm text-gray-500 mb-4">{filteredProducts.length} remedies found</p>
-
-                {filteredProducts.length === 0 ? (
-                  <div className="bg-white border border-gray-200 rounded-xl p-10 text-center">
-                    <p className="text-gray-600 font-medium">No homeopathy products found.</p>
-                    <p className="text-sm text-gray-500 mt-2">
-                      Add Homeopathy products from admin/vendor panel and approved active items will appear here.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {filteredProducts.map((product) => {
-                      const productDiscount = product.mrp && product.mrp > product.price
-                        ? Math.round(((product.mrp - product.price) / product.mrp) * 100)
-                        : product.discount || 0;
-
-                      return (
-                        <article
-                          key={product._id}
-                          className="bg-white rounded-2xl border border-pink-200 overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex flex-col"
-                        >
-                          <Link href={`/medicines/${product._id}`} className="relative h-40 bg-linear-to-br from-pink-50 to-rose-50 flex items-center justify-center">
-                            {product.image ? (
-                              <img
-                                src={product.image}
-                                alt={product.name}
-                                className="w-full h-full object-cover"
-                                loading="lazy"
-                              />
-                            ) : (
-                              <span className="text-6xl">{product.icon || '🌸'}</span>
-                            )}
-
-                            {!!productDiscount && (
-                              <span className="absolute top-2 right-2 bg-green-600 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
-                                {productDiscount}% OFF
-                              </span>
-                            )}
-
-                            {!!product.benefit && (
-                              <span className="absolute top-2 left-2 text-[10px] px-2 py-1 rounded-full font-semibold bg-white/90 text-pink-700 border border-pink-200">
-                                {product.benefit}
-                              </span>
-                            )}
-                          </Link>
-
-                          <div className="p-4 flex flex-col flex-1">
-                            <p className="text-[11px] uppercase tracking-wide text-pink-700 font-medium">
-                              {product.brand || 'Homeopathy'} • {product.category}
-                            </p>
-
-                            <h3 className="mt-1 text-sm font-semibold text-slate-900 leading-5 line-clamp-2 min-h-[2.5rem]">
-                              {product.name}
-                            </h3>
-
-                            <p className="text-xs text-slate-500 mt-1 line-clamp-2 min-h-[2rem]">
-                              {product.description || 'Trusted homeopathy remedy for daily wellness support.'}
-                            </p>
-
-                            <div className="mt-2 flex items-center gap-2 text-xs text-slate-600">
-                              <span className="inline-flex items-center gap-1">
-                                <span className="text-amber-500">★</span>
-                                <span className="font-medium">{Number(product.rating || 0).toFixed(1)}</span>
-                              </span>
-                              <span className="text-slate-300">|</span>
-                              <span>{product.reviews || 0} reviews</span>
-                            </div>
-
-                            <div className="mt-3 flex items-baseline gap-2">
-                              <span className="text-lg font-bold text-slate-900">₹{product.price}</span>
-                              {product.mrp ? (
-                                <span className="text-xs text-slate-400 line-through">₹{product.mrp}</span>
-                              ) : null}
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2 mt-4">
-                              <button
-                                onClick={() => addToCart(product)}
-                                className={`py-2.5 rounded-xl text-xs font-semibold text-white transition ${
-                                  cart[product._id]
-                                    ? 'bg-slate-700 hover:bg-slate-800'
-                                    : 'bg-pink-500 hover:bg-pink-600'
-                                }`}
-                              >
-                                {cart[product._id] ? `In Cart (${cart[product._id]})` : 'Add to Cart'}
-                              </button>
-
-                              <button
-                                onClick={() => handleBuyNow(product)}
-                                className="py-2.5 rounded-xl text-xs font-semibold text-white transition bg-emerald-500 hover:bg-emerald-600"
-                              >
-                                Buy Now
-                              </button>
-                            </div>
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                )}
-              </>
-            )}
           </div>
         </div>
+
+        {loading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={i}
+                className="bg-white rounded-2xl border border-pink-100 p-4 shadow-sm animate-pulse"
+              >
+                <div className="h-40 bg-gradient-to-br from-pink-100 to-rose-100 rounded-xl mb-4" />
+                <div className="h-4 bg-gray-200 rounded mb-3 w-3/4" />
+                <div className="h-3 bg-gray-200 rounded mb-2 w-full" />
+                <div className="h-3 bg-gray-200 rounded mb-4 w-1/2" />
+                <div className="h-10 bg-pink-100 rounded-lg" />
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 text-red-700 p-6 text-sm">
+            <p className="font-semibold mb-1">⚠️ Error Loading Products</p>
+            <p>{error}</p>
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="text-center py-20 bg-white border-2 border-dashed border-pink-200 rounded-3xl shadow-sm">
+            <div className="text-7xl mb-4 opacity-50">🌸</div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">No remedies found</h3>
+            <p className="text-gray-600 mb-6">
+              {search
+                ? `We couldn't find any remedies matching "${search}"`
+                : 'No remedies available in this category'}
+            </p>
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="px-6 py-2 bg-pink-500 text-white rounded-lg font-medium hover:bg-pink-600 transition"
+              >
+                Clear Search
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Products Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+              {filteredProducts.map((product) => {
+                const productDiscount = product.mrp && product.mrp > product.price
+                  ? Math.round(((product.mrp - product.price) / product.mrp) * 100)
+                  : product.discount || 0;
+
+                return (
+                  <article
+                    key={product._id}
+                    className="bg-white rounded-2xl border border-pink-100 overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col group"
+                  >
+                    {/* Image Container */}
+                    <Link href={`/medicines/${product._id}`} className="relative h-40 bg-gradient-to-br from-pink-50 to-rose-50 flex items-center justify-center overflow-hidden group-hover:brightness-95 transition-all"
+                    >
+                      {product.image ? (
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <span className="text-7xl group-hover:scale-125 transition-transform duration-300">
+                          {product.icon || '🌸'}
+                        </span>
+                      )}
+
+                      {/* Badges */}
+                      <div className="absolute inset-0 flex items-start justify-between p-3 pointer-events-none">
+                        <div className="flex flex-col gap-2">
+                          {product.benefit && (
+                            <span className="text-[11px] px-2.5 py-1 rounded-full font-bold bg-white/95 text-pink-700 border border-pink-200 backdrop-blur-sm">
+                              ✨ {product.benefit}
+                            </span>
+                          )}
+                        </div>
+                        {!!productDiscount && (
+                          <span className="bg-green-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md">
+                            {productDiscount}% OFF
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+
+                    {/* Content */}
+                    <div className="p-4 flex flex-col flex-1">
+                      {/* Brand & Category */}
+                      <div className="flex items-center gap-1 mb-2">
+                        <span className="text-[10px] uppercase tracking-wider font-bold text-pink-700 bg-pink-50 px-2 py-1 rounded-full">
+                          {product.brand || 'Homeopathy'}
+                        </span>
+                        <span className="text-[10px] uppercase tracking-wider font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
+                          {product.category}
+                        </span>
+                      </div>
+
+                      {/* Product Name */}
+                      <Link href={`/medicines/${product._id}`}>
+                        <h3 className="text-sm font-bold text-gray-900 line-clamp-2 min-h-9 leading-tight hover:text-pink-700 transition">
+                          {product.name}
+                        </h3>
+                      </Link>
+
+                      {/* Description */}
+                      <p className="text-xs text-gray-600 mt-1 line-clamp-2 min-h-8">
+                        {product.description || 'Trusted homeopathy remedy for wellness support'}
+                      </p>
+
+                      {/* Ratings */}
+                      <div className="flex items-center gap-3 mt-2 py-2 border-t border-gray-100">
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold">
+                          <span className="text-pink-400">★</span>
+                          <span className="text-gray-900">{Number(product.rating || 0).toFixed(1)}</span>
+                        </span>
+                        <span className="text-[10px] text-gray-500">
+                          ({product.reviews || 0} reviews)
+                        </span>
+                      </div>
+
+                      {/* Price */}
+                      <div className="mt-3 flex items-center gap-2 py-2 border-t border-gray-100">
+                        <span className="text-xl font-bold text-gray-900">₹{product.price}</span>
+                        {product.mrp && product.mrp > product.price && (
+                          <span className="text-xs text-gray-500 line-through">₹{product.mrp}</span>
+                        )}
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-gray-100">
+                        <button
+                          onClick={() => addToCart(product)}
+                          className={`py-2.5 rounded-xl text-xs font-bold transition-all transform hover:scale-105 active:scale-95 ${
+                            cart[product._id]
+                              ? 'bg-slate-700 text-white hover:bg-slate-800'
+                              : 'bg-pink-500 text-white hover:bg-pink-600'
+                          }`}
+                        >
+                          {cart[product._id] ? '✓ In Cart' : '🛒 Add'}
+                        </button>
+                        <button
+                          onClick={() => handleBuyNow(product)}
+                          className="py-2.5 rounded-xl text-xs font-bold bg-green-500 text-white hover:bg-green-600 transition-all transform hover:scale-105 active:scale-95"
+                        >
+                          💳 Buy
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            {/* Results Footer */}
+            <div className="mt-12 text-center">
+              <p className="text-gray-600 text-sm">
+                Showing all {filteredProducts.length} remedies • Certified homeopathy products
+              </p>
+            </div>
+          </>
+        )}
       </div>
 
       <Footer />

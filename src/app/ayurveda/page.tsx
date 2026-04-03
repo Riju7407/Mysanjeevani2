@@ -6,6 +6,12 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
 const CATEGORIES = ['All', 'Immunity', 'Digestion', 'Stress Relief', 'Energy', 'Skin & Hair', 'Weight Management', 'Joint & Bone', "Women's Health", "Men's Health"];
+const SORT_OPTIONS = [
+  { value: 'featured', label: 'Featured' },
+  { value: 'price-low', label: 'Price: Low to High' },
+  { value: 'price-high', label: 'Price: High to Low' },
+  { value: 'rating', label: 'Highest Rated' },
+];
 
 interface Product {
   _id: string;
@@ -43,6 +49,7 @@ function isAyurvedaProduct(product: Product) {
 export default function AyurvedaPage() {
   const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [sortOrder, setSortOrder] = useState('featured');
   const [cart, setCart] = useState<Record<string, number>>({});
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,7 +80,7 @@ export default function AyurvedaPage() {
   const ayurvedaProducts = useMemo(() => products.filter(isAyurvedaProduct), [products]);
 
   const filtered = useMemo(() => {
-    return ayurvedaProducts.filter((p) => {
+    let result = ayurvedaProducts.filter((p) => {
       const matchCat =
         selectedCategory === 'All' ||
         p.category === selectedCategory ||
@@ -86,7 +93,14 @@ export default function AyurvedaPage() {
         (p.description || '').toLowerCase().includes(keyword);
       return matchCat && matchSearch;
     });
-  }, [ayurvedaProducts, selectedCategory, search]);
+
+    // Apply sorting
+    if (sortOrder === 'price-low') result.sort((a, b) => a.price - b.price);
+    else if (sortOrder === 'price-high') result.sort((a, b) => b.price - a.price);
+    else if (sortOrder === 'rating') result.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+
+    return result;
+  }, [ayurvedaProducts, selectedCategory, search, sortOrder]);
 
   const addToCart = (product: Product) => {
     setCart((prev) => ({ ...prev, [product._id]: (prev[product._id] || 0) + 1 }));
@@ -113,145 +127,231 @@ export default function AyurvedaPage() {
   };
 
   return (
-    <div className="min-h-screen bg-amber-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-amber-50 via-yellow-50 to-white flex flex-col">
       <Header />
 
       {/* Hero */}
-      <div className="bg-linear-to-r from-amber-600 to-yellow-500 text-white py-10">
-        <div className="max-w-7xl mx-auto px-4">
-          <h1 className="text-4xl font-extrabold mb-2">🌿 Ayurveda Store</h1>
-          <p className="text-amber-100 text-lg mb-4">Ancient wisdom, modern wellness. 100% authentic Ayurvedic products.</p>
-          <div className="flex flex-wrap gap-3 text-sm">
-            {['100% Authentic', 'Ayush Certified', 'No Side Effects', 'Expert Curated'].map((b) => (
-              <span key={b} className="bg-white/20 px-3 py-1 rounded-full">{b}</span>
+      <div className="w-full -mt-48">
+        <img src="/AB.png" alt="Ayurveda Store" className="w-full h-auto object-cover block" />
+      </div>
+
+      {/* Search & Filter Bar */}
+      <div className="sticky top-0 z-30 bg-white border-b border-amber-200 shadow-sm -mt-40">
+        <div className="max-w-7xl mx-auto px-4 py-1">
+          <div className="flex flex-col gap-4 md:gap-0 md:flex-row md:items-center md:justify-between">
+            {/* Search Bar */}
+            <div className="flex-1 md:mr-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="🔍 Search Ayurvedic products, brands, benefits..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full border-2 border-amber-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Sort Dropdown */}
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              className="border-2 border-amber-200 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400 transition text-sm font-medium text-gray-700"
+            >
+              {SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Horizontal Category Scroll */}
+        <div className="max-w-7xl mx-auto px-4 pb-4">
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`whitespace-nowrap px-4 py-2 rounded-full font-medium text-sm transition-all flex-shrink-0 ${
+                  selectedCategory === cat
+                    ? 'bg-amber-500 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-700 hover:bg-amber-100'
+                }`}
+              >
+                {cat}
+              </button>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Search */}
-      <div className="bg-white border-b border-gray-200 py-4">
-        <div className="max-w-7xl mx-auto px-4">
-          <input
-            type="text"
-            placeholder="Search Ayurvedic products..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full md:w-96 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
-          />
-        </div>
-      </div>
-
-      <div className="flex-1 max-w-7xl mx-auto px-4 py-8 w-full">
-        <div className="flex flex-col md:flex-row gap-6">
-          {/* Sidebar */}
-          <aside className="w-full md:w-48 shrink-0">
-            <div className="bg-white rounded-xl border border-gray-200 p-4 sticky top-20">
-              <h3 className="font-bold text-gray-900 mb-3 text-sm">Category</h3>
-              <div className="space-y-1">
-                {CATEGORIES.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    className={`w-full text-left text-sm px-3 py-2 rounded-lg transition ${
-                      selectedCategory === cat ? 'bg-amber-100 text-amber-800 font-semibold' : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
+      {/* Main Content */}
+      <div className="flex-1 max-w-7xl mx-auto px-4 py-10 w-full">
+        {/* Results Header */}
+        <div className="mb-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                {selectedCategory === 'All' ? '🌿 All Ayurveda Products' : `${selectedCategory}`}
+              </h1>
+              <p className="text-gray-600 mt-1 text-sm">
+                {filtered.length} {filtered.length === 1 ? 'product' : 'products'} available
+              </p>
             </div>
-          </aside>
+          </div>
+        </div>
 
-          {/* Products Grid */}
-          <div className="flex-1">
-            <p className="text-sm text-gray-500 mb-4">{filtered.length} products found</p>
-
-            {loading ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="bg-white rounded-xl border border-amber-200 p-4 animate-pulse">
-                    <div className="h-16 bg-amber-50 rounded mb-3" />
-                    <div className="h-4 bg-amber-50 rounded mb-2" />
-                    <div className="h-3 bg-amber-50 rounded w-2/3 mb-3" />
-                    <div className="h-8 bg-amber-50 rounded" />
-                  </div>
-                ))}
+        {/* Loading State */}
+        {loading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={i}
+                className="bg-white rounded-2xl border border-amber-100 p-4 shadow-sm animate-pulse"
+              >
+                <div className="h-40 bg-gradient-to-br from-amber-100 to-yellow-100 rounded-xl mb-4" />
+                <div className="h-4 bg-gray-200 rounded mb-3 w-3/4" />
+                <div className="h-3 bg-gray-200 rounded mb-2 w-full" />
+                <div className="h-3 bg-gray-200 rounded mb-4 w-1/2" />
+                <div className="h-10 bg-amber-100 rounded-lg" />
               </div>
-            ) : filtered.length === 0 ? (
-              <div className="text-center py-16 bg-white border border-amber-200 rounded-2xl">
-                <div className="text-5xl mb-3">🌿</div>
-                <p className="text-gray-600 font-medium">No Ayurveda products found.</p>
-                <p className="text-sm text-gray-500 mt-1">Ask vendor/admin to add approved Ayurveda products.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {filtered.map((p) => (
-                <article key={p._id} className="bg-white rounded-2xl border border-amber-200 overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 flex flex-col">
-                  <div className="relative h-40 bg-linear-to-br from-amber-50 to-yellow-50 flex items-center justify-center">
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20 bg-white border-2 border-dashed border-amber-200 rounded-3xl shadow-sm">
+            <div className="text-7xl mb-4 opacity-50">🌿</div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">No products found</h3>
+            <p className="text-gray-600 mb-6">
+              {search
+                ? `We couldn't find any products matching "${search}"`
+                : 'No products available in this category'}
+            </p>
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="px-6 py-2 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition"
+              >
+                Clear Search
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Products Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+              {filtered.map((p) => (
+                <article
+                  key={p._id}
+                  className="bg-white rounded-2xl border border-amber-100 overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col group"
+                >
+                  {/* Image Container */}
+                  <div className="relative h-48 bg-gradient-to-br from-amber-50 to-yellow-50 flex items-center justify-center overflow-hidden">
                     {p.image ? (
-                      <img src={p.image} alt={p.name} className="h-full w-full object-cover" />
+                      <img
+                        src={p.image}
+                        alt={p.name}
+                        className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      />
                     ) : (
-                      <span className="text-6xl">{p.icon || '🌿'}</span>
-                    )}
-                    {!!(p.mrp && p.mrp > p.price) && (
-                      <span className="absolute top-2 right-2 bg-green-600 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
-                        {Math.round(((p.mrp! - p.price) / p.mrp!) * 100)}% OFF
+                      <span className="text-7xl group-hover:scale-125 transition-transform duration-300">
+                        {p.icon || '🌿'}
                       </span>
                     )}
-                    {(p.isPopular || p.benefit) && (
-                      <span className="absolute top-2 left-2 text-[10px] px-2 py-1 rounded-full font-semibold bg-white/90 text-amber-700 border border-amber-200">
-                        {p.isPopular ? 'Popular' : p.benefit}
-                      </span>
-                    )}
+
+                    {/* Badges */}
+                    <div className="absolute inset-0 flex items-start justify-between p-3 pointer-events-none">
+                      <div className="flex flex-col gap-2">
+                        {(p.isPopular || p.benefit) && (
+                          <span className="text-[11px] px-2.5 py-1 rounded-full font-bold bg-white/95 text-amber-700 border border-amber-200 backdrop-blur-sm">
+                            {p.isPopular ? '⭐ Popular' : `✨ ${p.benefit}`}
+                          </span>
+                        )}
+                      </div>
+                      {!!(p.mrp && p.mrp > p.price) && (
+                        <span className="bg-green-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md">
+                          {Math.round(((p.mrp! - p.price) / p.mrp!) * 100)}% OFF
+                        </span>
+                      )}
+                    </div>
                   </div>
 
+                  {/* Content */}
                   <div className="p-4 flex flex-col flex-1">
-                    <p className="text-[11px] uppercase tracking-wide text-amber-700 font-medium">{p.brand || 'MySanjeevani'} • {p.category}</p>
-                    <h3 className="mt-1 text-sm font-semibold text-slate-900 leading-5 line-clamp-2 min-h-10">{p.name}</h3>
-                    <p className="text-xs text-slate-500 mt-1 line-clamp-2 min-h-8">{p.description || 'Authentic Ayurveda product for daily wellness support.'}</p>
-
-                    <div className="mt-2 flex items-center gap-2 text-xs text-slate-600">
-                      <span className="inline-flex items-center gap-1">
-                        <span className="text-amber-500">★</span>
-                        <span className="font-medium">{Number(p.rating || 0).toFixed(1)}</span>
+                    {/* Brand & Category */}
+                    <div className="flex items-center gap-1 mb-2">
+                      <span className="text-[10px] uppercase tracking-wider font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-full">
+                        {p.brand || 'MySanjeevani'}
                       </span>
-                      <span className="text-slate-300">|</span>
-                      <span>{p.reviews || 0} reviews</span>
+                      <span className="text-[10px] uppercase tracking-wider font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
+                        {p.category}
+                      </span>
                     </div>
 
-                    <div className="mt-3 flex items-baseline gap-2">
-                      <span className="text-lg font-bold text-slate-900">₹{p.price}</span>
+                    {/* Product Name */}
+                    <h3 className="text-sm font-bold text-gray-900 line-clamp-2 min-h-9 leading-tight">
+                      {p.name}
+                    </h3>
+
+                    {/* Description */}
+                    <p className="text-xs text-gray-600 mt-1 line-clamp-2 min-h-8">
+                      {p.description || 'Authentic Ayurveda wellness product'}
+                    </p>
+
+                    {/* Ratings */}
+                    <div className="flex items-center gap-3 mt-2 py-2 border-t border-gray-100">
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold">
+                        <span className="text-amber-400">★</span>
+                        <span className="text-gray-900">{Number(p.rating || 0).toFixed(1)}</span>
+                      </span>
+                      <span className="text-[10px] text-gray-500">
+                        ({p.reviews || 0} reviews)
+                      </span>
+                    </div>
+
+                    {/* Price */}
+                    <div className="mt-3 flex items-center gap-2 py-2 border-t border-gray-100">
+                      <span className="text-xl font-bold text-gray-900">₹{p.price}</span>
                       {p.mrp && p.mrp > p.price && (
-                        <span className="text-xs text-slate-400 line-through">₹{p.mrp}</span>
+                        <span className="text-xs text-gray-500 line-through">₹{p.mrp}</span>
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 mt-4">
+                    {/* Action Buttons */}
+                    <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-gray-100">
                       <button
                         onClick={() => addToCart(p)}
-                        className={`py-2.5 rounded-xl text-xs font-semibold text-white transition ${
-                          cart[p._id] ? 'bg-slate-700 hover:bg-slate-800' : 'bg-amber-500 hover:bg-amber-600'
+                        className={`py-2.5 rounded-xl text-xs font-bold transition-all transform hover:scale-105 active:scale-95 ${
+                          cart[p._id]
+                            ? 'bg-slate-700 text-white hover:bg-slate-800'
+                            : 'bg-amber-500 text-white hover:bg-amber-600'
                         }`}
                       >
-                        {cart[p._id] ? 'In Cart' : 'Add to Cart'}
+                        {cart[p._id] ? '✓ In Cart' : '🛒 Add'}
                       </button>
                       <button
                         onClick={() => handleBuyNow(p)}
-                        className="py-2.5 rounded-xl text-xs font-semibold text-white transition bg-emerald-500 hover:bg-emerald-600"
+                        className="py-2.5 rounded-xl text-xs font-bold bg-green-500 text-white hover:bg-green-600 transition-all transform hover:scale-105 active:scale-95"
                       >
-                        💳 Buy Now
+                        💳 Buy
                       </button>
                     </div>
                   </div>
                 </article>
               ))}
-              </div>
-            )}
-          </div>
-        </div>
+            </div>
+
+            {/* Results Footer */}
+            <div className="mt-12 text-center">
+              <p className="text-gray-600 text-sm">
+                Showing all {filtered.length} products • Curated for authentic wellness
+              </p>
+            </div>
+          </>
+        )}
       </div>
+
       <Footer />
     </div>
   );
