@@ -45,7 +45,7 @@ export async function POST(
       // Update doctor status
       doctor.approvalStatus = 'approved';
       doctor.isApproved = true;
-      doctor.approvedBy = 'admin@mysanjeevani.com'; // You can get from admin session
+      doctor.approvedBy = 'admin@MySanjeevni.com'; // You can get from admin session
       doctor.approvedAt = new Date();
       doctor.approvalNote = approvalNote || '';
       await doctor.save();
@@ -54,7 +54,7 @@ export async function POST(
       user.isApproved = true;
       user.approvalNote = approvalNote || '';
       user.approvedAt = new Date();
-      user.approvedBy = 'admin@mysanjeevani.com';
+      user.approvedBy = 'admin@MySanjeevni.com';
       await user.save();
 
       return NextResponse.json(
@@ -74,14 +74,14 @@ export async function POST(
       doctor.approvalStatus = 'rejected';
       doctor.isApproved = false;
       doctor.approvalNote = approvalNote || 'Rejected by admin';
-      doctor.approvedBy = 'admin@mysanjeevani.com';
+      doctor.approvedBy = 'admin@MySanjeevni.com';
       doctor.approvedAt = new Date();
       await doctor.save();
 
       // Update user status
       user.isApproved = false;
       user.approvalNote = approvalNote || 'Rejected by admin';
-      user.approvedBy = 'admin@mysanjeevani.com';
+      user.approvedBy = 'admin@MySanjeevni.com';
       user.approvedAt = new Date();
       await user.save();
 

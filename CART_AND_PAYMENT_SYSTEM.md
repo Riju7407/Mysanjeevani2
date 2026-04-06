@@ -296,5 +296,5 @@ All features are **fully functional** and **production-ready**! 🚀
 
 ---
 
-**MySanjeevani - Complete E-commerce Solution**  
+**MySanjeevni - Complete E-commerce Solution**  
 _Built for India's Healthcare Needs_

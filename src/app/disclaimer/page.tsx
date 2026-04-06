@@ -5,7 +5,7 @@ export default function DisclaimerPage() {
     <InfoPageLayout
       badge="Disclaimer"
       title="Important Medical and Service Notice"
-      subtitle="This disclaimer limits representations and liabilities relating to information, products, and services made available through MySanjeevani."
+      subtitle="This disclaimer limits representations and liabilities relating to information, products, and services made available through MySanjeevni."
       lastUpdated="March 28, 2026"
       sections={[
         {
@@ -25,8 +25,8 @@ export default function DisclaimerPage() {
         {
           heading: 'External References',
           content: [
-            'Third-party links and references are provided solely for convenience and do not imply endorsement, control, or responsibility by MySanjeevani.',
-            'MySanjeevani disclaims all liability for external content, availability, accuracy, or third-party practices. Users access external resources at their own risk.',
+            'Third-party links and references are provided solely for convenience and do not imply endorsement, control, or responsibility by MySanjeevni.',
+            'MySanjeevni disclaims all liability for external content, availability, accuracy, or third-party practices. Users access external resources at their own risk.',
           ],
         },
       ]}

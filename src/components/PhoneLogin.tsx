@@ -50,7 +50,7 @@ export function PhoneLogin({
             ? 'Login to your vendor account'
             : role === 'doctor'
               ? 'Login to your doctor account'
-              : 'Login to MySanjeevani'}
+              : 'Login to MySanjeevni'}
         </p>
       </div>
 

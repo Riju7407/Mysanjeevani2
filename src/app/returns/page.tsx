@@ -5,7 +5,7 @@ export default function ReturnsPage() {
     <InfoPageLayout
       badge="Returns"
       title="Return and Refund Policy"
-      subtitle="This policy governs return eligibility, verification, and refund processing for orders placed on MySanjeevani."
+      subtitle="This policy governs return eligibility, verification, and refund processing for orders placed on MySanjeevni."
       lastUpdated="March 28, 2026"
       sections={[
         {
@@ -18,15 +18,15 @@ export default function ReturnsPage() {
         {
           heading: 'Return Process',
           content: [
-            'To request a return, users must contact support with order details and reason for return. MySanjeevani may require photographs, batch details, or additional evidence for verification.',
-            'Return approval is subject to inspection and policy compliance. MySanjeevani reserves the right to reject requests that do not satisfy policy requirements.',
+            'To request a return, users must contact support with order details and reason for return. MySanjeevni may require photographs, batch details, or additional evidence for verification.',
+            'Return approval is subject to inspection and policy compliance. MySanjeevni reserves the right to reject requests that do not satisfy policy requirements.',
           ],
         },
         {
           heading: 'Refund Timeline',
           content: [
             'Approved refunds are initiated to the original payment instrument unless otherwise required by law or agreed in writing.',
-            'Processing and settlement timelines may vary by payment provider, bank network, and statutory checks. MySanjeevani is not responsible for delays caused by third-party financial institutions.',
+            'Processing and settlement timelines may vary by payment provider, bank network, and statutory checks. MySanjeevni is not responsible for delays caused by third-party financial institutions.',
           ],
         },
       ]}

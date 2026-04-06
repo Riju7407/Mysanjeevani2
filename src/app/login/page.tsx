@@ -410,7 +410,7 @@ export default function LoginPage() {
 
           {/* Bottom Info */}
           <div className="mt-8 text-center text-gray-500 text-xs">
-            <p>By logging in, you agree to MySanjeevani's Terms & Conditions</p>
+            <p>By logging in, you agree to MySanjeevni's Terms & Conditions</p>
           </div>
         </div>
       </div>

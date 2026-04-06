@@ -2,7 +2,7 @@
 
 ## Overview
 
-The MySanjeevani platform now supports a multi-vendor marketplace where registered vendors can list and sell their own products alongside MySanjeevani's official offerings. This enables healthcare businesses (pharmacies, clinics, suppliers) to reach more customers.
+The MySanjeevni platform now supports a multi-vendor marketplace where registered vendors can list and sell their own products alongside MySanjeevni's official offerings. This enables healthcare businesses (pharmacies, clinics, suppliers) to reach more customers.
 
 ---
 
@@ -110,7 +110,7 @@ Fields added to support multi-vendor:
 ```typescript
 {
   vendorId: ObjectId (reference to Vendor collection),
-  vendorName: String (default: "MySanjeevani"),
+  vendorName: String (default: "MySanjeevni"),
   vendorRating: Number (0-5, default: 5 for official products)
 }
 ```
@@ -350,7 +350,7 @@ Or for reactivation:
 ### 5. **Updated Medicines Page** (`/medicines`)
 
 - Added vendor filter in sidebar
-- Shows MySanjeevani official + approved vendors
+- Shows MySanjeevni official + approved vendors
 - Displays vendor name and rating on product cards
 - Filter products by vendor
 
@@ -573,4 +573,4 @@ For vendor support or issues with the multi-vendor platform, customers should:
 
 1. View vendor contact information on product cards
 2. Access vendor dashboard for performance metrics
-3. Contact MySanjeevani support for platform issues
+3. Contact MySanjeevni support for platform issues

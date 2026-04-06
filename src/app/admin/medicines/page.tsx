@@ -48,54 +48,107 @@ interface LabTest {
   isActive: boolean;
 }
 
-const PROD_CATEGORIES = ['Antibiotics', 'Pain Relief', 'Vitamins', 'Gastric', 'Cardiac', 'Diabetes', 'Allergy', 'Supplements', 'Acidity', 'Ayurveda', 'Homeopathy', 'Heart Care'];
-const LAB_CATEGORIES = ['General Health', 'Diabetes', 'Thyroid', 'Heart Health', 'Kidney Health', 'Liver Health', 'Women Health', 'Immunity', 'Vitamins', 'Allergy'];
+const PROD_CATEGORIES = ['Disease', 'Homeopathy', 'Ayurveda', 'Nutrition', 'Personal Care', 'Baby Care', 'Sexual Wellness', 'Fitness', 'Consultation', 'Unani', 'Allopathy'];
+const LAB_CATEGORIES = ['General', 'Diabetes', 'Cardiac', 'Thyroid', 'Liver', 'Kidney', 'Vitamins', 'Infection', 'Women'];
 
 // Vendor category map (same structure as vendor dashboard)
 const VENDOR_CATEGORY_MAP = {
   'Generic Medicine': [
-    'Antibiotics',
-    'Pain Relief',
-    'Acidity',
-    'Diabetes',
-    'Allergy',
-    'Heart Care',
-    'Vitamins',
-    'Cardiac',
-    'Supplements',
-    'Gastric',
+    // Disease Categories
+    'Addiction', 'Anxiety & Depression', 'Sleeplessness', 'Weak Memory',
+    'Acne & Pimples', 'Dark Circles & Marks', 'Wrinkles & Aging',
+    'Hair Fall', 'Dandruff', 'Alopecia & Bald Patches', 'Premature Graying', 'Lice',
+    'Conjunctivitis', 'Cataract', 'Eye Strain', 'Glaucoma', 'Styes', 'Ear Pain', 'Ear Wax',
+    'Allergic Rhinitis', 'Sneezing & Running Nose', 'Sinusitis & Blocked Nose', 'Snoring', 'Tonsillitis & Throat Pain', 'Laryngitis & Hoarse Voice',
+    'Headache & Migraine', 'Vertigo/Motion Sickness', 'Neuralgia & Nerve Pain', 'Epilepsy & Fits',
+    'Bad Breath', 'Bleeding Gum/Pyorrhea', 'Mouth Ulcers/Aphthae', 'Cavities & Tooth Pain', 'Stammering',
+    'Asthma', 'Bronchitis', 'Cough', 'Pneumonia',
+    'Constipation', 'Piles & Fissures', 'Loose Motions/Diarrhoea', 'IBS & Colitis', 'Fistula', 'Worms',
+    'Indigestion/Acidity/Gas', 'Loss of Appetite', 'Jaundice & Fatty Liver', 'Stomach Pain & Colic', 'Vomiting & Nausea', 'Gall Stones', 'Appendicitis', 'Hernia',
+    'Heart Tonics', 'Chest Pain & Angina', 'Cholesterol & Triglyceride',
+    'Urinary Tract Infection', 'Kidney Stone', 'Frequent Urination',
+    'Arthritis & Joint Pains', 'Back & Knee Pain', 'Cervical Spondylosis', 'Injuries & Fractures', 'Gout & Uric Acid', 'Osteoporosis', 'Sciatica', 'Heel Pain',
+    'Bed Sores', 'Boils & Abscesses', 'Burns', 'Cyst & Tumor', 'Eczema', 'Herpes', 'Nail Fungus', 'Psoriasis & Dry Skin', 'Rash/Itch/Urticaria/Hives', 'Vitiligo & Leucoderma', 'Warts & Corns',
+    'Dengue', 'Flu & Fever', 'Malaria', 'Typhoid',
+    'Hydrocele', 'Premature Ejaculation', 'Impotency', 'Prostate Enlargement',
+    'Underdeveloped Breasts', 'Enlarged Breasts', 'Leucorrhoea', 'Excessive Menses', 'Vaginitis', 'Menopause', 'Painful, Delayed & Scanty Menses',
+    'Low Height', 'Autism', 'Bed Wetting', 'Immunity', 'Teething Troubles', 'Irritability & Hyperactive',
+    'Diabetes', 'Blood Pressure', 'Obesity', 'Thyroid', 'Hang Over', 'Varicose Veins',
+    'Parkinsons & Trembling', 'Involuntary Urination', 'Alzheimers',
+    'Anaemia', 'Blood Purifiers', 'General Tonics', 'Weakness & Fatigue',
+    // Allopathy Brands
+    'Sun Pharma', 'Cipla', 'Lupin', 'Pfizer', 'Abbott', 'Mankind Pharma', 'Dr. Reddys', 'Glenmark Pharma',
+    // Allopathic Medicines
+    'Tablets & Capsules', 'Syrups & Suspensions', 'Creams & Ointments', 'Inhalers & Respules', 'Oral Drops', 'Eye & Ear Drops', 'Nasal Drops & Spray', 'Injections & Infusions',
   ],
   'Ayurveda Medicine': [
-    'Immunity',
-    'Digestion',
-    'Stress Relief',
-    'Energy',
-    'Skin & Hair',
-    'Weight Management',
-    'Joint & Bone',
-    "Women's Health",
-    "Men's Health",
+    'Himalaya', 'Organic India', 'Baidyanath', 'Dabur', 'Zandu', 'Charak', 'Aimil',
+    'Ras & Sindoor', 'Bhasm & Pishti', 'Vati, Gutika & Guggulu', 'Asava Arishta & Kadha', 'Loha & Mandur', 'Churan, Powder, Avaleha & Pak', 'Tailam & Ghrita',
+    'Chyawanprash', 'Honey', 'Digestives', 'Herbal & Vegetable Juice',
   ],
   Homeopathy: [
-    'Cold & Flu',
-    'Skin',
-    'Digestive',
-    'Mental Wellness',
-    'Joint & Pain',
-    "Women's Health",
-    'Immunity',
-    'Children',
+    'SBL', 'Dr. Reckeweg', 'Willmar Schwabe', 'Adel Pekana', 'Schwabe India', 'Bjain', 'R S Bhargava', 'Baksons', 'REPL', 'New Life',
+    '3X', '6X', '3 CH', '6 CH', '12 CH', '30 CH', '200 CH', '1000 CH', '10M CH', '50M CH', 'CM CH',
+    'Mother Tinctures', 'Biochemic', 'Triturations', 'Bio Combination', 'Bach Flower', 'Homeopathy Kits', 'Milleimal LM Potency',
+    'Hair Care', 'Skin Care', 'Oral Care',
   ],
   'Lab Tests': [
-    'General',
-    'Diabetes',
-    'Cardiac',
-    'Thyroid',
-    'Liver',
-    'Kidney',
-    'Vitamins',
-    'Infection',
-    'Women',
+    'General', 'Diabetes', 'Cardiac', 'Thyroid', 'Liver', 'Kidney', 'Vitamins', 'Infection', 'Women',
+  ],
+  Disease: [
+    'Addiction', 'Anxiety & Depression', 'Sleeplessness', 'Weak Memory',
+    'Acne & Pimples', 'Dark Circles & Marks', 'Wrinkles & Aging',
+    'Hair Fall', 'Dandruff', 'Alopecia & Bald Patches', 'Premature Graying', 'Lice',
+    'Conjunctivitis', 'Cataract', 'Eye Strain', 'Glaucoma', 'Styes', 'Ear Pain', 'Ear Wax',
+    'Allergic Rhinitis', 'Sneezing & Running Nose', 'Sinusitis & Blocked Nose', 'Snoring', 'Tonsillitis & Throat Pain', 'Laryngitis & Hoarse Voice',
+    'Headache & Migraine', 'Vertigo/Motion Sickness', 'Neuralgia & Nerve Pain', 'Epilepsy & Fits',
+    'Bad Breath', 'Bleeding Gum/Pyorrhea', 'Mouth Ulcers/Aphthae', 'Cavities & Tooth Pain', 'Stammering',
+    'Asthma', 'Bronchitis', 'Cough', 'Pneumonia',
+    'Constipation', 'Piles & Fissures', 'Loose Motions/Diarrhoea', 'IBS & Colitis', 'Fistula', 'Worms',
+    'Indigestion/Acidity/Gas', 'Loss of Appetite', 'Jaundice & Fatty Liver', 'Stomach Pain & Colic', 'Vomiting & Nausea', 'Gall Stones', 'Appendicitis', 'Hernia',
+    'Heart Tonics', 'Chest Pain & Angina', 'Cholesterol & Triglyceride',
+    'Urinary Tract Infection', 'Kidney Stone', 'Frequent Urination',
+    'Arthritis & Joint Pains', 'Back & Knee Pain', 'Cervical Spondylosis', 'Injuries & Fractures', 'Gout & Uric Acid', 'Osteoporosis', 'Sciatica', 'Heel Pain',
+    'Bed Sores', 'Boils & Abscesses', 'Burns', 'Cyst & Tumor', 'Eczema', 'Herpes', 'Nail Fungus', 'Psoriasis & Dry Skin', 'Rash/Itch/Urticaria/Hives', 'Vitiligo & Leucoderma', 'Warts & Corns',
+    'Dengue', 'Flu & Fever', 'Malaria', 'Typhoid',
+    'Hydrocele', 'Premature Ejaculation', 'Impotency', 'Prostate Enlargement',
+    'Underdeveloped Breasts', 'Enlarged Breasts', 'Leucorrhoea', 'Excessive Menses', 'Vaginitis', 'Menopause', 'Painful, Delayed & Scanty Menses',
+    'Low Height', 'Autism', 'Bed Wetting', 'Immunity', 'Teething Troubles', 'Irritability & Hyperactive',
+    'Diabetes', 'Blood Pressure', 'Obesity', 'Thyroid', 'Hang Over', 'Varicose Veins',
+    'Parkinsons & Trembling', 'Involuntary Urination', 'Alzheimers',
+    'Anaemia', 'Blood Purifiers', 'General Tonics', 'Weakness & Fatigue',
+  ],
+  Nutrition: [
+    'Proteins', 'Fat Burner', 'Weight Gainers', 'Pre Post Workout', 'Aminos', 'Creatines',
+    'Organic Foods', 'Coffee & Tea', 'Ghee', 'Atta/Flour',
+    'Spreads, Sugar & Honey', 'Oils', 'Health Drinks', 'Healthy Snacks & Bars', 'Sugar Free', 'Murabba', 'Edible Seeds',
+  ],
+  'Personal Care': [
+    'Essential Oils', 'Face', 'Body', 'Foot Care', 'Sanitizers & Hand Wash',
+    'Shampoo & Conditioners', 'Hair Oils & Creams', 'Hair Serum & Mask', 'Hair Color & Dyes', 'Henna Mehndi',
+    'Beard Oils and Wax', 'Shaving Cream & Gels', 'Men Wellness',
+    'Shower Gel & Hand Wash', 'Soaps', 'Talcs & Deos',
+    'Toothpaste', 'Gums Care',
+    'Intimate Care', 'Pregnancy & Maternity Care',
+  ],
+  Fitness: [
+    'Shoulder Support', 'Elbow Support', 'Forearm Support', 'Wrist Support', 'Chest Support', 'Cervical Support', 'Back Support', 'Abdominal Support', 'Thigh Support', 'Knee Support', 'Calf Support', 'Ankle Support', 'Finger Splint', 'Compression Stockings', 'Insoles & Heel Cups',
+    'Weighing Scales', 'BP Monitors', 'Thermometer', 'Respiratory Care', 'Activity Monitor', 'Hot and Cold Pads & Bottles',
+    'Exercisers', 'Weights', 'Stethoscopes', 'Protective Gears', 'Hospital Beds',
+    'Walking Sticks', 'Massagers', 'Disability Aids',
+  ],
+  'Sexual Wellness': [
+    'Sexual Supplements', 'Condoms',
+  ],
+  Consultation: [
+    'Homeo Treatment', 'Ayurveda Treatment', 'Unani Treatment', 'Diet Counselling',
+  ],
+  Unani: [
+    'Habbe & Qurs', 'Majun & Jawarish', 'Safoof, Labub & Kushta', 'Sharbat, Sirka & Arq', 'Lauq & Saoot', 'Khamira & Itrifal', 'Roghan & Oils',
+    'Hamdard', 'New Shama', 'Dehlvi', 'Rex',
+  ],
+  'Baby Care': [
+    'Tonics & Supplements', 'Shampoos & Bath Gels', 'Baby Oils', 'Baby Powder', 'Soaps', 'Wipes & Diapers', 'Gift Packs',
   ],
 } as const;
 
@@ -332,6 +385,15 @@ export default function AdminMedicines() {
     await fetch(`/api/admin/products/${t._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isActive: !t.isActive }) });
     setLabTests((p) => p.map((x) => x._id === t._id ? { ...x, isActive: !x.isActive } : x));
   };
+  const toggleLabPopular = async (t: LabTest) => {
+    const newPopular = !((t as any).isPopularLabTests || t.popular);
+    await fetch(`/api/admin/products/${t._id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isPopular: newPopular, popular: newPopular, isPopularLabTests: newPopular }),
+    });
+    setLabTests((p) => p.map((x) => x._id === t._id ? { ...x, popular: newPopular, isPopularLabTests: newPopular } : x));
+  };
 
   const filteredMeds = medicines.filter((m) => {
     const effectiveApprovalStatus = m.approvalStatus || ((m.vendorId && !m.isActive) ? 'pending' : 'approved');
@@ -440,7 +502,7 @@ export default function AdminMedicines() {
                       {pendingMedicineApprovals.map((m) => (
                         <tr key={m._id} className="hover:bg-slate-50">
                           <td className="px-4 py-3 text-sm font-medium text-slate-900">{m.name}</td>
-                          <td className="px-4 py-3 text-sm text-slate-600">{m.vendorName || 'MySanjeevani'}</td>
+                          <td className="px-4 py-3 text-sm text-slate-600">{m.vendorName || 'MySanjeevni'}</td>
                           <td className="px-4 py-3 text-sm text-slate-600">{m.category}</td>
                           <td className="px-4 py-3 text-sm font-semibold text-emerald-700">₹{m.price}</td>
                           <td className="px-4 py-3">
@@ -639,7 +701,7 @@ export default function AdminMedicines() {
                         <td className="px-6 py-4 text-2xl">{m.icon || '💊'}</td>
                         <td className="px-6 py-4"><div className="font-medium text-slate-900 text-sm">{m.name}</div><div className="text-xs text-slate-500">{m.brand || '—'}</div></td>
                         <td className="px-6 py-4 text-sm text-slate-600">{m.category}</td>
-                        <td className="px-6 py-4 text-sm text-slate-600">{m.vendorName || 'MySanjeevani'}</td>
+                        <td className="px-6 py-4 text-sm text-slate-600">{m.vendorName || 'MySanjeevni'}</td>
                         <td className="px-6 py-4"><div className="text-sm font-semibold text-emerald-700">₹{m.price}</div>{m.mrp && m.mrp > m.price && <div className="text-xs text-slate-400 line-through">₹{m.mrp}</div>}</td>
                         <td className="px-6 py-4 text-sm"><span className={m.stock < 20 ? 'text-red-600 font-semibold' : 'text-slate-700'}>{m.stock}</span></td>
                         <td className="px-6 py-4 text-sm">
@@ -777,10 +839,13 @@ export default function AdminMedicines() {
                   <input type="text" placeholder="Tests included (e.g. 72 parameters)" value={labForm.testsIncluded} onChange={(e) => setLabForm({ ...labForm, testsIncluded: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 md:col-span-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm" />
                   <textarea placeholder="Description" value={labForm.description} onChange={(e) => setLabForm({ ...labForm, description: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 md:col-span-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm" rows={2} />
                 </div>
-                <label className="flex items-center gap-2 cursor-pointer mb-6 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
-                  <input type="checkbox" checked={labForm.popular} onChange={(e) => setLabForm({ ...labForm, popular: e.target.checked })} className="w-5 h-5 rounded border-slate-300 accent-blue-600" />
-                  <span className="text-sm font-medium text-slate-700">Mark as Popular</span>
-                </label>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                  <h4 className="font-semibold text-slate-900 mb-3 text-sm">Display in Popular Sections:</h4>
+                  <label className="flex items-center gap-2 cursor-pointer p-3 rounded-lg border border-orange-300 hover:bg-orange-100 transition-colors bg-white">
+                    <input type="checkbox" checked={labForm.popular} onChange={(e) => setLabForm({ ...labForm, popular: e.target.checked })} className="w-5 h-5 rounded border-slate-300 accent-orange-600" />
+                    <span className="text-sm font-medium text-slate-700">Popular Lab Tests</span>
+                  </label>
+                </div>
                 <div className="flex gap-3">
                   <button onClick={saveLab} disabled={labSaving || imageUploading} className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white px-6 py-2 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all disabled:opacity-60">{labSaving ? 'Saving...' : editLab ? 'Update Lab Test' : 'Add Lab Test'}</button>
                   <button onClick={() => { setShowLabForm(false); setEditLab(null); setLabImageUrl(''); }} className="border border-slate-300 text-slate-700 px-6 py-2 rounded-lg hover:bg-slate-50 font-medium transition-colors">Cancel</button>
@@ -825,7 +890,16 @@ export default function AdminMedicines() {
                         </td>
                         <td className="px-6 py-4 text-xs text-slate-600">{t.testsIncluded || '—'}</td>
                         <td className="px-6 py-4">
-                          {t.popular ? <span className="inline-flex items-center px-3 py-1.5 rounded-full bg-purple-100 text-purple-700 text-xs font-medium">Popular</span> : <span className="text-slate-300 text-lg">—</span>}
+                          <button
+                            onClick={() => toggleLabPopular(t)}
+                            className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${
+                              ((t as any).isPopularLabTests || t.popular)
+                                ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                            }`}
+                          >
+                            {((t as any).isPopularLabTests || t.popular) ? '⭐ Popular Lab Tests' : 'Not Popular'}
+                          </button>
                         </td>
                         <td className="px-6 py-4">
                           <button onClick={() => toggleLabActive(t)} className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${t.isActive ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>{t.isActive ? 'Active' : 'Inactive'}</button>
@@ -871,7 +945,7 @@ export default function AdminMedicines() {
                         {m.description && <div className="text-xs text-slate-500 truncate max-w-xs">{m.description}</div>}
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-600">{m.category}</td>
-                      <td className="px-6 py-4 text-sm text-slate-600">{m.vendorName || 'MySanjeevani'}</td>
+                      <td className="px-6 py-4 text-sm text-slate-600">{m.vendorName || 'MySanjeevni'}</td>
                       <td className="px-6 py-4 text-sm font-semibold text-blue-700">₹{m.price}</td>
                       <td className="px-6 py-4 text-sm">
                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${(m.approvalStatus || 'approved') === 'approved' ? 'bg-emerald-100 text-emerald-700' : (m.approvalStatus || 'approved') === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>

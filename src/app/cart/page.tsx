@@ -22,6 +22,11 @@ declare global {
       open: () => void;
       on: (event: string, callback: (response: any) => void) => void;
     };
+    paypal?: {
+      Buttons: (options: Record<string, unknown>) => {
+        render: (container: string) => Promise<void>;
+      };
+    };
   }
 }
 
@@ -42,6 +47,19 @@ async function loadRazorpayScript() {
   });
 }
 
+async function loadPayPalScript(clientId: string, currency: string) {
+  if (window.paypal) return true;
+
+  return new Promise<boolean>((resolve) => {
+    const script = document.createElement('script');
+    script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=${encodeURIComponent(currency)}&intent=capture`;
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
 export default function CartPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [user, setUser] = useState<any>(null);
@@ -49,6 +67,10 @@ export default function CartPage() {
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paypalClientId, setPaypalClientId] = useState('');
+  const [paypalCurrency, setPaypalCurrency] = useState('USD');
+  const [paypalConfigured, setPaypalConfigured] = useState(false);
+  const [paypalButtonError, setPaypalButtonError] = useState('');
   const [address, setAddress] = useState({
     houseNo: '',
     streetAddress: '',
@@ -60,6 +82,12 @@ export default function CartPage() {
     country: 'India',
   });
   const router = useRouter();
+
+  const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const discount = Math.floor(totalPrice * 0.10); // 10% discount
+  const finalPrice = totalPrice - discount;
+  const deliveryCharge = finalPrice > 299 ? 0 : 49;
+  const totalAmount = finalPrice + deliveryCharge;
 
   useEffect(() => {
     // Load cart from localStorage
@@ -73,7 +101,7 @@ export default function CartPage() {
               name: item.name || 'Product',
               price: Number(item.price) || 0,
               quantity: Number(item.quantity) || 1,
-              brand: item.brand || 'MySanjeevani',
+              brand: item.brand || 'MySanjeevni',
               image: item.image || '💊',
             }))
           : [];
@@ -90,11 +118,168 @@ export default function CartPage() {
     }
   }, []);
 
-  const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const discount = Math.floor(totalPrice * 0.10); // 10% discount
-  const finalPrice = totalPrice - discount;
-  const deliveryCharge = finalPrice > 299 ? 0 : 49;
-  const totalAmount = finalPrice + deliveryCharge;
+  useEffect(() => {
+    const loadPaypalConfig = async () => {
+      try {
+        const res = await fetch('/api/payments/paypal/config', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Failed to load PayPal config');
+
+        setPaypalConfigured(Boolean(data?.configured && data?.clientId));
+        setPaypalClientId(String(data?.clientId || ''));
+        setPaypalCurrency(String(data?.currency || 'USD').toUpperCase());
+      } catch {
+        setPaypalConfigured(false);
+        setPaypalClientId('');
+      }
+    };
+
+    if (showPaymentModal) {
+      loadPaypalConfig();
+    }
+  }, [showPaymentModal]);
+
+  useEffect(() => {
+    if (!showPaymentModal || selectedPaymentMethod !== 'paypal') return;
+
+    let isMounted = true;
+
+    const mountPayPalButtons = async () => {
+      setPaypalButtonError('');
+
+      if (!paypalConfigured || !paypalClientId) {
+        setPaypalButtonError('PayPal is not configured by admin.');
+        return;
+      }
+
+      const loaded = await loadPayPalScript(paypalClientId, paypalCurrency);
+      if (!loaded || !window.paypal) {
+        setPaypalButtonError('Unable to load PayPal SDK. Please try again.');
+        return;
+      }
+
+      const container = document.getElementById('paypal-button-container');
+      if (container) container.innerHTML = '';
+
+      try {
+        await window.paypal.Buttons({
+          style: {
+            layout: 'vertical',
+            color: 'blue',
+            shape: 'rect',
+            label: 'paypal',
+          },
+          createOrder: async () => {
+            const res = await fetch('/api/payments/paypal/create-order', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ amount: totalAmount, currency: paypalCurrency }),
+            });
+            const data = await res.json();
+            if (!res.ok || !data?.orderId) {
+              throw new Error(data?.error || 'Failed to create PayPal order');
+            }
+            return data.orderId;
+          },
+          onApprove: async (data: any) => {
+            setIsProcessing(true);
+            try {
+              const res = await fetch('/api/payments/paypal/capture-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderID: data.orderID }),
+              });
+              const captureData = await res.json();
+
+              if (!res.ok || !captureData?.success) {
+                throw new Error(captureData?.error || 'PayPal payment capture failed');
+              }
+
+              const captureId =
+                captureData?.capture?.purchase_units?.[0]?.payments?.captures?.[0]?.id || '';
+
+              const order = {
+                _id: Math.random().toString(36).substr(2, 9),
+                userId: user?.id || 'guest',
+                customerName: address.fullName,
+                customerEmail: user?.email || 'not-provided',
+                customerPhone: address.phoneNumber,
+                items: cartItems.map((item) => ({
+                  ...item,
+                  vendorId: item.vendorId || 'default-vendor',
+                })),
+                totalAmount,
+                subtotal: finalPrice,
+                discount,
+                deliveryCharge,
+                paymentMethod: 'paypal',
+                paymentGateway: 'paypal',
+                paypalOrderId: data.orderID,
+                paypalCaptureId: captureId,
+                deliveryAddress: address,
+                status: 'confirmed',
+                paymentStatus: 'completed',
+                createdAt: new Date().toISOString(),
+              };
+
+              const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+              orders.push(order);
+              localStorage.setItem('orders', JSON.stringify(orders));
+
+              setCartItems([]);
+              localStorage.setItem('cart', JSON.stringify([]));
+
+              setShowPaymentModal(false);
+              setSelectedPaymentMethod('');
+              setIsProcessing(false);
+
+              alert(`Payment successful!\n\nOrder ID: ${order._id}\nPayPal Order ID: ${data.orderID}`);
+              router.push('/orders');
+            } catch (error: any) {
+              setIsProcessing(false);
+              alert(error?.message || 'PayPal payment failed. Please try again.');
+            }
+          },
+          onCancel: () => {
+            setIsProcessing(false);
+            alert('Payment cancelled. Redirecting to homepage.');
+            router.push('/');
+          },
+          onError: (error: any) => {
+            setIsProcessing(false);
+            setPaypalButtonError(error?.message || 'PayPal checkout failed');
+            alert('PayPal checkout failed. Redirecting to homepage.');
+            router.push('/');
+          },
+        }).render('#paypal-button-container');
+      } catch (error: any) {
+        if (!isMounted) return;
+        setPaypalButtonError(error?.message || 'Unable to initialize PayPal checkout');
+      }
+    };
+
+    mountPayPalButtons();
+
+    return () => {
+      isMounted = false;
+      const container = document.getElementById('paypal-button-container');
+      if (container) container.innerHTML = '';
+    };
+  }, [
+    address,
+    cartItems,
+    deliveryCharge,
+    discount,
+    finalPrice,
+    paypalClientId,
+    paypalConfigured,
+    paypalCurrency,
+    router,
+    selectedPaymentMethod,
+    showPaymentModal,
+    totalAmount,
+    user,
+  ]);
 
   const updateQuantity = (id: string | number, quantity: number) => {
     if (quantity <= 0) {
@@ -178,6 +363,11 @@ export default function CartPage() {
       return;
     }
 
+    if (selectedPaymentMethod === 'paypal') {
+      alert('Please use the PayPal button to complete international payment.');
+      return;
+    }
+
     setIsProcessing(true);
     try {
       const isRazorpayLoaded = await loadRazorpayScript();
@@ -195,7 +385,7 @@ export default function CartPage() {
         body: JSON.stringify({
           amount: totalAmount,
           receipt: `rcpt_${Date.now()}`,
-          selectedPaymentMethod,
+          selectedPaymentMethod: selectedPaymentMethod === 'domestic' ? '' : selectedPaymentMethod,
           notes: {
             userId: user?.id || 'guest',
             email: user?.email || 'not-provided',
@@ -211,22 +401,17 @@ export default function CartPage() {
       }
 
       const methodConfig = {
-        card: false,
-        netbanking: false,
-        upi: false,
-        wallet: false,
+        card: true,
+        netbanking: true,
+        upi: true,
+        wallet: true,
       } as Record<string, boolean>;
-
-      if (selectedPaymentMethod === 'card') methodConfig.card = true;
-      if (selectedPaymentMethod === 'netbanking') methodConfig.netbanking = true;
-      if (selectedPaymentMethod === 'upi') methodConfig.upi = true;
-      if (selectedPaymentMethod === 'wallet') methodConfig.wallet = true;
 
       const options: Record<string, unknown> = {
         key: createOrderData.keyId,
         amount: createOrderData.order.amount,
         currency: createOrderData.order.currency,
-        name: 'MySanjeevani',
+        name: 'MySanjeevni',
         description: 'Order Payment',
         order_id: createOrderData.order.id,
         prefill: {
@@ -239,6 +424,13 @@ export default function CartPage() {
         },
         theme: {
           color: '#059669',
+        },
+        modal: {
+          ondismiss: () => {
+            setIsProcessing(false);
+            alert('Payment cancelled. Redirecting to homepage.');
+            router.push('/');
+          },
         },
         method: methodConfig,
         handler: async (response: any) => {
@@ -312,6 +504,7 @@ export default function CartPage() {
         const reason = failureResponse?.error?.description || 'Payment failed';
         alert(reason);
         setIsProcessing(false);
+        router.push('/');
       });
 
       razorpay.open();
@@ -543,71 +736,37 @@ export default function CartPage() {
             </p>
 
             <div className="space-y-3 mb-6">
-              {/* Credit/Debit Card */}
+              {/* Domestic (Razorpay) */}
               <label className="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-emerald-300 transition"
-                onClick={() => setSelectedPaymentMethod('card')}>
+                onClick={() => setSelectedPaymentMethod('domestic')}>
                 <input
                   type="radio"
                   name="payment"
-                  value="card"
-                  checked={selectedPaymentMethod === 'card'}
-                  onChange={() => setSelectedPaymentMethod('card')}
+                  value="domestic"
+                  checked={selectedPaymentMethod === 'domestic'}
+                  onChange={() => setSelectedPaymentMethod('domestic')}
                   className="mr-4"
                 />
                 <div>
-                  <p className="font-semibold text-gray-900">💳 Credit/Debit Card</p>
-                  <p className="text-xs text-gray-600">Visa, Mastercard, Amex</p>
+                  <p className="font-semibold text-gray-900">🇮🇳 Domestic (Razorpay)</p>
+                  <p className="text-xs text-gray-600">UPI, Card, Net Banking, Wallets</p>
                 </div>
               </label>
 
-              {/* Net Banking */}
+              {/* International (PayPal) */}
               <label className="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-emerald-300 transition"
-                onClick={() => setSelectedPaymentMethod('netbanking')}>
+                onClick={() => setSelectedPaymentMethod('paypal')}>
                 <input
                   type="radio"
                   name="payment"
-                  value="netbanking"
-                  checked={selectedPaymentMethod === 'netbanking'}
-                  onChange={() => setSelectedPaymentMethod('netbanking')}
+                  value="paypal"
+                  checked={selectedPaymentMethod === 'paypal'}
+                  onChange={() => setSelectedPaymentMethod('paypal')}
                   className="mr-4"
                 />
                 <div>
-                  <p className="font-semibold text-gray-900">🏦 Net Banking</p>
-                  <p className="text-xs text-gray-600">All Indian Banks Supported</p>
-                </div>
-              </label>
-
-              {/* UPI */}
-              <label className="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-emerald-300 transition"
-                onClick={() => setSelectedPaymentMethod('upi')}>
-                <input
-                  type="radio"
-                  name="payment"
-                  value="upi"
-                  checked={selectedPaymentMethod === 'upi'}
-                  onChange={() => setSelectedPaymentMethod('upi')}
-                  className="mr-4"
-                />
-                <div>
-                  <p className="font-semibold text-gray-900">📱 UPI</p>
-                  <p className="text-xs text-gray-600">Google Pay, PhonePe, Paytm</p>
-                </div>
-              </label>
-
-              {/* Wallets */}
-              <label className="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-emerald-300 transition"
-                onClick={() => setSelectedPaymentMethod('wallet')}>
-                <input
-                  type="radio"
-                  name="payment"
-                  value="wallet"
-                  checked={selectedPaymentMethod === 'wallet'}
-                  onChange={() => setSelectedPaymentMethod('wallet')}
-                  className="mr-4"
-                />
-                <div>
-                  <p className="font-semibold text-gray-900">💰 Digital Wallets</p>
-                  <p className="text-xs text-gray-600">Paytm, Amazon Pay, Airtel Money</p>
+                  <p className="font-semibold text-gray-900">🌍 International (PayPal)</p>
+                  <p className="text-xs text-gray-600">Pay securely with PayPal</p>
                 </div>
               </label>
 
@@ -629,6 +788,18 @@ export default function CartPage() {
               </label>
             </div>
 
+            {selectedPaymentMethod === 'paypal' && (
+              <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                <p className="text-xs text-blue-800 mb-2 font-medium">
+                  International checkout via PayPal ({paypalCurrency})
+                </p>
+                {paypalButtonError && (
+                  <p className="text-xs text-red-600 mb-2">{paypalButtonError}</p>
+                )}
+                <div id="paypal-button-container" />
+              </div>
+            )}
+
             {/* Action Buttons */}
             <div className="flex gap-3">
               <button
@@ -640,10 +811,14 @@ export default function CartPage() {
               </button>
               <button
                 onClick={processPayment}
-                disabled={isProcessing || !selectedPaymentMethod}
+                disabled={isProcessing || !selectedPaymentMethod || selectedPaymentMethod === 'paypal'}
                 className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white py-2 rounded-lg font-semibold transition"
               >
-                {isProcessing ? 'Processing...' : 'Pay Now'}
+                {selectedPaymentMethod === 'paypal'
+                  ? 'Use PayPal Button'
+                  : isProcessing
+                    ? 'Processing...'
+                    : 'Pay Now'}
               </button>
             </div>
           </div>

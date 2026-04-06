@@ -3,14 +3,14 @@ import InfoPageLayout from '@/components/InfoPageLayout';
 export default function AboutPage() {
   return (
     <InfoPageLayout
-      badge="About MySanjeevani"
+      badge="About MySanjeevni"
       title="Healthcare That Feels Simple, Fast, and Reliable"
-      subtitle="MySanjeevani brings medicines, diagnostics, and wellness support together so families can manage health with confidence."
+      subtitle="MySanjeevni brings medicines, diagnostics, and wellness support together so families can manage health with confidence."
       sections={[
         {
           heading: 'Who We Are',
           content: [
-            'MySanjeevani is a modern healthcare platform designed for everyday convenience and trust.',
+            'MySanjeevni is a modern healthcare platform designed for everyday convenience and trust.',
             'We connect customers to quality products and care services through a simple digital experience.',
           ],
         },

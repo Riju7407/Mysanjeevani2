@@ -190,7 +190,7 @@ export default function LabTestsPage() {
         key: orderData.keyId,
         amount: orderData.order.amount,
         currency: orderData.order.currency,
-        name: 'MySanjeevani',
+        name: 'MySanjeevni',
         description: `Lab Test: ${bookingForm.testName}`,
         order_id: orderData.order.id,
         method: {
@@ -384,88 +384,82 @@ export default function LabTestsPage() {
             ) : (
               <>
                 {/* Tests Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {filteredAndSortedTests.map((test) => (
                     <article
                       key={test._id}
-                      className="bg-white rounded-2xl border border-emerald-100 overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col group cursor-pointer"
-                      onClick={() => {
-                        const token = localStorage.getItem('token');
-                        if (!token) redirectToLogin();
-                        else setBookingModal(test);
-                      }}
+                      className="group w-full max-w-56 mx-auto bg-white/95 border border-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition duration-300 cursor-pointer flex flex-col"
+                      onClick={() => router.push(`/medicines/${test._id}`)}
                     >
                       {/* Image Container */}
-                      <div className="relative h-40 bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center overflow-hidden group-hover:brightness-95 transition-all">
+                      <div className="relative h-40 bg-linear-to-br from-white to-slate-50 flex items-center justify-center overflow-hidden">
+                        <span className="absolute top-3 left-3 rounded-full px-2.5 py-1 text-[10px] font-bold bg-amber-600 text-white">
+                          Popular
+                        </span>
                         {test.image ? (
                           <img
                             src={test.image}
                             alt={test.name}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                            className="h-full w-full object-contain p-3 group-hover:scale-105 transition duration-300"
                             loading="lazy"
                           />
                         ) : (
-                          <span className="text-7xl group-hover:scale-125 transition-transform duration-300">
+                          <span className="text-5xl group-hover:scale-105 transition duration-300">
                             {test.icon || '🧪'}
                           </span>
                         )}
-                        
-                        {/* Discount Badge */}
-                        {test.mrp && test.mrp > test.price && (
-                          <div className="absolute top-3 right-3">
-                            <span className="bg-green-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md">
+
+                        <div className="absolute inset-0 flex items-start justify-end p-3 pointer-events-none">
+                          {test.mrp && test.mrp > test.price && (
+                            <span className="text-[11px] font-bold text-emerald-600">
                               {discountPercent(test)}% OFF
                             </span>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
 
                       {/* Content */}
-                      <div className="p-4 flex flex-col flex-1">
-                        {/* Category Badge */}
-                        <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full w-fit mb-2">
-                          {test.category}
-                        </span>
+                      <div className="p-3 flex flex-col flex-1">
+                        <p className="font-medium text-slate-500 mb-1 uppercase tracking-wide text-[10px]">
+                          MySanjeevni
+                        </p>
 
-                        {/* Test Name */}
-                        <h3 className="text-sm font-bold text-gray-900 line-clamp-2 min-h-9 leading-tight">
+                        <h3 className="font-bold text-slate-900 line-clamp-2 mb-2 text-xs min-h-8">
                           {test.name}
                         </h3>
 
-                        {/* Description */}
-                        <p className="text-xs text-gray-600 mt-1 line-clamp-2 min-h-8">
-                          {test.description || 'Professional lab test with certified results'}
-                        </p>
-
-                        {/* Ratings */}
-                        <div className="flex items-center gap-3 mt-2 py-2 border-t border-gray-100">
-                          <span className="inline-flex items-center gap-1 text-xs font-semibold">
-                            <span className="text-emerald-400">★</span>
-                            <span className="text-gray-900">{Number(test.rating || 0).toFixed(1)}</span>
-                          </span>
-                          <span className="text-[10px] text-gray-500">
-                            ({test.reviews || 0} reviews)
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-1">
+                            <span className="text-amber-500">★</span>
+                            <span className="text-xs font-semibold text-slate-900">{Number(test.rating || 0).toFixed(1)}</span>
+                            <span className="text-xs text-slate-500">({test.reviews || 0})</span>
+                          </div>
+                          <span className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-700">
+                            In Stock
                           </span>
                         </div>
 
-                        {/* Price */}
-                        <div className="mt-3 flex items-center gap-2 py-2 border-t border-gray-100">
-                          <span className="text-xl font-bold text-gray-900">₹{test.price}</span>
+                        <div className="mb-2 flex items-end justify-between">
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-base font-black text-slate-900">₹{test.price}</span>
+                            {test.mrp && test.mrp > test.price && (
+                              <span className="text-xs text-slate-400 line-through">₹{test.mrp}</span>
+                            )}
+                          </div>
                           {test.mrp && test.mrp > test.price && (
-                            <span className="text-xs text-gray-500 line-through">₹{test.mrp}</span>
+                            <span className="text-[11px] font-bold text-emerald-600">{discountPercent(test)}% OFF</span>
                           )}
                         </div>
 
-                        {/* Action Buttons */}
-                        <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-gray-100">
+                        <div className="flex gap-2 mt-auto">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               router.push(`/lab-tests/${test._id}`);
                             }}
-                            className="py-2.5 rounded-xl text-xs font-bold bg-white border border-emerald-300 text-emerald-700 hover:bg-emerald-50 transition-all transform hover:scale-105 active:scale-95"
+                            className="flex-1 rounded-lg font-bold transition py-1.5 text-[11px] bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"
                           >
-                            Details
+                            Add to Cart
                           </button>
                           <button
                             onClick={(e) => {
@@ -474,9 +468,9 @@ export default function LabTestsPage() {
                               if (!token) redirectToLogin();
                               else setBookingModal(test);
                             }}
-                            className="py-2.5 rounded-xl text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition-all transform hover:scale-105 active:scale-95"
+                            className="flex-1 rounded-lg font-bold text-white transition py-1.5 text-[11px] bg-amber-600 hover:bg-amber-700"
                           >
-                            💳 Book
+                            Buy Now
                           </button>
                         </div>
                       </div>

@@ -3,54 +3,20 @@
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
-const wellnessPillars = [
-  {
-    id: 'immunity',
-    title: 'Daily Immunity Care',
-    desc: 'Build strong resistance with expert-curated daily wellness essentials.',
-    icon: '🛡️',
-    benefits: 'Strengthen immunity, fight infections naturally',
-    rating: 4.7,
-    reviews: 328,
-    price: 499,
-    mrp: 699,
-  },
-  {
-    id: 'mindBody',
-    title: 'Mind & Body Balance',
-    desc: 'Support stress, sleep, and mood with personalized holistic routines.',
-    icon: '🧘',
-    benefits: 'Reduce stress, improve sleep quality',
-    rating: 4.8,
-    reviews: 456,
-    price: 599,
-    mrp: 799,
-  },
-  {
-    id: 'screening',
-    title: 'Preventive Screening',
-    desc: 'Track health markers early with timely tests and guided follow-ups.',
-    icon: '🧪',
-    benefits: 'Early detection of health issues',
-    rating: 4.6,
-    reviews: 212,
-    price: 1299,
-    mrp: 1799,
-  },
-  {
-    id: 'nutrition',
-    title: 'Nutrition Support',
-    desc: 'Choose supplements and food-support solutions for long-term vitality.',
-    icon: '🥗',
-    benefits: 'Balanced nutrition, sustained energy',
-    rating: 4.9,
-    reviews: 534,
-    price: 399,
-    mrp: 599,
-  },
-];
+interface WellnessPillar {
+  _id: string;
+  title: string;
+  desc: string;
+  benefits: string;
+  imageUrl?: string;
+  icon?: string;
+  rating: number;
+  reviews: number;
+  price: number;
+  mrp?: number;
+}
 
 const SORT_OPTIONS = [
   { value: 'featured', label: 'Featured' },
@@ -62,9 +28,32 @@ const SORT_OPTIONS = [
 export default function WellnessPage() {
   const [sortOrder, setSortOrder] = useState('featured');
   const [search, setSearch] = useState('');
+  const [pillars, setPillars] = useState<WellnessPillar[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPillars = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/wellness-pillars', { cache: 'no-store' });
+        const data = await response.json();
+        if (response.ok && data.success) {
+          setPillars(data.data || []);
+        } else {
+          setPillars([]);
+        }
+      } catch {
+        setPillars([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPillars();
+  }, []);
 
   const sortedPillars = useMemo(() => {
-    let result = wellnessPillars.filter((pillar) => {
+    let result = pillars.filter((pillar) => {
       const searchText = search.trim().toLowerCase();
       return (
         !searchText ||
@@ -80,7 +69,7 @@ export default function WellnessPage() {
     else if (sortOrder === 'rating') result.sort((a, b) => b.rating - a.rating);
 
     return result;
-  }, [search, sortOrder]);
+  }, [pillars, search, sortOrder]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-emerald-50 flex flex-col">
@@ -139,7 +128,22 @@ export default function WellnessPage() {
           </div>
         </div>
 
-        {sortedPillars.length === 0 ? (
+        {loading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={i}
+                className="bg-white rounded-2xl border border-orange-100 p-4 shadow-sm animate-pulse"
+              >
+                <div className="h-40 bg-gradient-to-br from-orange-100 to-emerald-100 rounded-xl mb-4" />
+                <div className="h-4 bg-gray-200 rounded mb-3 w-3/4" />
+                <div className="h-3 bg-gray-200 rounded mb-2 w-full" />
+                <div className="h-3 bg-gray-200 rounded mb-4 w-1/2" />
+                <div className="h-10 bg-orange-100 rounded-lg" />
+              </div>
+            ))}
+          </div>
+        ) : sortedPillars.length === 0 ? (
           <div className="text-center py-20 bg-white border-2 border-dashed border-orange-200 rounded-3xl shadow-sm">
             <div className="text-7xl mb-4 opacity-50">💚</div>
             <h3 className="text-2xl font-bold text-gray-900 mb-2">No wellness programs found</h3>
@@ -168,14 +172,22 @@ export default function WellnessPage() {
 
                 return (
                   <article
-                    key={pillar.id}
+                    key={pillar._id}
                     className="bg-white rounded-2xl border border-orange-100 overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col group"
                   >
                     {/* Image Container */}
                     <div className="relative h-40 bg-gradient-to-br from-orange-50 to-emerald-50 flex items-center justify-center overflow-hidden group-hover:brightness-95 transition-all">
-                      <span className="text-7xl group-hover:scale-125 transition-transform duration-300">
-                        {pillar.icon}
-                      </span>
+                      {pillar.imageUrl ? (
+                        <img
+                          src={pillar.imageUrl}
+                          alt={pillar.title}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        />
+                      ) : (
+                        <span className="text-7xl group-hover:scale-125 transition-transform duration-300">
+                          {pillar.icon || '💚'}
+                        </span>
+                      )}
                       
                       {/* Discount Badge */}
                       {discount > 0 && (
@@ -241,7 +253,7 @@ export default function WellnessPage() {
             {/* Results Footer */}
             <div className="mt-12 text-center">
               <p className="text-gray-600 text-sm">
-                Showing {sortedPillars.length} of {wellnessPillars.length} wellness programs • Expert-curated packages
+                Showing {sortedPillars.length} of {pillars.length} wellness programs • Expert-curated packages
               </p>
             </div>
           </>
@@ -290,7 +302,7 @@ export default function WellnessPage() {
             <p className="text-sm uppercase tracking-[0.2em] text-white/85">Start Today</p>
             <h2 className="mt-2 text-3xl sm:text-4xl font-black">Small Daily Steps, Big Health Results</h2>
             <p className="mt-3 max-w-2xl mx-auto text-white/90">
-              Join MySanjeevani wellness routines and get guided support for medicines, diagnostics, and consultations.
+              Join MySanjeevni wellness routines and get guided support for medicines, diagnostics, and consultations.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Link href="/signup" className="rounded-xl bg-white text-emerald-700 font-bold px-5 py-3 hover:bg-emerald-50 transition">

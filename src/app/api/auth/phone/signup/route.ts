@@ -21,7 +21,7 @@ function generateOtp(): string {
 function hashOtp(phone: string, otp: string): string {
   return crypto
     .createHash('sha256')
-    .update(`${phone}:${otp}:${process.env.OTP_HASH_SECRET || 'mysanjeevani-phone-otp'}`)
+    .update(`${phone}:${otp}:${process.env.OTP_HASH_SECRET || 'MySanjeevni-phone-otp'}`)
     .digest('hex');
 }
 

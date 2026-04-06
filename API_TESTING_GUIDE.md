@@ -1,4 +1,4 @@
-# MySanjeevani API Testing Guide
+# MySanjeevni API Testing Guide
 
 ## Base URL
 
@@ -306,13 +306,13 @@ All registered users are stored in MongoDB with:
 ### Test Registration
 
 ```bash
-curl -X POST http://localhost:3000/api/auth/signup -H "Content-Type: application/json" -d "{\"fullName\":\"Admin User\",\"email\":\"admin@mysanjeevani.com\",\"password\":\"admin123456\",\"phone\":\"9289996241\"}"
+curl -X POST http://localhost:3000/api/auth/signup -H "Content-Type: application/json" -d "{\"fullName\":\"Admin User\",\"email\":\"admin@MySanjeevni.com\",\"password\":\"admin123456\",\"phone\":\"9289996241\"}"
 ```
 
 ### Test Login
 
 ```bash
-curl -X POST http://localhost:3000/api/auth/login -H "Content-Type: application/json" -d "{\"email\":\"admin@mysanjeevani.com\",\"password\":\"admin123456\"}"
+curl -X POST http://localhost:3000/api/auth/login -H "Content-Type: application/json" -d "{\"email\":\"admin@MySanjeevni.com\",\"password\":\"admin123456\"}"
 ```
 
 ---

@@ -5,7 +5,7 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'MySanjeevani Healthcare Platform',
+  title: 'MySanjeevni Healthcare Platform',
   description: 'Healthcare platform providing medicines and health services',
   icons: {
     icon: '/icon.png?v=4',

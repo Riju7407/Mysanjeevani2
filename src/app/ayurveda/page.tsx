@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
-const CATEGORIES = ['All', 'Immunity', 'Digestion', 'Stress Relief', 'Energy', 'Skin & Hair', 'Weight Management', 'Joint & Bone', "Women's Health", "Men's Health"];
+const CATEGORIES = ['All', 'Himalaya', 'Organic India', 'Baidyanath', 'Dabur', 'Zandu', 'Charak', 'Aimil', 'Ras & Sindoor', 'Bhasm & Pishti', 'Vati, Gutika & Guggulu', 'Asava Arishta & Kadha', 'Loha & Mandur', 'Churan, Powder, Avaleha & Pak', 'Tailam & Ghrita', 'Chyawanprash', 'Honey', 'Digestives', 'Herbal & Vegetable Juice'];
 const SORT_OPTIONS = [
   { value: 'featured', label: 'Featured' },
   { value: 'price-low', label: 'Price: Low to High' },
@@ -110,7 +110,7 @@ export default function AyurvedaPage() {
       const c = JSON.parse(raw);
       const existing = c.find((i: any) => i.id === product._id);
       if (existing) existing.quantity += 1;
-      else c.push({ id: product._id, name: product.name, price: product.price, quantity: 1, brand: product.brand, image: product.image || product.icon || '🌿', vendorName: 'MySanjeevani' });
+      else c.push({ id: product._id, name: product.name, price: product.price, quantity: 1, brand: product.brand, image: product.image || product.icon || '🌿', vendorName: 'MySanjeevni' });
       localStorage.setItem('cart', JSON.stringify(c));
       window.dispatchEvent(new Event('storage'));
     } catch {}
@@ -240,37 +240,30 @@ export default function AyurvedaPage() {
         ) : (
           <>
             {/* Products Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {filtered.map((p) => (
                 <article
                   key={p._id}
-                  className="bg-white rounded-2xl border border-amber-100 overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col group"
+                  className="group w-full max-w-56 mx-auto bg-white/95 border border-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition duration-300 flex flex-col"
                 >
                   {/* Image Container */}
-                  <div className="relative h-48 bg-gradient-to-br from-amber-50 to-yellow-50 flex items-center justify-center overflow-hidden">
+                  <div className="relative h-40 bg-linear-to-br from-white to-slate-50 flex items-center justify-center overflow-hidden">
                     {p.image ? (
                       <img
                         src={p.image}
                         alt={p.name}
-                        className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        className="h-full w-full object-contain p-3 group-hover:scale-105 transition duration-300"
                       />
                     ) : (
-                      <span className="text-7xl group-hover:scale-125 transition-transform duration-300">
+                      <span className="text-5xl group-hover:scale-105 transition duration-300">
                         {p.icon || '🌿'}
                       </span>
                     )}
 
                     {/* Badges */}
-                    <div className="absolute inset-0 flex items-start justify-between p-3 pointer-events-none">
-                      <div className="flex flex-col gap-2">
-                        {(p.isPopular || p.benefit) && (
-                          <span className="text-[11px] px-2.5 py-1 rounded-full font-bold bg-white/95 text-amber-700 border border-amber-200 backdrop-blur-sm">
-                            {p.isPopular ? '⭐ Popular' : `✨ ${p.benefit}`}
-                          </span>
-                        )}
-                      </div>
+                    <div className="absolute inset-0 flex items-start justify-end p-3 pointer-events-none">
                       {!!(p.mrp && p.mrp > p.price) && (
-                        <span className="bg-green-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md">
+                        <span className="text-[11px] font-bold text-emerald-600">
                           {Math.round(((p.mrp! - p.price) / p.mrp!) * 100)}% OFF
                         </span>
                       )}
@@ -278,61 +271,56 @@ export default function AyurvedaPage() {
                   </div>
 
                   {/* Content */}
-                  <div className="p-4 flex flex-col flex-1">
+                  <div className="p-3 flex flex-col flex-1">
                     {/* Brand & Category */}
-                    <div className="flex items-center gap-1 mb-2">
-                      <span className="text-[10px] uppercase tracking-wider font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-full">
-                        {p.brand || 'MySanjeevani'}
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wide">
+                        {p.brand || 'MySanjeevni'}
                       </span>
-                      <span className="text-[10px] uppercase tracking-wider font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
+                      <span className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-700">
                         {p.category}
                       </span>
                     </div>
 
                     {/* Product Name */}
-                    <h3 className="text-sm font-bold text-gray-900 line-clamp-2 min-h-9 leading-tight">
+                    <h3 className="font-bold text-slate-900 text-xs line-clamp-2 min-h-8 mb-2 leading-tight">
                       {p.name}
                     </h3>
 
-                    {/* Description */}
-                    <p className="text-xs text-gray-600 mt-1 line-clamp-2 min-h-8">
-                      {p.description || 'Authentic Ayurveda wellness product'}
-                    </p>
-
                     {/* Ratings */}
-                    <div className="flex items-center gap-3 mt-2 py-2 border-t border-gray-100">
+                    <div className="flex items-center justify-between mb-2">
                       <span className="inline-flex items-center gap-1 text-xs font-semibold">
-                        <span className="text-amber-400">★</span>
-                        <span className="text-gray-900">{Number(p.rating || 0).toFixed(1)}</span>
+                        <span className="text-amber-500">★</span>
+                        <span className="text-slate-900">{Number(p.rating || 0).toFixed(1)}</span>
                       </span>
-                      <span className="text-[10px] text-gray-500">
+                      <span className="text-xs text-slate-500">
                         ({p.reviews || 0} reviews)
                       </span>
                     </div>
 
                     {/* Price */}
-                    <div className="mt-3 flex items-center gap-2 py-2 border-t border-gray-100">
-                      <span className="text-xl font-bold text-gray-900">₹{p.price}</span>
+                    <div className="mb-2 flex items-end justify-between">
+                      <span className="text-base font-black text-slate-900">₹{p.price}</span>
                       {p.mrp && p.mrp > p.price && (
-                        <span className="text-xs text-gray-500 line-through">₹{p.mrp}</span>
+                        <span className="text-xs text-slate-400 line-through">₹{p.mrp}</span>
                       )}
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-gray-100">
+                    <div className="grid grid-cols-2 gap-2 mt-auto">
                       <button
                         onClick={() => addToCart(p)}
-                        className={`py-2.5 rounded-xl text-xs font-bold transition-all transform hover:scale-105 active:scale-95 ${
+                        className={`py-1.5 rounded-lg text-[11px] font-bold transition ${
                           cart[p._id]
                             ? 'bg-slate-700 text-white hover:bg-slate-800'
-                            : 'bg-amber-500 text-white hover:bg-amber-600'
+                            : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
                         }`}
                       >
                         {cart[p._id] ? '✓ In Cart' : '🛒 Add'}
                       </button>
                       <button
                         onClick={() => handleBuyNow(p)}
-                        className="py-2.5 rounded-xl text-xs font-bold bg-green-500 text-white hover:bg-green-600 transition-all transform hover:scale-105 active:scale-95"
+                        className="py-1.5 rounded-lg text-[11px] font-bold bg-amber-600 text-white hover:bg-amber-700 transition"
                       >
                         💳 Buy
                       </button>

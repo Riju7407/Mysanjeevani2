@@ -81,7 +81,7 @@ export const useRazorpayPayment = () => {
             order_id: options.razorpayOrderId,
             amount: Math.round(options.amount * 100), // Amount in paise
             currency: 'INR',
-            name: 'MySanjeevani',
+            name: 'MySanjeevni',
             description: 'Order Payment',
             prefill: {
               email: options.userEmail,

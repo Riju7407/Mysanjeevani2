@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
       const fallbackPhoneDigits = phone.replace(/\D/g, '').slice(-10);
       const generatedEmail =
         email ||
-        `phone${fallbackPhoneDigits || Date.now()}@mysanjeevani.com`;
+        `phone${fallbackPhoneDigits || Date.now()}@MySanjeevni.com`;
 
       user = await User.create({
         fullName: verifiedUser.name || generatedEmail.split('@')[0],

@@ -5,11 +5,116 @@ import { useState, useEffect, useCallback } from 'react';
 interface FeaturedProduct {
   _id: string;
   brandName: string;
+  category?: string;
+  subcategory?: string;
   imageUrl: string;
   cloudinaryPublicId?: string;
   cardBgColor?: string;
   isActive: boolean;
   createdAt: string;
+}
+
+const FEATURED_CATEGORY_MAP = {
+  'Generic Medicine': [
+    'Addiction', 'Anxiety & Depression', 'Sleeplessness', 'Weak Memory',
+    'Acne & Pimples', 'Dark Circles & Marks', 'Wrinkles & Aging',
+    'Hair Fall', 'Dandruff', 'Alopecia & Bald Patches', 'Premature Graying', 'Lice',
+    'Conjunctivitis', 'Cataract', 'Eye Strain', 'Glaucoma', 'Styes', 'Ear Pain', 'Ear Wax',
+    'Allergic Rhinitis', 'Sneezing & Running Nose', 'Sinusitis & Blocked Nose', 'Snoring', 'Tonsillitis & Throat Pain', 'Laryngitis & Hoarse Voice',
+    'Headache & Migraine', 'Vertigo/Motion Sickness', 'Neuralgia & Nerve Pain', 'Epilepsy & Fits',
+    'Bad Breath', 'Bleeding Gum/Pyorrhea', 'Mouth Ulcers/Aphthae', 'Cavities & Tooth Pain', 'Stammering',
+    'Asthma', 'Bronchitis', 'Cough', 'Pneumonia',
+    'Constipation', 'Piles & Fissures', 'Loose Motions/Diarrhoea', 'IBS & Colitis', 'Fistula', 'Worms',
+    'Indigestion/Acidity/Gas', 'Loss of Appetite', 'Jaundice & Fatty Liver', 'Stomach Pain & Colic', 'Vomiting & Nausea', 'Gall Stones', 'Appendicitis', 'Hernia',
+    'Heart Tonics', 'Chest Pain & Angina', 'Cholesterol & Triglyceride',
+    'Urinary Tract Infection', 'Kidney Stone', 'Frequent Urination',
+    'Arthritis & Joint Pains', 'Back & Knee Pain', 'Cervical Spondylosis', 'Injuries & Fractures', 'Gout & Uric Acid', 'Osteoporosis', 'Sciatica', 'Heel Pain',
+    'Bed Sores', 'Boils & Abscesses', 'Burns', 'Cyst & Tumor', 'Eczema', 'Herpes', 'Nail Fungus', 'Psoriasis & Dry Skin', 'Rash/Itch/Urticaria/Hives', 'Vitiligo & Leucoderma', 'Warts & Corns',
+    'Dengue', 'Flu & Fever', 'Malaria', 'Typhoid',
+    'Hydrocele', 'Premature Ejaculation', 'Impotency', 'Prostate Enlargement',
+    'Underdeveloped Breasts', 'Enlarged Breasts', 'Leucorrhoea', 'Excessive Menses', 'Vaginitis', 'Menopause', 'Painful, Delayed & Scanty Menses',
+    'Low Height', 'Autism', 'Bed Wetting', 'Immunity', 'Teething Troubles', 'Irritability & Hyperactive',
+    'Diabetes', 'Blood Pressure', 'Obesity', 'Thyroid', 'Hang Over', 'Varicose Veins',
+    'Parkinsons & Trembling', 'Involuntary Urination', 'Alzheimers',
+    'Anaemia', 'Blood Purifiers', 'General Tonics', 'Weakness & Fatigue',
+    'Sun Pharma', 'Cipla', 'Lupin', 'Pfizer', 'Abbott', 'Mankind Pharma', 'Dr. Reddys', 'Glenmark Pharma',
+    'Tablets & Capsules', 'Syrups & Suspensions', 'Creams & Ointments', 'Inhalers & Respules', 'Oral Drops', 'Eye & Ear Drops', 'Nasal Drops & Spray', 'Injections & Infusions',
+  ],
+  'Ayurveda Medicine': [
+    'Himalaya', 'Organic India', 'Baidyanath', 'Dabur', 'Zandu', 'Charak', 'Aimil',
+    'Ras & Sindoor', 'Bhasm & Pishti', 'Vati, Gutika & Guggulu', 'Asava Arishta & Kadha', 'Loha & Mandur', 'Churan, Powder, Avaleha & Pak', 'Tailam & Ghrita',
+    'Chyawanprash', 'Honey', 'Digestives', 'Herbal & Vegetable Juice',
+  ],
+  Homeopathy: [
+    'SBL', 'Dr. Reckeweg', 'Willmar Schwabe', 'Adel Pekana', 'Schwabe India', 'Bjain', 'R S Bhargava', 'Baksons', 'REPL', 'New Life',
+    '3X', '6X', '3 CH', '6 CH', '12 CH', '30 CH', '200 CH', '1000 CH', '10M CH', '50M CH', 'CM CH',
+    'Mother Tinctures', 'Biochemic', 'Triturations', 'Bio Combination', 'Bach Flower', 'Homeopathy Kits', 'Milleimal LM Potency',
+    'Hair Care', 'Skin Care', 'Oral Care',
+  ],
+  'Lab Tests': [
+    'General', 'Diabetes', 'Cardiac', 'Thyroid', 'Liver', 'Kidney', 'Vitamins', 'Infection', 'Women',
+  ],
+  Disease: [
+    'Addiction', 'Anxiety & Depression', 'Sleeplessness', 'Weak Memory',
+    'Acne & Pimples', 'Dark Circles & Marks', 'Wrinkles & Aging',
+    'Hair Fall', 'Dandruff', 'Alopecia & Bald Patches', 'Premature Graying', 'Lice',
+    'Conjunctivitis', 'Cataract', 'Eye Strain', 'Glaucoma', 'Styes', 'Ear Pain', 'Ear Wax',
+    'Allergic Rhinitis', 'Sneezing & Running Nose', 'Sinusitis & Blocked Nose', 'Snoring', 'Tonsillitis & Throat Pain', 'Laryngitis & Hoarse Voice',
+    'Headache & Migraine', 'Vertigo/Motion Sickness', 'Neuralgia & Nerve Pain', 'Epilepsy & Fits',
+    'Bad Breath', 'Bleeding Gum/Pyorrhea', 'Mouth Ulcers/Aphthae', 'Cavities & Tooth Pain', 'Stammering',
+    'Asthma', 'Bronchitis', 'Cough', 'Pneumonia',
+    'Constipation', 'Piles & Fissures', 'Loose Motions/Diarrhoea', 'IBS & Colitis', 'Fistula', 'Worms',
+    'Indigestion/Acidity/Gas', 'Loss of Appetite', 'Jaundice & Fatty Liver', 'Stomach Pain & Colic', 'Vomiting & Nausea', 'Gall Stones', 'Appendicitis', 'Hernia',
+    'Heart Tonics', 'Chest Pain & Angina', 'Cholesterol & Triglyceride',
+    'Urinary Tract Infection', 'Kidney Stone', 'Frequent Urination',
+    'Arthritis & Joint Pains', 'Back & Knee Pain', 'Cervical Spondylosis', 'Injuries & Fractures', 'Gout & Uric Acid', 'Osteoporosis', 'Sciatica', 'Heel Pain',
+    'Bed Sores', 'Boils & Abscesses', 'Burns', 'Cyst & Tumor', 'Eczema', 'Herpes', 'Nail Fungus', 'Psoriasis & Dry Skin', 'Rash/Itch/Urticaria/Hives', 'Vitiligo & Leucoderma', 'Warts & Corns',
+    'Dengue', 'Flu & Fever', 'Malaria', 'Typhoid',
+    'Hydrocele', 'Premature Ejaculation', 'Impotency', 'Prostate Enlargement',
+    'Underdeveloped Breasts', 'Enlarged Breasts', 'Leucorrhoea', 'Excessive Menses', 'Vaginitis', 'Menopause', 'Painful, Delayed & Scanty Menses',
+    'Low Height', 'Autism', 'Bed Wetting', 'Immunity', 'Teething Troubles', 'Irritability & Hyperactive',
+    'Diabetes', 'Blood Pressure', 'Obesity', 'Thyroid', 'Hang Over', 'Varicose Veins',
+    'Parkinsons & Trembling', 'Involuntary Urination', 'Alzheimers',
+    'Anaemia', 'Blood Purifiers', 'General Tonics', 'Weakness & Fatigue',
+  ],
+  Nutrition: [
+    'Proteins', 'Fat Burner', 'Weight Gainers', 'Pre Post Workout', 'Aminos', 'Creatines',
+    'Organic Foods', 'Coffee & Tea', 'Ghee', 'Atta/Flour',
+    'Spreads, Sugar & Honey', 'Oils', 'Health Drinks', 'Healthy Snacks & Bars', 'Sugar Free', 'Murabba', 'Edible Seeds',
+  ],
+  'Personal Care': [
+    'Essential Oils', 'Face', 'Body', 'Foot Care', 'Sanitizers & Hand Wash',
+    'Shampoo & Conditioners', 'Hair Oils & Creams', 'Hair Serum & Mask', 'Hair Color & Dyes', 'Henna Mehndi',
+    'Beard Oils and Wax', 'Shaving Cream & Gels', 'Men Wellness',
+    'Shower Gel & Hand Wash', 'Soaps', 'Talcs & Deos',
+    'Toothpaste', 'Gums Care',
+    'Intimate Care', 'Pregnancy & Maternity Care',
+  ],
+  Fitness: [
+    'Shoulder Support', 'Elbow Support', 'Forearm Support', 'Wrist Support', 'Chest Support', 'Cervical Support', 'Back Support', 'Abdominal Support', 'Thigh Support', 'Knee Support', 'Calf Support', 'Ankle Support', 'Finger Splint', 'Compression Stockings', 'Insoles & Heel Cups',
+    'Weighing Scales', 'BP Monitors', 'Thermometer', 'Respiratory Care', 'Activity Monitor', 'Hot and Cold Pads & Bottles',
+    'Exercisers', 'Weights', 'Stethoscopes', 'Protective Gears', 'Hospital Beds',
+    'Walking Sticks', 'Massagers', 'Disability Aids',
+  ],
+  'Sexual Wellness': [
+    'Sexual Supplements', 'Condoms',
+  ],
+  Consultation: [
+    'Homeo Treatment', 'Ayurveda Treatment', 'Unani Treatment', 'Diet Counselling',
+  ],
+  Unani: [
+    'Habbe & Qurs', 'Majun & Jawarish', 'Safoof, Labub & Kushta', 'Sharbat, Sirka & Arq', 'Lauq & Saoot', 'Khamira & Itrifal', 'Roghan & Oils',
+    'Hamdard', 'New Shama', 'Dehlvi', 'Rex',
+  ],
+  'Baby Care': [
+    'Tonics & Supplements', 'Shampoos & Bath Gels', 'Baby Oils', 'Baby Powder', 'Soaps', 'Wipes & Diapers', 'Gift Packs',
+  ],
+} as const;
+
+type FeaturedCategory = keyof typeof FEATURED_CATEGORY_MAP;
+
+function getDefaultSubcategory(category: FeaturedCategory): string {
+  return FEATURED_CATEGORY_MAP[category][0];
 }
 
 const PRESET_CARD_COLORS = [
@@ -42,6 +147,8 @@ export default function FeaturedProductsAdmin() {
   // Form state
   const [formData, setFormData] = useState({
     brandName: '',
+    category: 'Generic Medicine' as FeaturedCategory,
+    subcategory: getDefaultSubcategory('Generic Medicine'),
     cardBgColor: '#ffffff',
   });
 
@@ -87,6 +194,7 @@ export default function FeaturedProductsAdmin() {
       const token = localStorage.getItem('adminToken');
 
       const response = await fetch('/api/featured-products', {
+        cache: 'no-store',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
 
@@ -169,6 +277,8 @@ export default function FeaturedProductsAdmin() {
           },
           body: JSON.stringify({
             brandName: formData.brandName,
+            category: formData.category,
+            subcategory: formData.subcategory,
             cardBgColor: formData.cardBgColor,
             imageUrl: currentProduct.imageUrl,
           }),
@@ -272,6 +382,8 @@ export default function FeaturedProductsAdmin() {
             },
             body: JSON.stringify({
               brandName: formData.brandName,
+              category: formData.category,
+              subcategory: formData.subcategory,
               cardBgColor: formData.cardBgColor,
               imageUrl: uploadData.url,
               cloudinaryPublicId: uploadData.publicId,
@@ -362,6 +474,10 @@ export default function FeaturedProductsAdmin() {
     setEditingId(product._id);
     setFormData({
       brandName: product.brandName,
+      category: (product.category as FeaturedCategory) || 'Generic Medicine',
+      subcategory:
+        product.subcategory ||
+        getDefaultSubcategory(((product.category as FeaturedCategory) || 'Generic Medicine')),
       cardBgColor: product.cardBgColor || '#ffffff',
     });
     setShowModal(true);
@@ -369,7 +485,12 @@ export default function FeaturedProductsAdmin() {
 
   // Reset form
   const resetForm = () => {
-    setFormData({ brandName: '', cardBgColor: '#ffffff' });
+    setFormData({
+      brandName: '',
+      category: 'Generic Medicine',
+      subcategory: getDefaultSubcategory('Generic Medicine'),
+      cardBgColor: '#ffffff',
+    });
     setEditingId(null);
     setShowModal(false);
     resetImage();
@@ -478,7 +599,7 @@ export default function FeaturedProductsAdmin() {
           ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {products
-                .filter(p => p.brandName.toLowerCase().includes(searchTerm.toLowerCase()))
+                .filter(p => `${p.brandName} ${p.category || ''} ${p.subcategory || ''}`.toLowerCase().includes(searchTerm.toLowerCase()))
                 .map((product) => (
                   <div
                     key={product._id}
@@ -522,6 +643,14 @@ export default function FeaturedProductsAdmin() {
                       <h3 className="font-bold text-slate-900 text-center text-lg mb-4 line-clamp-2">
                         {product.brandName}
                       </h3>
+                      <div className="text-center mb-4">
+                        <span className="inline-block text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-1 rounded-full mr-1">
+                          {product.category || '—'}
+                        </span>
+                        <span className="inline-block text-[11px] font-semibold text-slate-700 bg-slate-100 px-2 py-1 rounded-full mt-1">
+                          {product.subcategory || '—'}
+                        </span>
+                      </div>
 
                       {/* Action Buttons */}
                       <div className="flex gap-2 mt-auto">
@@ -548,6 +677,8 @@ export default function FeaturedProductsAdmin() {
                 <thead className="bg-gradient-to-r from-slate-800 to-slate-900 text-white">
                   <tr>
                     <th className="px-6 py-4 text-left font-bold">Brand Name</th>
+                    <th className="px-6 py-4 text-left font-bold">Category</th>
+                    <th className="px-6 py-4 text-left font-bold">Subcategory</th>
                     <th className="px-6 py-4 text-left font-bold">Image</th>
                     <th className="px-6 py-4 text-center font-bold">Card Color</th>
                     <th className="px-6 py-4 text-center font-bold">Status</th>
@@ -557,10 +688,12 @@ export default function FeaturedProductsAdmin() {
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {products
-                    .filter(p => p.brandName.toLowerCase().includes(searchTerm.toLowerCase()))
+                    .filter(p => `${p.brandName} ${p.category || ''} ${p.subcategory || ''}`.toLowerCase().includes(searchTerm.toLowerCase()))
                     .map((product, idx) => (
                       <tr key={product._id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4 font-semibold text-slate-900">{product.brandName}</td>
+                        <td className="px-6 py-4 text-sm text-slate-700">{product.category || '—'}</td>
+                        <td className="px-6 py-4 text-sm text-slate-700">{product.subcategory || '—'}</td>
                         <td className="px-6 py-4">
                           <img
                             src={product.imageUrl}
@@ -648,6 +781,51 @@ export default function FeaturedProductsAdmin() {
                   className="w-full px-5 py-3 border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-semibold"
                   required
                 />
+              </div>
+
+              {/* Category & Subcategory */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wide">
+                    Category <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.category}
+                    onChange={(e) => {
+                      const category = e.target.value as FeaturedCategory;
+                      setFormData({
+                        ...formData,
+                        category,
+                        subcategory: getDefaultSubcategory(category),
+                      });
+                    }}
+                    className="w-full px-5 py-3 border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-semibold"
+                    required
+                  >
+                    {(Object.keys(FEATURED_CATEGORY_MAP) as FeaturedCategory[]).map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wide">
+                    Subcategory <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.subcategory}
+                    onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
+                    className="w-full px-5 py-3 border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-semibold"
+                    required
+                  >
+                    {FEATURED_CATEGORY_MAP[formData.category].map((subcategory) => (
+                      <option key={subcategory} value={subcategory}>
+                        {subcategory}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* Card Background Color */}

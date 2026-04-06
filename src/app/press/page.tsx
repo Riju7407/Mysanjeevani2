@@ -24,7 +24,7 @@ export default function PressPage() {
         {
           heading: 'Usage Guidelines',
           content: [
-            'Use of MySanjeevani logos, marks, or screenshots requires prior written approval.',
+            'Use of MySanjeevni logos, marks, or screenshots requires prior written approval.',
             'Please request brand-use permission before publication in digital or print media.',
           ],
         },

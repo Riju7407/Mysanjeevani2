@@ -189,7 +189,7 @@ export default function MedicineDetailsPage() {
           quantity: 1,
           brand: product.brand,
           image: product.image || product.icon || '💊',
-          vendorName: 'MySanjeevani',
+          vendorName: 'MySanjeevni',
         });
       }
 
@@ -409,7 +409,7 @@ export default function MedicineDetailsPage() {
                   </div>
 
                   {/* Brand */}
-                  <p className="text-sm text-slate-600 mb-1">{product.brand || 'MySanjeevani'}</p>
+                  <p className="text-sm text-slate-600 mb-1">{product.brand || 'MySanjeevni'}</p>
 
                   {/* Title */}
                   <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4 leading-tight">
@@ -956,7 +956,7 @@ export default function MedicineDetailsPage() {
 
                         {/* Product Details */}
                         <div className="p-4">
-                          <p className="text-xs text-slate-500 mb-1">{relProduct.brand || 'MySanjeevani'}</p>
+                          <p className="text-xs text-slate-500 mb-1">{relProduct.brand || 'MySanjeevni'}</p>
                           <h3 className="font-bold text-slate-900 text-sm line-clamp-2 mb-2">
                             {relProduct.name}
                           </h3>
@@ -1018,7 +1018,7 @@ export default function MedicineDetailsPage() {
                                     quantity: 1,
                                     brand: relProduct.brand,
                                     image: relProduct.image || relProduct.icon || '💊',
-                                    vendorName: 'MySanjeevani',
+                                    vendorName: 'MySanjeevni',
                                   });
                                 }
 

@@ -24,14 +24,10 @@ interface HomeopathyProduct {
 }
 
 const DEFAULT_CATEGORIES = [
-  'Cold & Flu',
-  'Skin',
-  'Digestive',
-  'Mental Wellness',
-  'Joint & Pain',
-  "Women's Health",
-  'Immunity',
-  'Children',
+  'SBL', 'Dr. Reckeweg', 'Willmar Schwabe', 'Adel Pekana', 'Schwabe India', 'Bjain', 'R S Bhargava', 'Baksons', 'REPL', 'New Life',
+  '3X', '6X', '3 CH', '6 CH', '12 CH', '30 CH', '200 CH', '1000 CH', '10M CH', '50M CH', 'CM CH',
+  'Mother Tinctures', 'Biochemic', 'Triturations', 'Bio Combination', 'Bach Flower', 'Homeopathy Kits', 'Milleimal LM Potency',
+  'Hair Care', 'Skin Care', 'Oral Care',
 ];
 
 const SORT_OPTIONS = [
@@ -139,7 +135,7 @@ export default function HomeopathyPage() {
           quantity: 1,
           brand: product.brand || 'Homeopathy',
           image: product.image || product.icon || '🌸',
-          vendorName: 'MySanjeevani',
+          vendorName: 'MySanjeevni',
         });
       }
 
@@ -279,7 +275,7 @@ export default function HomeopathyPage() {
         ) : (
           <>
             {/* Products Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {filteredProducts.map((product) => {
                 const productDiscount = product.mrp && product.mrp > product.price
                   ? Math.round(((product.mrp - product.price) / product.mrp) * 100)
@@ -288,101 +284,98 @@ export default function HomeopathyPage() {
                 return (
                   <article
                     key={product._id}
-                    className="bg-white rounded-2xl border border-pink-100 overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col group"
+                    className="group w-full max-w-56 mx-auto bg-white/95 border border-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition duration-300 cursor-pointer"
+                    onClick={() => router.push(`/medicines/${product._id}`)}
                   >
                     {/* Image Container */}
-                    <Link href={`/medicines/${product._id}`} className="relative h-40 bg-gradient-to-br from-pink-50 to-rose-50 flex items-center justify-center overflow-hidden group-hover:brightness-95 transition-all"
-                    >
+                    <div className="relative h-40 bg-linear-to-br from-white to-slate-50 flex items-center justify-center overflow-hidden">
+                      <span className="absolute top-3 left-3 rounded-full px-2.5 py-1 text-[10px] font-bold bg-amber-600 text-white">
+                        Popular
+                      </span>
                       {product.image ? (
                         <img
                           src={product.image}
                           alt={product.name}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                          className="h-full w-full object-contain p-3 group-hover:scale-105 transition duration-300"
                           loading="lazy"
                         />
                       ) : (
-                        <span className="text-7xl group-hover:scale-125 transition-transform duration-300">
+                        <span className="text-5xl group-hover:scale-105 transition duration-300">
                           {product.icon || '🌸'}
                         </span>
                       )}
 
-                      {/* Badges */}
-                      <div className="absolute inset-0 flex items-start justify-between p-3 pointer-events-none">
-                        <div className="flex flex-col gap-2">
-                          {product.benefit && (
-                            <span className="text-[11px] px-2.5 py-1 rounded-full font-bold bg-white/95 text-pink-700 border border-pink-200 backdrop-blur-sm">
-                              ✨ {product.benefit}
-                            </span>
-                          )}
-                        </div>
+                      <div className="absolute inset-0 flex items-start justify-end p-3 pointer-events-none">
                         {!!productDiscount && (
-                          <span className="bg-green-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md">
+                          <span className="text-[11px] font-bold text-emerald-600">
                             {productDiscount}% OFF
                           </span>
                         )}
                       </div>
-                    </Link>
+                    </div>
 
                     {/* Content */}
-                    <div className="p-4 flex flex-col flex-1">
-                      {/* Brand & Category */}
-                      <div className="flex items-center gap-1 mb-2">
-                        <span className="text-[10px] uppercase tracking-wider font-bold text-pink-700 bg-pink-50 px-2 py-1 rounded-full">
-                          {product.brand || 'Homeopathy'}
-                        </span>
-                        <span className="text-[10px] uppercase tracking-wider font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
-                          {product.category}
-                        </span>
-                      </div>
-
-                      {/* Product Name */}
-                      <Link href={`/medicines/${product._id}`}>
-                        <h3 className="text-sm font-bold text-gray-900 line-clamp-2 min-h-9 leading-tight hover:text-pink-700 transition">
-                          {product.name}
-                        </h3>
-                      </Link>
-
-                      {/* Description */}
-                      <p className="text-xs text-gray-600 mt-1 line-clamp-2 min-h-8">
-                        {product.description || 'Trusted homeopathy remedy for wellness support'}
+                    <div className="p-3 flex flex-col flex-1">
+                      <p className="font-medium text-slate-500 mb-1 uppercase tracking-wide text-[10px]">
+                        {product.brand || 'MySanjeevni'}
                       </p>
+                      <h3 className="font-bold text-slate-900 line-clamp-2 mb-2 text-xs min-h-8">{product.name}</h3>
 
-                      {/* Ratings */}
-                      <div className="flex items-center gap-3 mt-2 py-2 border-t border-gray-100">
-                        <span className="inline-flex items-center gap-1 text-xs font-semibold">
-                          <span className="text-pink-400">★</span>
-                          <span className="text-gray-900">{Number(product.rating || 0).toFixed(1)}</span>
-                        </span>
-                        <span className="text-[10px] text-gray-500">
-                          ({product.reviews || 0} reviews)
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-1">
+                          <span className="text-amber-500">★</span>
+                          <span className="text-xs font-semibold text-slate-900">{Number(product.rating || 0).toFixed(1)}</span>
+                          <span className="text-xs text-slate-500">({product.reviews || 0})</span>
+                        </div>
+                        <span
+                          className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
+                            (product.stock || 0) > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                          }`}
+                        >
+                          {(product.stock || 0) > 0 ? 'In Stock' : 'Out of Stock'}
                         </span>
                       </div>
 
-                      {/* Price */}
-                      <div className="mt-3 flex items-center gap-2 py-2 border-t border-gray-100">
-                        <span className="text-xl font-bold text-gray-900">₹{product.price}</span>
+                      <div className="mb-2 flex items-end justify-between">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-base font-black text-slate-900">₹{product.price}</span>
                         {product.mrp && product.mrp > product.price && (
-                          <span className="text-xs text-gray-500 line-through">₹{product.mrp}</span>
+                            <span className="text-xs text-slate-400 line-through">₹{product.mrp}</span>
+                        )}
+                        </div>
+                        {product.mrp && product.mrp > product.price && (
+                          <span className="text-[11px] font-bold text-emerald-600">{productDiscount}% OFF</span>
                         )}
                       </div>
 
-                      {/* Action Buttons */}
-                      <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-gray-100">
+                      <div className="flex gap-2 mt-auto">
                         <button
-                          onClick={() => addToCart(product)}
-                          className={`py-2.5 rounded-xl text-xs font-bold transition-all transform hover:scale-105 active:scale-95 ${
-                            cart[product._id]
-                              ? 'bg-slate-700 text-white hover:bg-slate-800'
-                              : 'bg-pink-500 text-white hover:bg-pink-600'
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addToCart(product);
+                          }}
+                          disabled={(product.stock || 0) <= 0}
+                          className={`flex-1 rounded-lg font-bold transition py-1.5 text-[11px] ${
+                            (product.stock || 0) <= 0
+                              ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                              : cart[product._id]
+                                ? 'bg-slate-700 text-white hover:bg-slate-800'
+                                : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
                           }`}
                         >
-                          {cart[product._id] ? '✓ In Cart' : '🛒 Add'}
+                          {cart[product._id] ? '✓ In Cart' : 'Add to Cart'}
                         </button>
                         <button
-                          onClick={() => handleBuyNow(product)}
-                          className="py-2.5 rounded-xl text-xs font-bold bg-green-500 text-white hover:bg-green-600 transition-all transform hover:scale-105 active:scale-95"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleBuyNow(product);
+                          }}
+                          disabled={(product.stock || 0) <= 0}
+                          className={`flex-1 rounded-lg font-bold text-white transition py-1.5 text-[11px] ${
+                            (product.stock || 0) <= 0 ? 'bg-slate-400 cursor-not-allowed' : 'bg-amber-600 hover:bg-amber-700'
+                          }`}
                         >
-                          💳 Buy
+                          Buy Now
                         </button>
                       </div>
                     </div>

@@ -39,7 +39,7 @@ function makeRequest(path, method = 'POST', body = null) {
 }
 
 async function testAPIs() {
-  console.log('Testing MySanjeevani Auth APIs\n');
+  console.log('Testing MySanjeevni Auth APIs\n');
   
   const tests = [
     { path: '/', method: 'GET', name: 'Homepage' },

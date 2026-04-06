@@ -81,9 +81,9 @@ export async function sendOtpViaFast2Sms(
 
   // Determine message based on purpose
   const messageMap = {
-    login: `Your MySanjeevani login OTP is ${validatedOtp}. It will expire in 5 minutes. Do not share this OTP.`,
-    signup: `Welcome to MySanjeevani! Your verification OTP is ${validatedOtp}. It will expire in 10 minutes.`,
-    reset: `Your MySanjeevani password reset OTP is ${validatedOtp}. It will expire in 5 minutes.`,
+    login: `Your MySanjeevni login OTP is ${validatedOtp}. It will expire in 5 minutes. Do not share this OTP.`,
+    signup: `Welcome to MySanjeevni! Your verification OTP is ${validatedOtp}. It will expire in 10 minutes.`,
+    reset: `Your MySanjeevni password reset OTP is ${validatedOtp}. It will expire in 5 minutes.`,
   };
 
   const message = messageMap[purpose];
@@ -197,8 +197,8 @@ export async function sendOtpViaWhatsApp(
   const apiKey = getFast2SmsApiKey();
 
   const messageMap = {
-    login: `Your MySanjeevani login OTP is ${validatedOtp}. It will expire in 5 minutes.`,
-    signup: `Welcome to MySanjeevani! Your verification OTP is ${validatedOtp}.`,
+    login: `Your MySanjeevni login OTP is ${validatedOtp}. It will expire in 5 minutes.`,
+    signup: `Welcome to MySanjeevni! Your verification OTP is ${validatedOtp}.`,
     reset: `Your password reset OTP is ${validatedOtp}.`,
   };
 

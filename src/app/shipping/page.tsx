@@ -19,7 +19,7 @@ export default function ShippingPage() {
           heading: 'Shipping Updates',
           content: [
             'Shipment status updates are provided through available tracking channels; update frequency may depend on logistics partner systems.',
-            'MySanjeevani may provide assistance on delayed consignments but does not warrant uninterrupted real-time status synchronization.',
+            'MySanjeevni may provide assistance on delayed consignments but does not warrant uninterrupted real-time status synchronization.',
           ],
         },
         {

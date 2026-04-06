@@ -56,10 +56,10 @@ export function PhoneSignup({
         </h1>
         <p className="text-sm text-gray-600 mt-1">
           {role === 'vendor'
-            ? 'Join MySanjeevani as a vendor'
+            ? 'Join MySanjeevni as a vendor'
             : role === 'doctor'
-              ? 'Join MySanjeevani as a doctor'
-              : 'Sign up for MySanjeevani'}
+              ? 'Join MySanjeevni as a doctor'
+              : 'Sign up for MySanjeevni'}
         </p>
       </div>
 

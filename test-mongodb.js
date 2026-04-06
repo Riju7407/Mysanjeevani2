@@ -1,7 +1,7 @@
 // Direct MongoDB connection test
 const mongoose = require('mongoose');
 
-const MONGODB_URI = 'mongodb+srv://gk1204kr:GbxiGEitN2W2p1U3@cluster0.yxtklsn.mongodb.net/mysanjeevani';
+const MONGODB_URI = 'mongodb+srv://gk1204kr:GbxiGEitN2W2p1U3@cluster0.yxtklsn.mongodb.net/MySanjeevni';
 
 async function testMongoDB() {
   console.log('Testing MongoDB Connection...\n');

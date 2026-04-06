@@ -1,10 +1,10 @@
-# 🛍️ MySanjeevani Shopping & Payment System - Architecture
+# 🛍️ MySanjeevni Shopping & Payment System - Architecture
 
 ## 📊 Complete System Flow
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     MySanjeevani Platform                       │
+│                     MySanjeevni Platform                       │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  ┌──────────────┐        ┌──────────────┐                      │
@@ -468,5 +468,5 @@ Total Amount = ₹274.50 + ₹49 = ₹323.50
 
 ---
 
-**MySanjeevani Shopping System**  
+**MySanjeevni Shopping System**  
 _Complete, Scalable, Production-Ready_ ✅

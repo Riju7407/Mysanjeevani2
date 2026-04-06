@@ -3,6 +3,9 @@ import { connectDB } from '@/lib/db';
 import { FeaturedProduct } from '@/lib/models/FeaturedProduct';
 import { validateAdminToken } from '@/lib/adminAuthMiddleware';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
   try {
     await connectDB();
@@ -41,21 +44,25 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const {
       brandName,
+      category,
+      subcategory,
       imageUrl,
       cloudinaryPublicId,
       cardBgColor,
       createdBy,
     } = body;
 
-    if (!brandName || !imageUrl) {
+    if (!brandName || !category || !subcategory || !imageUrl) {
       return NextResponse.json(
-        { success: false, error: 'Brand name and image URL are required' },
+        { success: false, error: 'Brand name, category, subcategory and image URL are required' },
         { status: 400 }
       );
     }
 
     const newProduct = new FeaturedProduct({
       brandName,
+      category,
+      subcategory,
       imageUrl,
       cloudinaryPublicId,
       cardBgColor: cardBgColor || '#ffffff',

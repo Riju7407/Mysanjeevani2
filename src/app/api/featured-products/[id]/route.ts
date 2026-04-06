@@ -4,6 +4,9 @@ import { FeaturedProduct } from '@/lib/models/FeaturedProduct';
 import { validateAdminToken } from '@/lib/adminAuthMiddleware';
 import { v2 as cloudinary } from 'cloudinary';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 if (
   process.env.CLOUDINARY_CLOUD_NAME &&
   process.env.CLOUDINARY_API_KEY &&
@@ -46,15 +49,34 @@ export async function PUT(
     }
     await connectDB();
     const body = await req.json();
+    const {
+      brandName,
+      category,
+      subcategory,
+      imageUrl,
+      cloudinaryPublicId,
+      cardBgColor,
+    } = body;
+
+    if (!brandName || !category || !subcategory || !imageUrl) {
+      return NextResponse.json(
+        { success: false, error: 'Brand name, category, subcategory and image URL are required' },
+        { status: 400 }
+      );
+    }
+
     const product = await FeaturedProduct.findById(params.id);
     if (!product) {
       console.error('Product not found:', params.id);
       return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
     }
-    if (body.brandName) product.brandName = body.brandName;
-    if (body.imageUrl) product.imageUrl = body.imageUrl;
-    if (body.cloudinaryPublicId) product.cloudinaryPublicId = body.cloudinaryPublicId;
-    if (body.cardBgColor) product.cardBgColor = body.cardBgColor;
+
+    product.brandName = brandName;
+    product.category = category;
+    product.subcategory = subcategory;
+    product.imageUrl = imageUrl;
+    if (cloudinaryPublicId) product.cloudinaryPublicId = cloudinaryPublicId;
+    if (cardBgColor) product.cardBgColor = cardBgColor;
     await product.save();
     return NextResponse.json({ success: true, data: product }, { status: 200 });
   } catch (error: any) {

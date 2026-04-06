@@ -47,7 +47,7 @@ function makeRequest(path, method = 'POST', body = null) {
 
 async function runTests() {
   console.log('='.repeat(60));
-  console.log('MySanjeevani Auth API Tests');
+  console.log('MySanjeevni Auth API Tests');
   console.log('='.repeat(60));
   
   // Test Signup

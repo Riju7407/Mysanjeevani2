@@ -4,7 +4,7 @@ import { connectDB } from '@/lib/db';
 import { LabTestBooking } from '@/lib/models/LabTestBooking';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'mysanjeevani-secret-key-2024';
+const JWT_SECRET = process.env.JWT_SECRET || 'MySanjeevni-secret-key-2024';
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 
 function getUserId(req: Request): string | null {

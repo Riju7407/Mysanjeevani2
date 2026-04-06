@@ -2,7 +2,7 @@
 
 ## Implementation Status: ✅ COMPLETE
 
-The multi-vendor marketplace feature has been successfully implemented in the MySanjeevani platform. Vendors can now register, get approved by admins, and list their products to reach customers.
+The multi-vendor marketplace feature has been successfully implemented in the MySanjeevni platform. Vendors can now register, get approved by admins, and list their products to reach customers.
 
 ---
 
@@ -79,7 +79,7 @@ The multi-vendor marketplace feature has been successfully implemented in the My
 
 5. **Medicines Page** (`/medicines/page.tsx`)
    - Added new vendor filter in sidebar
-   - Shows "MySanjeevani Official" + all verified vendors
+   - Shows "MySanjeevni Official" + all verified vendors
    - Products display vendor name and rating
    - Filter products by specific vendor
    - Default shows all vendors combined
@@ -420,7 +420,7 @@ Products Collection:
 
 - Help at: `/vendor/login` page (login now, approval pending message)
 - Dashboard: `/vendor/dashboard`
-- Contact MySanjeevani support for account issues
+- Contact MySanjeevni support for account issues
 
 ### For Admins
 

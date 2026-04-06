@@ -5,14 +5,14 @@ export default function PrivacyPage() {
     <InfoPageLayout
       badge="Privacy Policy"
       title="Privacy and Data Protection Policy"
-      subtitle="This policy describes how MySanjeevani collects, processes, stores, shares, and protects personal data in connection with platform services."
+      subtitle="This policy describes how MySanjeevni collects, processes, stores, shares, and protects personal data in connection with platform services."
       lastUpdated="March 28, 2026"
       sections={[
         {
           heading: 'Information We Collect',
           content: [
             'We may collect account identifiers, contact details, order and transaction records, communications, and service usage metadata necessary to provide and improve services.',
-            'Payment credentials are handled by authorized payment processors. MySanjeevani does not store complete card data unless expressly required under compliant and permitted mechanisms.',
+            'Payment credentials are handled by authorized payment processors. MySanjeevni does not store complete card data unless expressly required under compliant and permitted mechanisms.',
           ],
         },
         {
@@ -46,7 +46,7 @@ export default function PrivacyPage() {
         {
           heading: 'Cross-Border Processing',
           content: [
-            'Where services involve processing by third-party infrastructure or vendors outside India, MySanjeevani ensures that appropriate contractual and security safeguards are implemented in accordance with applicable law.',
+            'Where services involve processing by third-party infrastructure or vendors outside India, MySanjeevni ensures that appropriate contractual and security safeguards are implemented in accordance with applicable law.',
             'By using the platform, you acknowledge that your information may be processed in jurisdictions that may have data protection standards different from those in India.',
           ],
         },
@@ -54,7 +54,7 @@ export default function PrivacyPage() {
           heading: 'Grievance Redressal and Compliance',
           content: [
             'For privacy complaints, grievance redressal, or data protection requests, contact our Grievance Officer at MYSANJEEVNI3693@GMAIL.COM with complete request details and account identifiers.',
-            'MySanjeevani will review and respond within timelines prescribed by applicable Indian law, subject to identity verification and legal permissibility.',
+            'MySanjeevni will review and respond within timelines prescribed by applicable Indian law, subject to identity verification and legal permissibility.',
           ],
         },
         {

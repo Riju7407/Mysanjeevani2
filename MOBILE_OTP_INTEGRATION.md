@@ -1,8 +1,8 @@
-# Mobile OTP Login Implementation - MySanjeevani
+# Mobile OTP Login Implementation - MySanjeevni
 
 ## 🎯 Complete Real-Life Fast2SMS Integration
 
-This document provides a complete guide to the production-grade Mobile OTP authentication system using Fast2SMS for MySanjeevani.
+This document provides a complete guide to the production-grade Mobile OTP authentication system using Fast2SMS for MySanjeevni.
 
 ---
 
@@ -531,7 +531,7 @@ Content-Type: application/json
   "language": "english",
   "flash": 0,
   "numbers": "9876543210",
-  "message": "Your MySanjeevani OTP is 123456. It expires in 5 minutes."
+  "message": "Your MySanjeevni OTP is 123456. It expires in 5 minutes."
 }
 ```
 
@@ -926,7 +926,7 @@ export default function SignupPage() {
 
 ## 📝 Summary
 
-Your MySanjeevani platform now has:
+Your MySanjeevni platform now has:
 
 ✅ **Production-Grade Fast2SMS Integration**
 

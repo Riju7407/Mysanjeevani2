@@ -87,7 +87,7 @@ export default function VendorRegister() {
       <div className="max-w-2xl mx-auto px-4 py-12">
         <div className="bg-white rounded-lg shadow-lg p-8">
           <h1 className="text-3xl font-bold text-emerald-600 mb-2">Become a Vendor</h1>
-          <p className="text-gray-600 mb-6">Join MySanjeevani marketplace and expand your reach</p>
+          <p className="text-gray-600 mb-6">Join MySanjeevni marketplace and expand your reach</p>
 
           {message && (
             <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">

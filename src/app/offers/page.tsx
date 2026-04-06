@@ -100,7 +100,7 @@ export default function OffersPage() {
 
         {/* Terms */}
         <div className="mt-10 p-5 bg-gray-100 rounded-xl text-xs text-gray-500">
-          <strong>Terms & Conditions:</strong> All offers are subject to availability. Coupon codes are case-sensitive. Can not be combined with other offers. MySanjeevani reserves the right to modify or withdraw any offer without prior notice.
+          <strong>Terms & Conditions:</strong> All offers are subject to availability. Coupon codes are case-sensitive. Can not be combined with other offers. MySanjeevni reserves the right to modify or withdraw any offer without prior notice.
         </div>
       </div>
       <Footer />

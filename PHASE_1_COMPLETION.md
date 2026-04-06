@@ -1,4 +1,4 @@
-# MySanjeevani Phase 1 - Project Completion Report
+# MySanjeevni Phase 1 - Project Completion Report
 
 ## ✅ Project Status: COMPLETED
 
@@ -135,7 +135,7 @@ POST /api/auth/signup
 ## 📁 Project Structure
 
 ```
-mysanjeevani/
+MySanjeevni/
 ├── src/
 │   ├── app/
 │   │   ├── page.tsx                 # Home page
@@ -201,7 +201,7 @@ mysanjeevani/
 
 1. **Navigate to project directory**:
 ```bash
-cd c:\Users\GAURAV\ SINGH\OneDrive\Desktop\mysanjeevani
+cd c:\Users\GAURAV\ SINGH\OneDrive\Desktop\MySanjeevni
 ```
 
 2. **Install dependencies**:
@@ -405,7 +405,7 @@ For Phase 2 Production:
 ## 👥 Development Credits
 
 **Developer**: AI Assistant (GitHub Copilot)  
-**Project**: MySanjeevani Phase 1 Website  
+**Project**: MySanjeevni Phase 1 Website  
 **Completion Date**: February 4, 2026  
 **Framework**: Next.js 16 with TypeScript  
 

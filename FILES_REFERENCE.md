@@ -171,7 +171,7 @@
 
 ```typescript
 + vendorId: ObjectId (reference to Vendor collection, default: null)
-+ vendorName: String (default: "MySanjeevani")
++ vendorName: String (default: "MySanjeevni")
 + vendorRating: Number (0-5, default: 5 for official products)
 ```
 

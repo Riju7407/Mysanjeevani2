@@ -69,6 +69,7 @@ export default function AdminSidebar() {
       { label: 'Vendors', href: '/admin/vendors', icon: Icons.vendors },
     { label: 'Medicines', href: '/admin/medicines', icon: Icons.medicines },
     { label: 'Featured Products', href: '/admin/featured-products', icon: Icons.medicines },
+    { label: 'Wellness Pillars', href: '/admin/wellness-pillars', icon: Icons.medicines },
     { label: 'Consultations', href: '/admin/consultations', icon: Icons.consultations },
     { label: 'Analytics', href: '/admin/analytics', icon: Icons.analytics },
     { label: 'Orders', href: '/admin/orders', icon: Icons.orders },
@@ -97,7 +98,7 @@ export default function AdminSidebar() {
           <div className="bg-white rounded-lg p-2">
             <span className="text-blue-600 font-bold text-lg">MS</span>
           </div>
-          <h1 className="text-lg font-bold">MySanjeevani Admin</h1>
+          <h1 className="text-lg font-bold">MySanjeevni Admin</h1>
         </div>
         <button onClick={() => setIsOpen(!isOpen)} className="hover:bg-blue-500 p-2 rounded-lg transition">
           {isOpen ? '✕' : '☰'}
@@ -117,7 +118,7 @@ export default function AdminSidebar() {
               <span className="text-blue-600 font-bold text-xl">MS</span>
             </div>
             <div>
-              <h1 className="text-lg font-bold text-white">MySanjeevani</h1>
+              <h1 className="text-lg font-bold text-white">MySanjeevni</h1>
               <p className="text-xs text-blue-100">Admin Panel</p>
             </div>
           </div>
@@ -165,7 +166,7 @@ export default function AdminSidebar() {
             {Icons.logout}
             <span>Logout</span>
           </button>
-          <p className="text-xs text-slate-500 text-center">v1.0.0 • MySanjeevani</p>
+          <p className="text-xs text-slate-500 text-center">v1.0.0 • MySanjeevni</p>
         </div>
       </div>
 

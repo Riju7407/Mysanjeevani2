@@ -255,7 +255,7 @@ CLOUDINARY_API_SECRET=your_api_secret
   - Mobile (< 640px): 1 column
   - Tablet (640px - 1024px): 2 columns
   - Desktop (> 1024px): 4 columns
-- **Theme:** Blue gradient with consistent MySanjeevani branding
+- **Theme:** Blue gradient with consistent MySanjeevni branding
 - **Animations:** Smooth hover effects, fade-in loading states
 
 ## Future Enhancement Ideas

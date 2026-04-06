@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
@@ -246,7 +246,7 @@ export default function DoctorConsultationPage() {
         key: orderData.keyId,
         amount: orderData.order.amount,
         currency: orderData.order.currency,
-        name: 'MySanjeevani',
+        name: 'MySanjeevni',
         description: `Consultation with Dr. ${bookingDoctor.name}`,
         order_id: orderData.order.id,
         method: {
@@ -359,7 +359,7 @@ export default function DoctorConsultationPage() {
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="🔍 Search by doctor name, specialization, department..."
+                  placeholder="?? Search by doctor name, specialization, department..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && fetchDoctors()}
@@ -407,7 +407,7 @@ export default function DoctorConsultationPage() {
         {bookingSuccess && (
           <div className="mb-6 bg-green-50 border border-green-200 rounded-xl p-5 flex items-start justify-between gap-4">
             <div>
-              <h3 className="font-bold text-green-800 text-lg mb-1">✅ Consultation Booked!</h3>
+              <h3 className="font-bold text-green-800 text-lg mb-1">? Consultation Booked!</h3>
               <p className="text-green-700">
                 <strong>Doctor:</strong> {bookingSuccess.doctorName} &nbsp;|&nbsp;
                 <strong>Date:</strong> {new Date(bookingSuccess.appointmentDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -420,7 +420,7 @@ export default function DoctorConsultationPage() {
               </p>
               <p className="text-sm text-green-600 mt-1">Doctor will confirm your exact consultation time after reviewing your booking.</p>
             </div>
-            <button onClick={() => setBookingSuccess(null)} className="text-green-500 hover:text-green-700 text-xl">✕</button>
+            <button onClick={() => setBookingSuccess(null)} className="text-green-500 hover:text-green-700 text-xl">?</button>
           </div>
         )}
 
@@ -436,7 +436,7 @@ export default function DoctorConsultationPage() {
                 : 'text-gray-600 border-transparent hover:text-emerald-600'
             }`}
           >
-            🔍 Find Doctors
+            ?? Find Doctors
           </button>
           <button
             onClick={() => setActiveTab('mine')}
@@ -446,7 +446,7 @@ export default function DoctorConsultationPage() {
                 : 'text-gray-600 border-transparent hover:text-emerald-600'
             }`}
           >
-            📋 My Consultations
+            ?? My Consultations
           </button>
         </div>
         {activeTab === 'find' && (
@@ -456,7 +456,7 @@ export default function DoctorConsultationPage() {
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900">
-                    {selectedDept === 'All' ? '👨‍⚕️ Find a Doctor' : `🏥 ${selectedDept}`}
+                    {selectedDept === 'All' ? '????? Find a Doctor' : `?? ${selectedDept}`}
                   </h1>
                   <p className="text-gray-600 mt-1 text-sm">
                     {sortedDoctors.length} {sortedDoctors.length === 1 ? 'doctor' : 'doctors'} available
@@ -482,7 +482,7 @@ export default function DoctorConsultationPage() {
               </div>
             ) : sortedDoctors.length === 0 ? (
               <div className="text-center py-20 bg-white border-2 border-dashed border-emerald-200 rounded-3xl shadow-sm">
-                <div className="text-7xl mb-4 opacity-50">👨‍⚕️</div>
+                <div className="text-7xl mb-4 opacity-50">?????</div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">No doctors found</h3>
                 <p className="text-gray-600 mb-6">
                   {search
@@ -501,116 +501,108 @@ export default function DoctorConsultationPage() {
             ) : (
               <>
                 {/* Doctors Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {sortedDoctors.map((doctor) => (
                     <article
                       key={doctor._id}
-                      className="bg-white rounded-2xl border border-emerald-100 overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col group"
+                      className="group w-full max-w-56 mx-auto bg-white/95 border border-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition duration-300 cursor-pointer"
+                      onClick={() => doctor.isAvailable && openBooking(doctor)}
                     >
                       {/* Avatar Container */}
-                      <div className="relative h-48 bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center overflow-hidden">
+                      <div className="relative h-40 bg-linear-to-br from-white to-slate-50 flex items-center justify-center overflow-hidden">
+                        <span className="absolute top-3 left-3 rounded-full px-2.5 py-1 text-[10px] font-bold bg-emerald-600 text-white">
+                          Popular
+                        </span>
                         {isImageUrl(doctor.avatar) ? (
                           <img
                             src={doctor.avatar}
                             alt={doctor.name}
-                            className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-300"
+                            className="h-full w-full object-cover group-hover:scale-105 transition duration-300"
                             loading="lazy"
                           />
                         ) : (
-                          <span className="text-7xl group-hover:scale-125 transition-transform duration-300">
-                            {doctor.avatar || '👨‍⚕️'}
+                          <span className="text-5xl group-hover:scale-105 transition duration-300">
+                            {doctor.avatar || '🩺'}
                           </span>
                         )}
 
-                        {/* Status Badge */}
-                        <div className="absolute top-3 right-3">
+                        <div className="absolute inset-0 flex items-start justify-end p-3 pointer-events-none">
                           <span
-                            className={`text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md ${
+                            className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
                               doctor.isAvailable
-                                ? 'bg-green-500 text-white'
-                                : 'bg-red-500 text-white'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-red-100 text-red-700'
                             }`}
                           >
-                            {doctor.isAvailable ? '🟢 Available' : 'Unavailable'}
+                            {doctor.isAvailable ? 'Available' : 'Unavailable'}
                           </span>
                         </div>
                       </div>
 
                       {/* Content */}
-                      <div className="p-4 flex flex-col flex-1">
-                        {/* Doctor Name */}
-                        <h3 className="text-sm font-bold text-gray-900 line-clamp-2 min-h-9 leading-tight">
+                      <div className="p-3 flex flex-col flex-1">
+                        <p className="font-medium text-slate-500 mb-1 uppercase tracking-wide text-[10px]">
+                          {doctor.department || 'Doctor Consultation'}
+                        </p>
+                        <h3 className="font-bold text-slate-900 line-clamp-2 mb-2 text-xs min-h-8">
                           {doctor.name}
                         </h3>
 
-                        {/* Specialization */}
-                        <p className="text-xs font-semibold text-emerald-700 mt-1">
-                          {doctor.specialization}
-                        </p>
-
-                        {/* Department & Qualification */}
-                        <div className="flex items-center gap-1 mb-2 mt-2 flex-wrap">
-                          <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full">
-                            {doctor.department}
-                          </span>
-                          {doctor.qualification && (
-                            <span className="text-[10px] uppercase tracking-wider font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-full">
-                              {doctor.qualification.split(' ')[0]}
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-1">
+                            <span className="text-amber-500">&#9733;</span>
+                            <span className="text-xs font-semibold text-slate-900">
+                              {doctor.rating > 0 ? doctor.rating.toFixed(1) : 'New'}
                             </span>
-                          )}
-                        </div>
-
-                        {/* Stats */}
-                        <div className="flex items-center gap-3 mt-2 py-2 border-t border-gray-100 text-xs">
-                          <span>🏥 {doctor.experience} yrs</span>
-                          <span className="text-gray-300">|</span>
-                          <span className="font-semibold">
-                            ⭐ {doctor.rating > 0 ? doctor.rating.toFixed(1) : 'New'}
-                          </span>
-                          {doctor.totalReviews > 0 && (
-                            <span className="text-gray-500">({doctor.totalReviews})</span>
-                          )}
-                        </div>
-
-                        {/* Time Slots */}
-                        {doctor.timeSlots?.some((s) => s.isActive) && (
-                          <div className="mt-2 flex flex-wrap gap-1 min-h-[20px]">
-                            {doctor.timeSlots
-                              .filter((s) => s.isActive)
-                              .slice(0, 2)
-                              .map((slot) => (
-                                <span
-                                  key={slot._id}
-                                  className="bg-teal-50 text-teal-700 text-[10px] px-2 py-1 rounded-full border border-teal-200 font-medium"
-                                >
-                                  {slot.day.slice(0, 3)} {slot.startTime}
-                                </span>
-                              ))}
+                            <span className="text-xs text-slate-500">({doctor.totalReviews || 0})</span>
                           </div>
+                          <span
+                            className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
+                              doctor.isAvailable ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                            }`}
+                          >
+                            {doctor.isAvailable ? 'In Stock' : 'Out of Stock'}
+                          </span>
+                        </div>
+
+                        {doctor.specialization && (
+                          <p className="text-xs text-slate-600 mb-2 line-clamp-2">{doctor.specialization}</p>
                         )}
 
-                        {/* Fee & Button */}
-                        <div className="mt-auto pt-3 border-t border-gray-100">
-                          <div className="mb-3">
-                            <p className="text-[10px] text-gray-500">Consultation Fee</p>
-                            <p className="text-xl font-bold text-gray-900">₹{doctor.consultationFee}</p>
+                        <div className="mb-2 flex items-end justify-between">
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-base font-black text-slate-900">&#8377;{doctor.consultationFee}</span>
                           </div>
+                          <span className="text-[11px] font-bold text-emerald-600">{doctor.experience} yrs</span>
+                        </div>
 
-                          {doctor.isAvailable ? (
-                            <button
-                              onClick={() => openBooking(doctor)}
-                              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-2.5 rounded-xl text-sm font-bold transition-all transform hover:scale-105 active:scale-95"
-                            >
-                              📅 Book Now
-                            </button>
-                          ) : (
-                            <button
-                              disabled
-                              className="w-full bg-gray-200 text-gray-500 py-2.5 rounded-xl text-sm font-bold cursor-not-allowed"
-                            >
-                              Unavailable
-                            </button>
-                          )}
+                        <div className="flex gap-2 mt-auto">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openBooking(doctor);
+                            }}
+                            disabled={!doctor.isAvailable}
+                            className={`flex-1 rounded-lg font-bold transition py-1.5 text-[11px] ${
+                              !doctor.isAvailable
+                                ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                                : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
+                            }`}
+                          >
+                            View Slots
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openBooking(doctor);
+                            }}
+                            disabled={!doctor.isAvailable}
+                            className={`flex-1 rounded-lg font-bold text-white transition py-1.5 text-[11px] ${
+                              !doctor.isAvailable ? 'bg-slate-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'
+                            }`}
+                          >
+                            Book Now
+                          </button>
                         </div>
                       </div>
                     </article>
@@ -637,7 +629,7 @@ export default function DoctorConsultationPage() {
                 onClick={fetchConsultations}
                 className="text-emerald-600 text-sm font-medium border border-emerald-300 px-4 py-2 rounded-lg hover:bg-emerald-50"
               >
-                ↻ Refresh
+                ? Refresh
               </button>
             </div>
 
@@ -645,7 +637,7 @@ export default function DoctorConsultationPage() {
               <div className="text-center py-20 text-gray-500">Loading...</div>
             ) : consultations.length === 0 ? (
               <div className="text-center py-20 text-gray-400">
-                <div className="text-6xl mb-4">📋</div>
+                <div className="text-6xl mb-4">??</div>
                 <p className="text-lg font-medium">No consultations yet</p>
                 <button
                   onClick={() => setActiveTab('find')}
@@ -668,18 +660,18 @@ export default function DoctorConsultationPage() {
                         </div>
                         <p className="text-sm text-emerald-700 font-medium mb-1">{c.doctorSpecialization} · {c.doctorDepartment}</p>
                         <p className="text-sm text-gray-600">
-                          📅 {new Date(c.appointmentDate).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
-                          {!c.allottedTime && <span> · ⏰ Exact time pending</span>}
+                          ?? {new Date(c.appointmentDate).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                          {!c.allottedTime && <span> · ? Exact time pending</span>}
                         </p>
                         <p className="text-sm text-gray-600 mt-1">
                           Consultation Type: <span className="capitalize font-medium">{c.consultationType || 'in-person'}</span>
                         </p>
                         {c.allottedTime && (
-                          <p className="text-sm text-blue-700 font-medium mt-1">✅ Doctor confirmed time: <strong>{c.allottedTime}</strong></p>
+                          <p className="text-sm text-blue-700 font-medium mt-1">? Doctor confirmed time: <strong>{c.allottedTime}</strong></p>
                         )}
                         {c.symptoms && <p className="text-sm text-gray-500 mt-1">Symptoms: {c.symptoms}</p>}
                         {c.notes && (
-                          <p className="text-sm text-gray-600 mt-2 bg-gray-50 rounded px-3 py-2">📝 {c.notes}</p>
+                          <p className="text-sm text-gray-600 mt-2 bg-gray-50 rounded px-3 py-2">?? {c.notes}</p>
                         )}
                       </div>
 
@@ -688,17 +680,17 @@ export default function DoctorConsultationPage() {
                           <p className="text-xs text-gray-500 mb-1">Your Token No.</p>
                           <p className="text-4xl font-extrabold text-emerald-700">#{c.queueNumber}</p>
                           <p className="text-xs text-gray-600 mt-1 font-medium">
-                            {c.patientsAhead === 0 ? "🎉 You're first!" : `${c.patientsAhead} patient(s) ahead`}
+                            {c.patientsAhead === 0 ? "?? You're first!" : `${c.patientsAhead} patient(s) ahead`}
                           </p>
-                          <p className="text-xs text-gray-400 mt-0.5">Fees: ₹{c.fees}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">Fees: ?{c.fees}</p>
                         </div>
                       )}
 
                       {c.status === 'completed' && (
                         <div className="flex-shrink-0 bg-green-50 border border-green-200 rounded-xl p-4 text-center min-w-[110px]">
-                          <p className="text-3xl">✅</p>
+                          <p className="text-3xl">?</p>
                           <p className="text-sm font-medium text-green-700 mt-1">Completed</p>
-                          <p className="text-xs text-gray-400">₹{c.fees}</p>
+                          <p className="text-xs text-gray-400">?{c.fees}</p>
                         </div>
                       )}
                     </div>
@@ -764,7 +756,7 @@ export default function DoctorConsultationPage() {
                 <div className="rounded-2xl border border-emerald-100 bg-white p-4">
                   <div className="flex items-center gap-3">
                     <div className="h-14 w-14 rounded-2xl bg-emerald-100 text-3xl flex items-center justify-center overflow-hidden">
-                      {bookingDoctor.avatar || '👨‍⚕️'}
+                      {bookingDoctor.avatar || '?????'}
                     </div>
                     <div className="min-w-0">
                       <p className="font-bold text-slate-900 truncate">{bookingDoctor.name}</p>
@@ -775,7 +767,7 @@ export default function DoctorConsultationPage() {
                   <div className="mt-4 space-y-2 text-sm text-slate-600">
                     <p>Department: <span className="font-medium text-slate-800">{bookingDoctor.department}</span></p>
                     <p>Experience: <span className="font-medium text-slate-800">{bookingDoctor.experience} years</span></p>
-                    <p>Consultation Fee: <span className="font-semibold text-emerald-700">₹{bookingDoctor.consultationFee}</span></p>
+                    <p>Consultation Fee: <span className="font-semibold text-emerald-700">?{bookingDoctor.consultationFee}</span></p>
                   </div>
                 </div>
 
@@ -884,7 +876,7 @@ export default function DoctorConsultationPage() {
                     disabled={submitting}
                     className="w-full sm:w-auto rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 font-semibold transition disabled:opacity-60"
                   >
-                    {submitting ? 'Booking...' : `Confirm Booking • ₹${bookingDoctor.consultationFee}`}
+                    {submitting ? 'Booking...' : `Confirm Booking • ?${bookingDoctor.consultationFee}`}
                   </button>
                 </div>
               </div>

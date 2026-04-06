@@ -10,7 +10,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-5 gap-8 mb-8">
           {/* About Section */}
           <div>
-            <h3 className="text-lg font-bold mb-4 text-emerald-400">MySanjeevani</h3>
+            <h3 className="text-lg font-bold mb-4 text-emerald-400">MySanjeevni</h3>
             <p className="text-gray-400 text-sm leading-relaxed">
               India's trusted healthcare platform providing medicines, health products, and wellness solutions.
             </p>
@@ -150,7 +150,7 @@ export default function Footer() {
           {/* Download App */}
           <div>
             <h4 className="text-sm font-bold mb-4 text-gray-200">DOWNLOAD APP</h4>
-            <p className="text-gray-400 text-sm mb-3">Get exclusive deals on the MySanjeevani app</p>
+            <p className="text-gray-400 text-sm mb-3">Get exclusive deals on the MySanjeevni app</p>
             <div className="space-y-2">
               <a
                 href="#"
@@ -178,7 +178,7 @@ export default function Footer() {
         <div className="border-t border-gray-800 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-gray-400 text-sm">
-              © 2026 MySanjeevani. All rights reserved.
+              © 2026 MySanjeevni. All rights reserved.
             </p>
           </div>
         </div>

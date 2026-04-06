@@ -1,4 +1,4 @@
-# MySanjeevani - Complete Feature List & API Reference
+# MySanjeevni - Complete Feature List & API Reference
 
 ## Phase 2 - Comprehensive Implementation Complete ✅
 
@@ -539,6 +539,6 @@ All endpoints are production-ready and fully integrated with MongoDB!
 
 ---
 
-**MySanjeevani - India's Comprehensive Healthcare Platform**  
+**MySanjeevni - India's Comprehensive Healthcare Platform**  
 **Status**: Phase 2 Complete ✅  
 **Ready for Phase 3 Development**

@@ -41,7 +41,7 @@ npm run dev
 
 1. Login with admin account first:
    - Go to **http://localhost:3000/login**
-   - Email: `admin@mysanjeevani.com`
+   - Email: `admin@MySanjeevni.com`
    - Password: `admin123`
 2. Go to **http://localhost:3000/admin/vendors**
 
@@ -308,7 +308,7 @@ Content-Type: application/json
 
 **Admin Account (Existing):**
 
-- Email: `admin@mysanjeevani.com`
+- Email: `admin@MySanjeevni.com`
 - Password: `admin123`
 - Access: `/admin/vendors` page
 

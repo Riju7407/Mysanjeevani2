@@ -55,7 +55,7 @@ const productSchema = new mongoose.Schema(
     },
     vendorName: {
       type: String,
-      default: 'MySanjeevani',
+      default: 'MySanjeevni',
     },
     vendorRating: {
       type: Number,

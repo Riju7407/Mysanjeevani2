@@ -4,7 +4,7 @@
 
 ### Summary
 
-Successfully implemented a complete multi-vendor marketplace platform for MySanjeevani. Vendors can now register, get admin approval, list their products, and customers can shop from multiple vendors.
+Successfully implemented a complete multi-vendor marketplace platform for MySanjeevni. Vendors can now register, get admin approval, list their products, and customers can shop from multiple vendors.
 
 ---
 

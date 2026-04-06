@@ -1,4 +1,4 @@
-# MySanjeevani API Documentation
+# MySanjeevni API Documentation
 
 ## Complete API Reference for Phase 2
 

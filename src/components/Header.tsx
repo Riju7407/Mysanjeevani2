@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { LogoImage } from './Logo';
+import CategoryNav from './CategoryNav';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -85,7 +86,7 @@ export default function Header() {
                 <LogoImage />
               </div>
               <div className="text-xl font-bold hidden sm:block">
-                <span className="text-emerald-600">My</span><span className="text-orange-500">Sanjeevani</span>
+                <span className="text-emerald-600">My</span><span className="text-orange-500">Sanjeevni</span>
               </div>
             </Link>
 
@@ -290,30 +291,14 @@ export default function Header() {
           </div>
 
           {/* Category Navigation */}
-          <div className="hidden md:flex gap-6 mt-4 text-sm text-gray-700 border-t border-gray-100 pt-3 flex-wrap">
-            <Link href="/medicines" className="text-emerald-700 hover:text-orange-500 font-medium transition">Medicines</Link>
-            <Link href="/doctor-consultation" className="text-emerald-700 hover:text-orange-500 font-medium transition">Consult Doctor</Link>
-            <Link href="/lab-tests" className="text-emerald-700 hover:text-orange-500 font-medium transition">Lab Tests</Link>
-            <Link href="/ayurveda" className="hover:text-orange-500 font-medium transition text-emerald-700">Ayurveda</Link>
-            <Link href="/homeopathy" className="hover:text-orange-500 font-medium transition text-emerald-700">Homeopathy</Link>
-            <Link href="/wellness" className="text-emerald-700 hover:text-orange-500 font-medium transition">Wellness</Link>
-            <Link href="/health-blog" className="text-emerald-700 hover:text-orange-500 font-medium transition">Health Blog</Link>
-            <Link href="/offers" className="hover:text-orange-500 font-medium transition text-emerald-700">Offers</Link>
-          </div>
+          <CategoryNav />
         </div>
       </div>
 
       {/* Mobile Menu */}
       {isMenuOpen && (
         <div className="md:hidden bg-white border-t border-gray-100 p-4 space-y-2">
-          <Link href="/medicines" className="flex items-center gap-2 py-2 text-emerald-700 hover:text-orange-500" onClick={() => setIsMenuOpen(false)}>Medicines</Link>
-          <Link href="/doctor-consultation" className="flex items-center gap-2 py-2 text-emerald-700 hover:text-orange-500" onClick={() => setIsMenuOpen(false)}>Consult Doctor</Link>
-          <Link href="/lab-tests" className="flex items-center gap-2 py-2 text-emerald-700 hover:text-orange-500" onClick={() => setIsMenuOpen(false)}>Lab Tests</Link>
-          <Link href="/ayurveda" className="flex items-center gap-2 py-2 text-emerald-700 hover:text-orange-500" onClick={() => setIsMenuOpen(false)}>Ayurveda</Link>
-          <Link href="/homeopathy" className="flex items-center gap-2 py-2 text-emerald-700 hover:text-orange-500" onClick={() => setIsMenuOpen(false)}>Homeopathy</Link>
-          <Link href="/wellness" className="flex items-center gap-2 py-2 text-emerald-700 hover:text-orange-500" onClick={() => setIsMenuOpen(false)}>Wellness</Link>
-          <Link href="/health-blog" className="flex items-center gap-2 py-2 text-emerald-700 hover:text-orange-500" onClick={() => setIsMenuOpen(false)}>Health Blog</Link>
-          <Link href="/offers" className="flex items-center gap-2 py-2 text-emerald-700 hover:text-orange-500" onClick={() => setIsMenuOpen(false)}>Offers</Link>
+          <CategoryNav isMobile={true} />
           <div className="border-t border-gray-100 pt-3"></div>
           <Link href="/login" className="block w-full text-center bg-linear-to-r from-emerald-600 to-emerald-700 text-white py-3 rounded-lg hover:from-emerald-700 hover:to-emerald-800 font-semibold shadow-md hover:shadow-lg transition duration-200">
             SignIn

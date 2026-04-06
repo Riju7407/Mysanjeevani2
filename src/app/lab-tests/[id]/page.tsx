@@ -186,7 +186,7 @@ export default function LabTestDetailsPage() {
         order_id: orderData.order.id,
         amount: orderData.order.amount,
         currency: 'INR',
-        name: 'MySanjeevani Lab Tests',
+        name: 'MySanjeevni Lab Tests',
         description: `Lab Test Booking: ${bookingForm.testName}`,
         prefill: {
           name: user.fullName || 'User',

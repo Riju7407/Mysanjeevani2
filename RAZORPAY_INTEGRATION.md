@@ -1,6 +1,6 @@
 # Razorpay Payment Gateway Integration
 
-Complete Razorpay integration for MySanjeevani e-commerce platform supporting Medicines, Lab Tests, Doctor Consultations, and general product orders.
+Complete Razorpay integration for MySanjeevni e-commerce platform supporting Medicines, Lab Tests, Doctor Consultations, and general product orders.
 
 ## Table of Contents
 

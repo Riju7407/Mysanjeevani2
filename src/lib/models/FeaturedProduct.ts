@@ -7,6 +7,16 @@ const featuredProductSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    category: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    subcategory: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     imageUrl: {
       type: String,
       required: true,
@@ -46,6 +56,24 @@ if (existingFeaturedProductModel && !existingFeaturedProductModel.schema.path('c
     cardBgColor: {
       type: String,
       default: '#ffffff',
+    },
+  });
+}
+
+if (existingFeaturedProductModel && !existingFeaturedProductModel.schema.path('category')) {
+  existingFeaturedProductModel.schema.add({
+    category: {
+      type: String,
+      trim: true,
+    },
+  });
+}
+
+if (existingFeaturedProductModel && !existingFeaturedProductModel.schema.path('subcategory')) {
+  existingFeaturedProductModel.schema.add({
+    subcategory: {
+      type: String,
+      trim: true,
     },
   });
 }

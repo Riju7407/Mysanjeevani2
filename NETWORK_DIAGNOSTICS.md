@@ -36,7 +36,7 @@ choco install mongodb-community
 Then change `.env.local`:
 
 ```
-MONGODB_URI=mongodb://localhost:27017/mysanjeevani
+MONGODB_URI=mongodb://localhost:27017/MySanjeevni
 ```
 
 #### Option B: Use VPN/Proxy

@@ -54,7 +54,7 @@ const loginResponse = await fetch('/api/admin/login', {
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
     email: 'mysanjeevni3693@gmail.com',
-    password: 'Mysanjeevani@3693'
+    password: 'MySanjeevni@3693'
   })
 });
 

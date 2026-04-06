@@ -126,23 +126,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Valid amount is required' }, { status: 400 });
     }
 
-    // Validate merchant account first
+    // Validate merchant account first, but do not block fallback/test flow.
     console.log('🔍 Validating merchant account...');
     const validation = await validateMerchantAccount();
-    
     if (!validation.valid) {
       console.error('❌ Merchant validation failed:', validation.error);
-      return NextResponse.json(
-        { 
-          error: validation.error,
-          code: 'MERCHANT_ACCOUNT_ISSUE',
-          help: 'Please contact admin to fix merchant account or enable fallback mode'
-        },
-        { status: 400 }
-      );
+      console.warn('⚠️ Proceeding despite merchant validation failure; real order creation will be attempted and fallback/test logic will handle failures.');
+    } else {
+      console.log('✅ Merchant account valid, proceeding with order creation');
     }
-
-    console.log('✅ Merchant account valid, proceeding with order creation');
 
     // Razorpay expects amount in paise (1 INR = 100 paise)
     const amountInPaise = Math.round(Number(amount)) * 100;
@@ -162,7 +154,7 @@ export async function POST(request: NextRequest) {
     if (testMode) {
       console.log('📝 TEST MODE: Generating mock Razorpay order');
       order = generateMockOrder(amountInPaise, currency, receiptId);
-    } else if (fallbackMode) {
+    } else if (fallbackMode && !validation.valid) {
       console.warn('⚠️ FALLBACK MODE: Merchant account issue detected, using mock order');
       order = generateMockOrder(amountInPaise, currency, receiptId);
     } else {

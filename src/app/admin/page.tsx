@@ -209,7 +209,7 @@ export default function AdminDashboard() {
       {/* Dashboard Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-slate-900">Dashboard</h1>
-        <p className="text-slate-600 mt-2">Welcome to MySanjeevani Administration Panel</p>
+        <p className="text-slate-600 mt-2">Welcome to MySanjeevni Administration Panel</p>
       </div>
 
       {/* Stats Grid */}
@@ -309,7 +309,7 @@ export default function AdminDashboard() {
                 {pendingApprovals.map((item) => (
                   <tr key={item._id} className="hover:bg-slate-50">
                     <td className="px-4 py-3 text-sm font-medium text-slate-900">{item.name}</td>
-                    <td className="px-4 py-3 text-sm text-slate-600">{item.vendorName || 'MySanjeevani'}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600">{item.vendorName || 'MySanjeevni'}</td>
                     <td className="px-4 py-3 text-sm text-slate-600">{item.category}</td>
                     <td className="px-4 py-3 text-sm font-semibold text-emerald-700">₹{item.price}</td>
                     <td className="px-4 py-3">

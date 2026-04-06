@@ -1,10 +1,10 @@
-# MySanjeevani - Phase 1 Website
+# MySanjeevni - Phase 1 Website
 
 India's trusted healthcare platform providing medicines, health products, and wellness solutions.
 
 ## Project Overview
 
-MySanjeevani Phase 1 is a Next.js-based website designed with a UI/UX similar to 1mg.com. It includes:
+MySanjeevni Phase 1 is a Next.js-based website designed with a UI/UX similar to 1mg.com. It includes:
 
 - **Home Page**: Feature showcase, category selection, testimonials, and newsletter signup
 - **Authentication**: Complete Login and Signup pages with API integration
@@ -67,7 +67,7 @@ MySanjeevani Phase 1 is a Next.js-based website designed with a UI/UX similar to
 
 1. Navigate to the project directory:
 \\\ash
-cd c:\\Users\\GAURAV\\SINGH\\OneDrive\\Desktop\\mysanjeevani
+cd c:\\Users\\GAURAV\\SINGH\\OneDrive\\Desktop\\MySanjeevni
 \\\
 
 2. Install dependencies:

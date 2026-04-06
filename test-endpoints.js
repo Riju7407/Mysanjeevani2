@@ -37,7 +37,7 @@ function testEndpoint(path, name) {
 }
 
 async function test() {
-  console.log('Testing MySanjeevani API\n');
+  console.log('Testing MySanjeevni API\n');
   
   const results = await Promise.all([
     testEndpoint('/', 'Homepage'),

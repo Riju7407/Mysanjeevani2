@@ -24,7 +24,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         try {
           const userData = JSON.parse(user);
           // Check if user is admin (has admin role or is admin email)
-          if (userData.role === 'admin' || userData.email === 'admin@mysanjeevani.com') {
+          if (userData.role === 'admin' || userData.email === 'admin@MySanjeevni.com') {
             setIsAdmin(true);
           } else {
             router.push('/');
@@ -79,7 +79,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex items-center gap-6">
             <div className="text-right hidden sm:block">
               <p className="text-sm font-medium text-slate-900">Admin User</p>
-              <p className="text-xs text-slate-500">MySanjeevani Platform</p>
+              <p className="text-xs text-slate-500">MySanjeevni Platform</p>
             </div>
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold shadow-md">
               A

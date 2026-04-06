@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -98,7 +98,7 @@ function PopularProductsDisplay({
   };
 
   const theme = themes[productType] || themes['Generic Medicine'];
-  const isLabTestsSection = productType === 'Lab Tests';
+  const isCompactPopularCard = true;
 
   const discountPercent = (product: Product) => {
     if (!product.mrp || product.mrp <= product.price) return 0;
@@ -156,7 +156,7 @@ function PopularProductsDisplay({
           <p className="text-slate-700 max-w-2xl text-sm sm:text-base">{subtitle}</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 relative z-10">
+        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 relative z-10 ${isCompactPopularCard ? 'gap-4' : 'gap-5'}`}>
           {products.slice(0, 8).map((product) => {
             const summary = reviewSummaries[product._id] || {
               averageRating: product.rating || 0,
@@ -166,10 +166,12 @@ function PopularProductsDisplay({
             return (
               <article
                 key={product._id}
-                className="group bg-white/95 border border-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition duration-300 cursor-pointer"
+                className={`group bg-white/95 border border-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition duration-300 cursor-pointer ${
+                  isCompactPopularCard ? 'w-full max-w-56 mx-auto' : ''
+                }`}
                 onClick={() => onProductClick(product._id)}
               >
-                <div className="relative bg-linear-to-br from-white to-slate-50 h-48 flex items-center justify-center overflow-hidden">
+                <div className={`relative bg-linear-to-br from-white to-slate-50 flex items-center justify-center overflow-hidden ${isCompactPopularCard ? 'h-40' : 'h-48'}`}>
                   <span className={`absolute top-3 left-3 rounded-full px-2.5 py-1 text-[10px] font-bold ${theme.chip}`}>
                     Popular
                   </span>
@@ -177,20 +179,20 @@ function PopularProductsDisplay({
                     <img
                       src={product.image}
                       alt={product.name}
-                      className="h-full w-full object-contain p-4 group-hover:scale-105 transition duration-300"
+                      className={`h-full w-full object-contain group-hover:scale-105 transition duration-300 ${isCompactPopularCard ? 'p-3' : 'p-4'}`}
                     />
                   ) : (
-                    <div className="text-5xl">{product.icon || '💊'}</div>
+                    <div className="text-5xl">{product.icon || '??'}</div>
                   )}
                 </div>
 
-                <div className="p-4">
-                  <p className="text-[11px] font-medium text-slate-500 mb-1 uppercase tracking-wide">{product.brand || 'MySanjeevani'}</p>
-                  <h3 className="font-bold text-slate-900 text-sm line-clamp-2 min-h-10 mb-2">{product.name}</h3>
+                <div className={isCompactPopularCard ? 'p-3' : 'p-4'}>
+                  <p className={`font-medium text-slate-500 mb-1 uppercase tracking-wide ${isCompactPopularCard ? 'text-[10px]' : 'text-[11px]'}`}>{product.brand || 'MySanjeevni'}</p>
+                  <h3 className={`font-bold text-slate-900 line-clamp-2 mb-2 ${isCompactPopularCard ? 'text-xs min-h-8' : 'text-sm min-h-10'}`}>{product.name}</h3>
 
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-1">
-                      <span className="text-amber-500">★</span>
+                      <span className="text-amber-500">&#9733;</span>
                       <span className="text-xs font-semibold text-slate-900">{Number(summary.averageRating).toFixed(1)}</span>
                       <span className="text-xs text-slate-500">({summary.total})</span>
                     </div>
@@ -207,11 +209,11 @@ function PopularProductsDisplay({
                     <p className="text-xs text-slate-600 mb-2 line-clamp-2">"{summary.latestComment}"</p>
                   )}
 
-                  <div className="mb-3 flex items-end justify-between">
+                  <div className={`flex items-end justify-between ${isCompactPopularCard ? 'mb-2' : 'mb-3'}`}>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-lg font-black text-slate-900">₹{product.price}</span>
+                      <span className={`${isCompactPopularCard ? 'text-base' : 'text-lg'} font-black text-slate-900`}>&#8377;{product.price}</span>
                       {product.mrp && product.mrp > product.price && (
-                        <span className="text-xs text-slate-400 line-through">₹{product.mrp}</span>
+                        <span className="text-xs text-slate-400 line-through">&#8377;{product.mrp}</span>
                       )}
                     </div>
                     {product.mrp && product.mrp > product.price && (
@@ -223,20 +225,16 @@ function PopularProductsDisplay({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (isLabTestsSection) {
-                          onProductClick(product._id);
-                          return;
-                        }
                         onAddToCart(product);
                       }}
                       disabled={product.stock <= 0}
-                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${
+                      className={`flex-1 rounded-lg font-bold transition ${isCompactPopularCard ? 'py-1.5 text-[11px]' : 'py-2 text-xs'} ${
                         product.stock <= 0
                           ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
                           : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
                       }`}
                     >
-                      {isLabTestsSection ? 'View Details' : 'Add to Cart'}
+                      Add to Cart
                     </button>
                     <button
                       onClick={(e) => {
@@ -244,11 +242,11 @@ function PopularProductsDisplay({
                         onBuyNow(product);
                       }}
                       disabled={product.stock <= 0}
-                      className={`flex-1 py-2 rounded-lg text-xs font-bold text-white transition ${
+                      className={`flex-1 rounded-lg font-bold text-white transition ${isCompactPopularCard ? 'py-1.5 text-[11px]' : 'py-2 text-xs'} ${
                         product.stock <= 0 ? 'bg-slate-400 cursor-not-allowed' : theme.button
                       }`}
                     >
-                      {isLabTestsSection ? 'Book' : 'Buy Now'}
+                      Buy Now
                     </button>
                   </div>
                 </div>
@@ -333,8 +331,8 @@ export default function HomePage() {
           price: product.price,
           quantity: 1,
           brand: product.brand,
-          image: product.image || product.icon || '💊',
-          vendorName: 'MySanjeevani',
+          image: product.image || product.icon || '??',
+          vendorName: 'MySanjeevni',
         });
       }
 
@@ -619,7 +617,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
             <span className="inline-flex items-center rounded-full bg-emerald-100 text-emerald-700 px-3 py-1 text-xs font-semibold tracking-wide uppercase">
-              Why Choose MySanjeevani
+              Why Choose MySanjeevni
             </span>
             <h2 className="mt-3 text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
               Trusted Healthcare, Delivered with Care
@@ -636,7 +634,7 @@ export default function HomePage() {
               }`}
               style={{ transitionDelay: '50ms' }}
             >
-              <div className="mx-auto h-14 w-14 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-2xl font-black mb-4">✓</div>
+              <div className="mx-auto h-14 w-14 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-2xl font-black mb-4">?</div>
               <h3 className="font-extrabold text-slate-900 text-lg mb-2">100% Authentic</h3>
               <p className="text-sm text-slate-600">All medicines sourced from verified pharmacies</p>
             </article>
@@ -647,7 +645,7 @@ export default function HomePage() {
               }`}
               style={{ transitionDelay: '160ms' }}
             >
-              <div className="mx-auto h-14 w-14 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center text-2xl mb-4">🛡️</div>
+              <div className="mx-auto h-14 w-14 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center text-2xl mb-4">???</div>
               <h3 className="font-extrabold text-slate-900 text-lg mb-2">Secure & Safe</h3>
               <p className="text-sm text-slate-600">SSL encrypted transactions and secure payment</p>
             </article>
@@ -658,7 +656,7 @@ export default function HomePage() {
               }`}
               style={{ transitionDelay: '260ms' }}
             >
-              <div className="mx-auto h-14 w-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-2xl mb-4">📦</div>
+              <div className="mx-auto h-14 w-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-2xl mb-4">??</div>
               <h3 className="font-extrabold text-slate-900 text-lg mb-2">Fast Delivery</h3>
               <p className="text-sm text-slate-600">Get medicines delivered to your doorstep</p>
             </article>
