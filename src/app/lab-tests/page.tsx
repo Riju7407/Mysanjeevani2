@@ -38,6 +38,12 @@ interface Booking {
   collectionTime: string;
   status: string;
   createdAt: string;
+  provider?: 'local' | 'thyrocare';
+  providerOrderId?: string;
+  providerStatus?: string;
+  reportUrl?: string;
+  reportReady?: boolean;
+  providerLastSyncedAt?: string;
 }
 
 interface BookingForm {
@@ -48,6 +54,9 @@ interface BookingForm {
   collectionDate: string;
   collectionTime: string;
   address: string;
+  patientPincode: string;
+  patientAge: string;
+  patientGender: 'MALE' | 'FEMALE' | 'OTHER';
   notes: string;
 }
 
@@ -69,9 +78,47 @@ const TIME_SLOTS = ['7:00 AM – 9:00 AM', '9:00 AM – 11:00 AM', '11:00 AM –
 
 const STATUS_COLORS: Record<string, string> = {
   scheduled: 'bg-blue-100 text-blue-800',
+  'in-progress': 'bg-amber-100 text-amber-800',
   completed: 'bg-green-100 text-green-800',
   cancelled: 'bg-red-100 text-red-800',
 };
+
+function normalizeProviderStatus(status?: string) {
+  return String(status || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_');
+}
+
+function getProviderTimelineStep(status?: string) {
+  const normalized = normalizeProviderStatus(status);
+
+  if (
+    normalized.includes('REPORT_READY') ||
+    normalized.includes('COMPLETED') ||
+    normalized.includes('DELIVERED')
+  ) {
+    return 3;
+  }
+
+  if (
+    normalized.includes('PROCESSING') ||
+    normalized.includes('IN_PROGRESS') ||
+    normalized.includes('LAB_RECEIVED')
+  ) {
+    return 2;
+  }
+
+  if (
+    normalized.includes('COLLECTED') ||
+    normalized.includes('SAMPLE_COLLECTED') ||
+    normalized.includes('PHLEBO_VISITED')
+  ) {
+    return 1;
+  }
+
+  return 0;
+}
 
 async function loadRazorpayScript() {
   if (window.Razorpay) return true;
@@ -96,9 +143,23 @@ export default function LabTestsPage() {
   const [search, setSearch] = useState('');
   const [sortOrder, setSortOrder] = useState('featured');
   const [bookingModal, setBookingModal] = useState<LabTest | null>(null);
-  const [bookingForm, setBookingForm] = useState<BookingForm>({ testId: '', testName: '', testPrice: 0, collectionType: 'home', collectionDate: '', collectionTime: '', address: '', notes: '' });
+  const [bookingForm, setBookingForm] = useState<BookingForm>({
+    testId: '',
+    testName: '',
+    testPrice: 0,
+    collectionType: 'home',
+    collectionDate: '',
+    collectionTime: '',
+    address: '',
+    patientPincode: '',
+    patientAge: '',
+    patientGender: 'MALE',
+    notes: '',
+  });
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [syncingBookings, setSyncingBookings] = useState(false);
+  const [syncingBookingId, setSyncingBookingId] = useState<string | null>(null);
 
   const redirectToLogin = () => {
     const returnTo = `${window.location.pathname}${window.location.search}`;
@@ -147,10 +208,70 @@ export default function LabTestsPage() {
       return;
     }
 
-    setBookingForm({ testId: test._id, testName: test.name, testPrice: test.price, collectionType: 'home', collectionDate: '', collectionTime: '', address: '', notes: '' });
+    setBookingForm({
+      testId: test._id,
+      testName: test.name,
+      testPrice: test.price,
+      collectionType: 'home',
+      collectionDate: '',
+      collectionTime: '',
+      address: '',
+      patientPincode: '',
+      patientAge: '',
+      patientGender: 'MALE',
+      notes: '',
+    });
     setBookingModal(test);
     setBookingSuccess(false);
   };
+
+  const syncProviderStatuses = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      setSyncingBookings(true);
+      const res = await fetch('/api/lab-test-bookings/sync', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Failed to sync provider status');
+      }
+
+      await fetchBookings();
+    } catch {
+      alert('Failed to sync provider status');
+    } finally {
+      setSyncingBookings(false);
+    }
+  }, [fetchBookings]);
+
+  const syncSingleBooking = useCallback(async (bookingId: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      setSyncingBookingId(bookingId);
+      const res = await fetch(`/api/lab-test-bookings/${bookingId}/sync`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Failed to sync this booking');
+      }
+
+      await fetchBookings();
+    } catch {
+      alert('Failed to sync this booking');
+    } finally {
+      setSyncingBookingId(null);
+    }
+  }, [fetchBookings]);
 
   const submitBooking = async () => {
     try {
@@ -160,6 +281,20 @@ export default function LabTestsPage() {
       if (!token) { alert('Please login to book a test.'); return; }
       if (!bookingForm.collectionDate || !bookingForm.collectionTime) { alert('Please select collection date and time.'); return; }
       if (bookingForm.collectionType === 'home' && !bookingForm.address) { alert('Please enter your address for home collection.'); return; }
+
+      const isThyrocareTest = bookingForm.testId.startsWith('thyrocare_');
+      if (isThyrocareTest) {
+        if (!/^\d{6}$/.test(bookingForm.patientPincode.trim())) {
+          alert('Please enter a valid 6-digit pincode for Thyrocare booking.');
+          return;
+        }
+
+        const age = Number(bookingForm.patientAge);
+        if (!Number.isInteger(age) || age < 0 || age > 120) {
+          alert('Please enter a valid age between 0 and 120.');
+          return;
+        }
+      }
 
       const sdkLoaded = await loadRazorpayScript();
       if (!sdkLoaded || !window.Razorpay) {
@@ -217,6 +352,9 @@ export default function LabTestsPage() {
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({
               ...bookingForm,
+              patientPincode: bookingForm.patientPincode || undefined,
+              patientAge: bookingForm.patientAge ? Number(bookingForm.patientAge) : undefined,
+              patientGender: bookingForm.patientGender,
               razorpayOrderId: paymentResponse.razorpay_order_id,
               razorpayPaymentId: paymentResponse.razorpay_payment_id,
               razorpaySignature: paymentResponse.razorpay_signature,
@@ -268,7 +406,7 @@ export default function LabTestsPage() {
   }, [tests, category, search, sortOrder]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-teal-50 to-white flex flex-col">
+    <div className="min-h-screen bg-linear-to-b from-emerald-50 via-teal-50 to-white flex flex-col">
       <Header />
 
       {/* Hero */}
@@ -315,7 +453,7 @@ export default function LabTestsPage() {
               <button
                 key={cat}
                 onClick={() => setCategory(cat)}
-                className={`whitespace-nowrap px-4 py-2 rounded-full font-medium text-sm transition-all flex-shrink-0 ${
+                className={`whitespace-nowrap px-4 py-2 rounded-full font-medium text-sm transition-all shrink-0 ${
                   category === cat
                     ? 'bg-emerald-500 text-white shadow-md'
                     : 'bg-gray-100 text-gray-700 hover:bg-emerald-100'
@@ -353,7 +491,7 @@ export default function LabTestsPage() {
                     key={i}
                     className="bg-white rounded-2xl border border-emerald-100 p-4 shadow-sm animate-pulse"
                   >
-                    <div className="h-40 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-xl mb-4" />
+                    <div className="h-40 bg-linear-to-br from-emerald-100 to-teal-100 rounded-xl mb-4" />
                     <div className="h-4 bg-gray-200 rounded mb-3 w-3/4" />
                     <div className="h-3 bg-gray-200 rounded mb-2 w-full" />
                     <div className="h-3 bg-gray-200 rounded mb-4 w-1/2" />
@@ -464,9 +602,7 @@ export default function LabTestsPage() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              const token = localStorage.getItem('token');
-                              if (!token) redirectToLogin();
-                              else setBookingModal(test);
+                              openBooking(test);
                             }}
                             className="flex-1 rounded-lg font-bold text-white transition py-1.5 text-[11px] bg-amber-600 hover:bg-amber-700"
                           >
@@ -501,6 +637,15 @@ export default function LabTestsPage() {
               </div>
             ) : (
               <div className="space-y-4">
+                <div className="flex justify-end">
+                  <button
+                    onClick={syncProviderStatuses}
+                    disabled={syncingBookings}
+                    className="text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1.5 rounded-lg hover:bg-emerald-100 disabled:opacity-50"
+                  >
+                    {syncingBookings ? 'Syncing...' : 'Sync Provider Status'}
+                  </button>
+                </div>
                 {bookings.map((b) => (
                   <div key={b._id} className="bg-white rounded-xl border border-gray-200 p-5">
                     <div className="flex items-start justify-between flex-wrap gap-2">
@@ -512,6 +657,66 @@ export default function LabTestsPage() {
                         <p className="text-sm text-gray-500">
                           {b.collectionType === 'home' ? '🏠 Home Collection' : '🏥 Centre Visit'} · ₹{b.testPrice}
                         </p>
+                        {b.provider === 'thyrocare' && (
+                          <>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Provider: Thyrocare{b.providerOrderId ? ` • Order ID: ${b.providerOrderId}` : ''}
+                            </p>
+                            <p className="text-xs text-emerald-700 mt-0.5">
+                              Provider Status: {b.providerStatus || 'Pending sync'}
+                            </p>
+                            <div className="mt-3 p-3 rounded-lg border border-emerald-100 bg-emerald-50/50">
+                              <p className="text-[11px] font-semibold text-emerald-800 mb-2">Provider Timeline</p>
+                              <div className="flex items-start">
+                                {['Booked', 'Collected', 'Processing', 'Report Ready'].map((label, idx) => {
+                                  const active = getProviderTimelineStep(b.providerStatus) >= idx;
+                                  return (
+                                    <div key={label} className="flex-1">
+                                      <div className="flex items-center mb-1">
+                                        <span
+                                          className={`w-3 h-3 rounded-full ${
+                                            active ? 'bg-emerald-600' : 'bg-gray-300'
+                                          }`}
+                                        />
+                                        {idx < 3 && (
+                                          <span
+                                            className={`flex-1 h-0.5 mx-1 ${
+                                              getProviderTimelineStep(b.providerStatus) > idx
+                                                ? 'bg-emerald-500'
+                                                : 'bg-gray-300'
+                                            }`}
+                                          />
+                                        )}
+                                      </div>
+                                      <p className={`text-[10px] ${active ? 'text-emerald-800 font-semibold' : 'text-gray-500'}`}>
+                                        {label}
+                                      </p>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                            {b.providerOrderId && (
+                              <button
+                                onClick={() => syncSingleBooking(b._id)}
+                                disabled={syncingBookingId === b._id}
+                                className="inline-block mt-2 text-xs font-semibold bg-white border border-emerald-200 text-emerald-700 px-2.5 py-1 rounded-md hover:bg-emerald-50 disabled:opacity-50"
+                              >
+                                {syncingBookingId === b._id ? 'Refreshing...' : 'Refresh This Booking'}
+                              </button>
+                            )}
+                            {b.reportReady && b.reportUrl && (
+                              <a
+                                href={b.reportUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-block mt-2 text-xs font-semibold text-blue-600 hover:text-blue-700"
+                              >
+                                View Report
+                              </a>
+                            )}
+                          </>
+                        )}
                       </div>
                       <span className={`text-xs font-semibold px-3 py-1 rounded-full capitalize ${STATUS_COLORS[b.status] || 'bg-gray-100 text-gray-600'}`}>
                         {b.status}
@@ -602,6 +807,59 @@ export default function LabTestsPage() {
                         value={bookingForm.address} onChange={(e) => setBookingForm({ ...bookingForm, address: e.target.value })}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
                     </div>
+                  )}
+
+                  {bookingForm.testId.startsWith('thyrocare_') && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Pincode <span className="text-red-500">*</span></label>
+                        <input
+                          type="text"
+                          maxLength={6}
+                          inputMode="numeric"
+                          placeholder="6-digit pincode"
+                          value={bookingForm.patientPincode}
+                          onChange={(e) =>
+                            setBookingForm({
+                              ...bookingForm,
+                              patientPincode: e.target.value.replace(/\D/g, '').slice(0, 6),
+                            })
+                          }
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-1">Age <span className="text-red-500">*</span></label>
+                          <input
+                            type="number"
+                            min={0}
+                            max={120}
+                            placeholder="Years"
+                            value={bookingForm.patientAge}
+                            onChange={(e) => setBookingForm({ ...bookingForm, patientAge: e.target.value })}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-1">Gender <span className="text-red-500">*</span></label>
+                          <select
+                            value={bookingForm.patientGender}
+                            onChange={(e) =>
+                              setBookingForm({
+                                ...bookingForm,
+                                patientGender: e.target.value as 'MALE' | 'FEMALE' | 'OTHER',
+                              })
+                            }
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                          >
+                            <option value="MALE">Male</option>
+                            <option value="FEMALE">Female</option>
+                            <option value="OTHER">Other</option>
+                          </select>
+                        </div>
+                      </div>
+                    </>
                   )}
 
                   {/* Notes */}

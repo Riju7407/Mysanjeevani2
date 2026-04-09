@@ -17,9 +17,21 @@ interface MedicineCardProps {
     reviews?: number;
     category?: string;
     brand?: string;
+    quantity?: number;
+    quantityUnit?: string;
     stock?: number;
   };
   onAddCart?: (medicineId: string) => void;
+}
+
+function getQuantityLabel(medicine: MedicineCardProps['medicine']) {
+  const hasQuantity = medicine.quantity !== undefined && medicine.quantity !== null;
+  const hasUnit = medicine.quantityUnit && medicine.quantityUnit !== 'None';
+
+  if (hasQuantity && hasUnit) return `${medicine.quantity} ${medicine.quantityUnit}`;
+  if (hasQuantity) return String(medicine.quantity);
+  if (hasUnit) return medicine.quantityUnit as string;
+  return '';
 }
 
 export default function MedicineCard({
@@ -92,6 +104,12 @@ export default function MedicineCard({
         {medicine.brand && (
           <p className="text-xs text-gray-600 mb-2">
             Brand: <span className="font-semibold">{medicine.brand}</span>
+          </p>
+        )}
+
+        {getQuantityLabel(medicine) && (
+          <p className="text-xs text-indigo-700 mb-2 font-semibold">
+            Qty: {getQuantityLabel(medicine)}
           </p>
         )}
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
@@ -11,8 +11,13 @@ interface Product {
   _id: string;
   name: string;
   brand: string;
+  quantity?: number;
+  quantityUnit?: string;
   productType?: string;
   category: string;
+  subcategory?: string;
+  diseaseCategory?: string;
+  diseaseSubcategory?: string;
   price: number;
   mrp?: number;
   discount?: number;
@@ -68,6 +73,24 @@ function normalizeCategory(category?: string) {
   return category || '';
 }
 
+function normalizeText(value?: string) {
+  return (value || '').trim().toLowerCase();
+}
+
+function equalsIgnoreCase(left?: string, right?: string) {
+  return normalizeText(left) === normalizeText(right);
+}
+
+function getQuantityLabel(product: Product) {
+  const hasQuantity = product.quantity !== undefined && product.quantity !== null;
+  const hasUnit = product.quantityUnit && product.quantityUnit !== 'None';
+
+  if (hasQuantity && hasUnit) return `${product.quantity} ${product.quantityUnit}`;
+  if (hasQuantity) return String(product.quantity);
+  if (hasUnit) return product.quantityUnit as string;
+  return '';
+}
+
 const TAB_CONFIG = [
   { key: 'medicines', label: '💊 Medicines', color: 'emerald' },
   { key: 'ayurveda', label: '🌿 Ayurveda', color: 'amber' },
@@ -85,6 +108,8 @@ function MedicinesContent() {
   const router = useRouter();
   const urlCategory = searchParams.get('category') || '';
   const urlSubcategory = searchParams.get('subcategory') || '';
+  const productsSectionRef = useRef<HTMLDivElement | null>(null);
+  const hasAutoScrolledRef = useRef(false);
 
   const [activeTab, setActiveTab] = useState<'medicines' | 'ayurveda' | 'homeopathy'>('medicines');
   const [sortOrder, setSortOrder] = useState('featured');
@@ -123,6 +148,10 @@ function MedicinesContent() {
     );
     setSidebarCat(found || 'All');
   }, [urlSubcategory, activeTab]);
+
+  useEffect(() => {
+    hasAutoScrolledRef.current = false;
+  }, [urlCategory, urlSubcategory]);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -209,8 +238,39 @@ function MedicinesContent() {
 
   const displayed = tabFiltered.filter((p) => {
     const matchCat = sidebarCat === 'All' || p.category === sidebarCat || p.benefit === sidebarCat;
+
+    const urlCategoryMatch = !urlCategory || (() => {
+      const categoryFields = [
+        p.category,
+        p.subcategory,
+        p.diseaseCategory,
+        p.diseaseSubcategory,
+        p.benefit,
+        p.productType,
+        normalizeCategory(p.category),
+      ];
+
+      if (equalsIgnoreCase(urlCategory, 'ayurveda')) {
+        return categoryFields.some((field) => equalsIgnoreCase(field, 'Ayurveda')) || equalsIgnoreCase(p.productType, 'Ayurveda Medicine');
+      }
+
+      if (equalsIgnoreCase(urlCategory, 'homeopathy')) {
+        return categoryFields.some((field) => equalsIgnoreCase(field, 'Homeopathy')) || equalsIgnoreCase(p.productType, 'Homeopathy');
+      }
+
+      return categoryFields.some((field) => equalsIgnoreCase(field, urlCategory));
+    })();
+
+    const urlSubcategoryMatch = !urlSubcategory || [
+      p.category,
+      p.subcategory,
+      p.diseaseCategory,
+      p.diseaseSubcategory,
+      p.benefit,
+    ].some((field) => equalsIgnoreCase(field, urlSubcategory));
+
     const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || (p.brand || '').toLowerCase().includes(search.toLowerCase());
-    return matchCat && matchSearch;
+    return matchCat && urlCategoryMatch && urlSubcategoryMatch && matchSearch;
   });
 
   // Apply sorting
@@ -248,10 +308,24 @@ function MedicinesContent() {
     fetchReviewSummaries();
   }, [displayedProductIds]);
 
+  useEffect(() => {
+    if (loading) return;
+    if (!urlCategory && !urlSubcategory) return;
+    if (hasAutoScrolledRef.current) return;
+
+    const section = productsSectionRef.current;
+    if (!section) return;
+
+    hasAutoScrolledRef.current = true;
+    window.requestAnimationFrame(() => {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [loading, urlCategory, urlSubcategory]);
+
   const col = COLOR_MAP[TAB_CONFIG.find((t) => t.key === activeTab)!.color];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-teal-50 to-white flex flex-col">
+    <div className="min-h-screen bg-linear-to-b from-emerald-50 via-teal-50 to-white flex flex-col">
       <Header />
 
       {/* Hero */}
@@ -268,7 +342,7 @@ function MedicinesContent() {
               <button 
                 key={t.key} 
                 onClick={() => { setActiveTab(t.key as any); setSidebarCat('All'); }}
-                className={`px-6 py-3 text-sm font-semibold border-b-2 transition-all flex-shrink-0 ${
+                className={`px-6 py-3 text-sm font-semibold border-b-2 transition-all shrink-0 ${
                   activeTab === t.key
                     ? `text-${t.color === 'amber' ? 'amber' : t.color === 'pink' ? 'pink' : 'emerald'}-700 border-${t.color === 'amber' ? 'amber' : t.color === 'pink' ? 'pink' : 'emerald'}-600`
                     : 'text-gray-600 border-transparent hover:text-gray-800'
@@ -320,7 +394,7 @@ function MedicinesContent() {
         </div>
       )}
 
-      <div className="flex-1 max-w-7xl mx-auto px-4 py-10 w-full">
+      <div ref={productsSectionRef} className="flex-1 max-w-7xl mx-auto px-4 py-10 w-full">
         {/* Results Header */}
         <div className="mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -342,7 +416,7 @@ function MedicinesContent() {
                 key={i}
                 className="bg-white rounded-2xl border border-emerald-100 p-4 shadow-sm animate-pulse"
               >
-                <div className="h-40 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-xl mb-4" />
+                <div className="h-40 bg-linear-to-br from-emerald-100 to-teal-100 rounded-xl mb-4" />
                 <div className="h-4 bg-gray-200 rounded mb-3 w-3/4" />
                 <div className="h-3 bg-gray-200 rounded mb-2 w-full" />
                 <div className="h-3 bg-gray-200 rounded mb-4 w-1/2" />
@@ -426,6 +500,11 @@ function MedicinesContent() {
                       <p className="font-medium text-slate-500 mb-1 uppercase tracking-wide text-[10px]">
                         {product.brand || 'MySanjeevni'}
                       </p>
+                      {getQuantityLabel(product) && (
+                        <p className="text-[10px] font-semibold text-indigo-700 mb-1">
+                          Qty: {getQuantityLabel(product)}
+                        </p>
+                      )}
                       <h3 className="font-bold text-slate-900 line-clamp-2 mb-2 text-xs min-h-8">{product.name}</h3>
 
                       <div className="flex items-center justify-between mb-2">

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
@@ -26,6 +26,12 @@ const HERO_SLIDES: HeroSlide[] = [
 ];
 
 const HeroCarousel: React.FC = () => {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const settings = {
     dots: true,
     infinite: true,
@@ -40,6 +46,10 @@ const HeroCarousel: React.FC = () => {
       <div className="h-2.5 w-2.5 rounded-full bg-slate-400/70 transition hover:bg-slate-500" />
     ),
   };
+
+  if (!isMounted) {
+    return <div className="relative h-full w-full overflow-hidden rounded-2xl bg-white" />;
+  }
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-2xl bg-white">

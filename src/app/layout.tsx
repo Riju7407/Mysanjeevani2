@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang='en'>
+    <html lang='en' suppressHydrationWarning>
       <head>
         <link rel="icon" href="/icon.png?v=4" sizes="32x32" type="image/png" />
         <link rel="shortcut icon" href="/icon.png?v=4" type="image/png" />

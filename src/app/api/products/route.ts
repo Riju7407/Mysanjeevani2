@@ -12,6 +12,9 @@ export async function GET(request: NextRequest) {
     const search = request.nextUrl.searchParams.get('search');
     const healthConcern = request.nextUrl.searchParams.get('healthConcern');
     const productType = request.nextUrl.searchParams.get('productType');
+    const potency = request.nextUrl.searchParams.get('potency');
+    const quantityUnit = request.nextUrl.searchParams.get('quantityUnit');
+    const name = request.nextUrl.searchParams.get('name');
     const page = parseInt(request.nextUrl.searchParams.get('page') || '1');
     const limit = parseInt(request.nextUrl.searchParams.get('limit') || '20');
 
@@ -22,6 +25,9 @@ export async function GET(request: NextRequest) {
 
     if (category) query.category = category;
     if (productType) query.productType = productType;
+    if (potency) query.potency = potency;
+    if (quantityUnit) query.quantityUnit = quantityUnit;
+    if (name) query.name = name;
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -85,6 +91,9 @@ export async function POST(request: NextRequest) {
       isActive,
       isPopular,
       productType,
+      potency,
+      quantity,
+      quantityUnit,
     } = body;
 
     if (!name || !price || !category) {
@@ -114,6 +123,9 @@ export async function POST(request: NextRequest) {
       isActive: isActive !== undefined ? isActive : true,
       isPopular: isPopular !== undefined ? isPopular : false,
       productType: productType || 'Generic Medicine',
+      potency,
+      quantity,
+      quantityUnit,
     });
 
     return NextResponse.json(

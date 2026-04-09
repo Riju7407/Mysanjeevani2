@@ -11,6 +11,12 @@ interface Medicine {
   name: string;
   brand: string;
   category: string;
+  subcategory?: string;
+  potency?: string;
+  quantity?: number;
+  quantityUnit?: string;
+  diseaseCategory?: string;
+  diseaseSubcategory?: string;
   productType?: string;
   vendorName?: string;
   price: number;
@@ -50,6 +56,161 @@ interface LabTest {
 
 const PROD_CATEGORIES = ['Disease', 'Homeopathy', 'Ayurveda', 'Nutrition', 'Personal Care', 'Baby Care', 'Sexual Wellness', 'Fitness', 'Consultation', 'Unani', 'Allopathy'];
 const LAB_CATEGORIES = ['General', 'Diabetes', 'Cardiac', 'Thyroid', 'Liver', 'Kidney', 'Vitamins', 'Infection', 'Women'];
+const POTENCY_OPTIONS = ['1000 CH', '3 CH', '10M CH', '200 CH', '30 CH', '12 CH', '6 CH', 'CM CH', '50M CH'];
+const QUANTITY_UNIT_OPTIONS = ['None', 'BAGS (Bag)', 'BOTTLES (Btl)', 'BOX (Box)', 'BUNDLES (Bdl)', 'CANS (Can)', 'CAPSULES (CAPS)', 'CARTONS (Ctn)', 'DOZENS (Dzn)', 'GRAMMES (Gm)', 'KILOGRAMS (Kg)', 'LITRE (Ltr)', 'METERS (Mtr)', 'MILILITRE (MI)', 'NUMBERS (Nos)', 'PACKS (Pac)', 'PAIRS (Prs)', 'PIECES (Pcs)', 'QUINTAL (Qtl)', 'ROLLS (Rol)', 'SACHET (SACH)', 'SQUARE FEET (Sqf)', 'SQUARE METERS (Sqm)', 'TABLETS (Tbs)'];
+
+const HOMEOPATHY_SUBCATEGORY_MAP = {
+  Medicines: [
+    'SBL',
+    'Dr. Reckeweg (Germany)',
+    'Willmar Schwabe (Germany)',
+    'Adel Pekana (Germany)',
+    'Willmar Schwabe India',
+    'BJain',
+    'R S Bhargava',
+    'Baksons',
+    'REPL',
+    'New Life',
+  ],
+  Cosmetics: ['Hair Care', 'Skin Care', 'Oral Care'],
+  Dilutions: ['3X', '6X', '3 CH', '6 CH', '12 CH', '30 CH', '200 CH', '1000 CH', '10M CH', '50M CH', 'CM CH'],
+  'Mother Tinctures': ['SBL', 'Dr. Reckeweg (Germany)', 'Willmar Schwabe India', 'BJain'],
+  Biochemic: ['SBL', 'Dr. Reckeweg (Germany)', 'BJain', 'Willmar Schwabe India'],
+  'Bach Flower': ['Bach Flower Remedies', 'Bach Flower Kits'],
+  'Homeopathy Kits': ['Homeopathy Kits'],
+  Triturations: ['SBL', 'Dr. Reckeweg (Germany)', 'Willmar Schwabe India', 'BJain'],
+  'Millesimal LM Potency': ['SBL', 'BJain'],
+  'Bio Combination': ['SBL', 'Dr. Reckeweg (Germany)', 'BJain', 'Willmar Schwabe India', 'Haslab (HSL)'],
+} as const;
+
+type HomeopathyCategory = keyof typeof HOMEOPATHY_SUBCATEGORY_MAP;
+
+const AYURVEDA_SUBCATEGORY_MAP = {
+  Medicines: ['Himalaya', 'Organic India', 'Baidyanath', 'Dabur', 'Zandu', 'Charak', 'Aimil'],
+  'Single Remedies': [
+    'Ras & Sindoor',
+    'Bhasm & Pishti',
+    'Vati & Gutika & Guggulu',
+    'Asava Arishta & Kadha',
+    'Loha & Mandur',
+    'Churan & Powder & Avleha & Pak',
+    'Tailam & Ghrita',
+  ],
+  'Herbal Food & Juices': ['Chyawanprash', 'Honey', 'Digestives', 'Herbal & Vegetable Juice'],
+} as const;
+
+type AyurvedaCategory = keyof typeof AYURVEDA_SUBCATEGORY_MAP;
+
+const NUTRITION_SUBCATEGORY_MAP = {
+  'Sports Nutrition': ['Proteins', 'Fat Burner', 'Weight Gainers', 'Pre Post Workout', 'Aminos', 'Creatines'],
+  'Health Food & Drinks': ['Spreads & Sugar & Honey', 'Oils', 'Herbal & Vegetable Juices', 'Health Drinks', 'Healthy Snacks & Bars', 'Sugar Free', 'Murabba', 'Chyawanprash', 'Edible Seeds'],
+  'Vitamin & Dietary Supplements': ['Vitamin & Dietary Supplements'],
+  'Organic Products': ['Organic Foods', 'Coffee & Tea', 'Ghee', 'Atta/Flour'],
+  'Green Teas': ['Green Teas'],
+  Digestives: ['Digestives'],
+} as const;
+
+type NutritionCategory = keyof typeof NUTRITION_SUBCATEGORY_MAP;
+
+const PERSONAL_CARE_SUBCATEGORY_MAP = {
+  'Aroma Oils': ['Essential Oils'],
+  'Mens Grooming': ['Beard Oils and Wax', 'Shaving Cream & Gels', 'Men Wellness'],
+  'Female Care': ['Intimate Care', 'Pregnancy & Maternity Care'],
+  'Skin Care': ['Face', 'Body', 'Foot Care', 'Sanitizers & Hand Wash'],
+  'Bath & Shower': ['Shower Gel & Hand Wash', 'Soaps', 'Talcs & Deos'],
+  'Hair Care': ['Shampoo & Conditioners', 'Hair Oils & Creams', 'Hair Serum & Mask', 'Hair Color & Dyes', 'Henna Mehandi'],
+  'Elderly Care': ['Elderly Care'],
+  'Mosquito Repellents': ['Mosquito Repellents'],
+  'Oral Care': ['Toothpaste', 'Gums Care'],
+} as const;
+
+type PersonalCareCategory = keyof typeof PERSONAL_CARE_SUBCATEGORY_MAP;
+
+const BABY_CARE_SUBCATEGORY_MAP = {
+  'Tonics & Supplements': ['Tonics & Supplements'],
+  'Bath & Skin': ['Shampoos & Bath Gels', 'Baby Oils', 'Baby Powder', 'Soaps'],
+  'Wipes & Diapers': ['Wipes & Diapers'],
+  'Gift Packs': ['Gift Packs'],
+} as const;
+
+type BabyCareCategory = keyof typeof BABY_CARE_SUBCATEGORY_MAP;
+
+const FITNESS_SUBCATEGORY_MAP = {
+  'Supports & Splints': [
+    'Shoulder Support',
+    'Elbow Support',
+    'Forearm Support',
+    'Wrist Support',
+    'Chest Support',
+    'Cervical Support',
+    'Back Support',
+    'Abdominal Support',
+    'Thigh Support',
+    'Knee Support',
+    'Calf Support',
+    'Ankle Support',
+    'Finger Splint',
+    'Compression Stockings',
+    'Insoles & Heel cups',
+  ],
+  'Health Devices': [
+    'Weighing Scales',
+    'BP Monitors',
+    'Thermometer',
+    'Respiratory Care',
+    'Activity Moniter',
+    'Hot and Cold Pads & Bottles',
+  ],
+  'Fitness Equipment': ['Exercisers', 'Weights'],
+  'Hospital Supplies': ['Stethoscopes', 'Protective Gears', 'Hospital Beds'],
+  'Aroma Therapy': ['Aroma Therapy'],
+  'Disability Aids': ['Disability Aids'],
+  Massagers: ['Massagers'],
+  'Bandages & Tapes': ['Bandages & Tapes'],
+  'Walking Sticks': ['Walking Sticks'],
+} as const;
+
+type FitnessCategory = keyof typeof FITNESS_SUBCATEGORY_MAP;
+
+const UNANI_SUBCATEGORY_MAP = {
+  'Unani Medicines': ['Unani Medicines'],
+  'Habbe & Qurs': ['Habbe & Qurs'],
+  'Majun & Jawarish': ['Majun & Jawarish'],
+  'Safoof, Labub & Kushta': ['Safoof, Labub & Kushta'],
+  'Sharbat, Sirka & Arq': ['Sharbat, Sirka & Arq'],
+  'Lauq & Saoot': ['Lauq & Saoot'],
+  'Khamira & Itrifal': ['Khamira & Itrifal'],
+  'Roghan & Oils': ['Roghan & Oils'],
+  'Unani Brands': ['Hamdard', 'New Shama', 'Dehlvi', 'Rex'],
+} as const;
+
+type UnaniCategory = keyof typeof UNANI_SUBCATEGORY_MAP;
+
+const DISEASE_SUBCATEGORY_MAP = {
+  Mind: ['Addiction', 'Anxiety & Depression', 'Sleeplessness', 'Weak Memory'],
+  Face: ['Acne & Pimples', 'Dark Circles & Marks', 'Wrinkles & Aging'],
+  Hair: ['Hair Fall', 'Dandruff', 'Alopecia & Bald Patches', 'Premature Graying', 'Lice'],
+  'Eyes & Ear': ['Conjunctivitis', 'Cataract', 'Eye Strain', 'Glaucoma', 'Styes', 'Ear Pain', 'Ear Wax'],
+  'Nose & Throat': ['Allergic Rhinitis', 'Sneezing & Running Nose', 'Sinusitis & Blocked Nose', 'Snoring', 'Tonsilitis & Throat Pain', 'Laryngitis & Hoarse Voice'],
+  'Nervous System': ['Headache & Migraine', 'Vertigo/Motion Sickness', 'Neuralgia & Nerve Pain', 'Epilepsy & Fits'],
+  'Mouth, Gums & Teeth': ['Bad Breath', 'Bleeding Gum/Pyorrhoea', 'Mouth Ulcers/Aphthae', 'Cavities & Tooth Pain', 'Stammering'],
+  Respiratory: ['Asthma', 'Bronchitis', 'Cough', 'Pneumonia'],
+  'Rectum & Piles': ['Constipation', 'Piles & Fissures', 'Loose Motions/Diarrhoea', 'IBS & Colitis', 'Fistula', 'Worms'],
+  'Digestive System': ['Indigestion/Acidity/Gas', 'Loss of Appetite', 'Jaundice & Fatty Liver', 'Stomach Pain & Colic', 'Vomiting & Nausea', 'Gall Stones', 'Appendicitis', 'Hernia'],
+  'Heart & Cardiovascular': ['Heart Tonics', 'Chest Pain & Angina', 'Cholesterol & Triglyceride'],
+  'Urinary System': ['Urinary Tract Infection', 'Kidney Stone', 'Frequent Urination'],
+  'Bone, Joint & Muscles': ['Arthritis & Joint Pains', 'Back & Knee Pain', 'Cervical Spondolyisis', 'Injuries & Fractures', 'Gout & Uric Acid', 'Osteoporosis', 'Sciatica', 'Heel Pain'],
+  'Skin & Nails': ['Bed Sores', 'Boils & Abscesses', 'Burns', 'Cyst & Tumor', 'Eczema', 'Herpes', 'Nail Fungus', 'Psoriasis & Dry Skin', 'Rash/Itch/Urticaria/Hives', 'Vitiligo & Leucoderma', 'Warts & Corns'],
+  'Fevers & Flu': ['Dengue', 'Flu & Fever', 'Malaria', 'Typhoid'],
+  'Male Problems': ['Hydrocele', 'Premature Ejaculation', 'Impotency', 'Prostate Enlargement'],
+  'Female Problems': ['Underdeveloped Breasts', 'Enlarged Breasts', 'Leucorrhoea', 'Excessive Menses', 'Vaginitis', 'Menopause', 'Painful, Delayed & Scanty Menses'],
+  'Old Age Problems': ['Parkinsons & Trembling', 'Involuntary Urination', 'Alzheimers'],
+  'Children Problems': ['Low Height', 'Autism', 'Bed Wetting', 'Immunity', 'Teething Troubles', 'Irritability & Hyperactive'],
+  'Lifestyle Diseases': ['Diabetes', 'Blood Pressure', 'Obesity', 'Thyroid', 'Hang Over', 'Varicose Veins'],
+  Tonics: ['Anaemia', 'Blood Purifiers', 'General Tonics', 'Weakness & Fatigue'],
+} as const;
+
+type DiseaseCategory = keyof typeof DISEASE_SUBCATEGORY_MAP;
 
 // Vendor category map (same structure as vendor dashboard)
 const VENDOR_CATEGORY_MAP = {
@@ -82,15 +243,21 @@ const VENDOR_CATEGORY_MAP = {
     'Tablets & Capsules', 'Syrups & Suspensions', 'Creams & Ointments', 'Inhalers & Respules', 'Oral Drops', 'Eye & Ear Drops', 'Nasal Drops & Spray', 'Injections & Infusions',
   ],
   'Ayurveda Medicine': [
-    'Himalaya', 'Organic India', 'Baidyanath', 'Dabur', 'Zandu', 'Charak', 'Aimil',
-    'Ras & Sindoor', 'Bhasm & Pishti', 'Vati, Gutika & Guggulu', 'Asava Arishta & Kadha', 'Loha & Mandur', 'Churan, Powder, Avaleha & Pak', 'Tailam & Ghrita',
-    'Chyawanprash', 'Honey', 'Digestives', 'Herbal & Vegetable Juice',
+    'Medicines',
+    'Single Remedies',
+    'Herbal Food & Juices',
   ],
   Homeopathy: [
-    'SBL', 'Dr. Reckeweg', 'Willmar Schwabe', 'Adel Pekana', 'Schwabe India', 'Bjain', 'R S Bhargava', 'Baksons', 'REPL', 'New Life',
-    '3X', '6X', '3 CH', '6 CH', '12 CH', '30 CH', '200 CH', '1000 CH', '10M CH', '50M CH', 'CM CH',
-    'Mother Tinctures', 'Biochemic', 'Triturations', 'Bio Combination', 'Bach Flower', 'Homeopathy Kits', 'Milleimal LM Potency',
-    'Hair Care', 'Skin Care', 'Oral Care',
+    'Medicines',
+    'Cosmetics',
+    'Dilutions',
+    'Mother Tinctures',
+    'Biochemic',
+    'Bach Flower',
+    'Homeopathy Kits',
+    'Triturations',
+    'Millesimal LM Potency',
+    'Bio Combination',
   ],
   'Lab Tests': [
     'General', 'Diabetes', 'Cardiac', 'Thyroid', 'Liver', 'Kidney', 'Vitamins', 'Infection', 'Women',
@@ -119,36 +286,57 @@ const VENDOR_CATEGORY_MAP = {
     'Anaemia', 'Blood Purifiers', 'General Tonics', 'Weakness & Fatigue',
   ],
   Nutrition: [
-    'Proteins', 'Fat Burner', 'Weight Gainers', 'Pre Post Workout', 'Aminos', 'Creatines',
-    'Organic Foods', 'Coffee & Tea', 'Ghee', 'Atta/Flour',
-    'Spreads, Sugar & Honey', 'Oils', 'Health Drinks', 'Healthy Snacks & Bars', 'Sugar Free', 'Murabba', 'Edible Seeds',
+    'Sports Nutrition',
+    'Health Food & Drinks',
+    'Vitamin & Dietary Supplements',
+    'Organic Products',
+    'Green Teas',
+    'Digestives',
   ],
   'Personal Care': [
-    'Essential Oils', 'Face', 'Body', 'Foot Care', 'Sanitizers & Hand Wash',
-    'Shampoo & Conditioners', 'Hair Oils & Creams', 'Hair Serum & Mask', 'Hair Color & Dyes', 'Henna Mehndi',
-    'Beard Oils and Wax', 'Shaving Cream & Gels', 'Men Wellness',
-    'Shower Gel & Hand Wash', 'Soaps', 'Talcs & Deos',
-    'Toothpaste', 'Gums Care',
-    'Intimate Care', 'Pregnancy & Maternity Care',
+    'Aroma Oils',
+    'Mens Grooming',
+    'Female Care',
+    'Skin Care',
+    'Bath & Shower',
+    'Hair Care',
+    'Elderly Care',
+    'Mosquito Repellents',
+    'Oral Care',
   ],
   Fitness: [
-    'Shoulder Support', 'Elbow Support', 'Forearm Support', 'Wrist Support', 'Chest Support', 'Cervical Support', 'Back Support', 'Abdominal Support', 'Thigh Support', 'Knee Support', 'Calf Support', 'Ankle Support', 'Finger Splint', 'Compression Stockings', 'Insoles & Heel Cups',
-    'Weighing Scales', 'BP Monitors', 'Thermometer', 'Respiratory Care', 'Activity Monitor', 'Hot and Cold Pads & Bottles',
-    'Exercisers', 'Weights', 'Stethoscopes', 'Protective Gears', 'Hospital Beds',
-    'Walking Sticks', 'Massagers', 'Disability Aids',
+    'Supports & Splints',
+    'Health Devices',
+    'Fitness Equipment',
+    'Hospital Supplies',
+    'Aroma Therapy',
+    'Disability Aids',
+    'Massagers',
+    'Bandages & Tapes',
+    'Walking Sticks',
   ],
   'Sexual Wellness': [
-    'Sexual Supplements', 'Condoms',
+    'Supplements', 'Condoms',
   ],
   Consultation: [
     'Homeo Treatment', 'Ayurveda Treatment', 'Unani Treatment', 'Diet Counselling',
   ],
   Unani: [
-    'Habbe & Qurs', 'Majun & Jawarish', 'Safoof, Labub & Kushta', 'Sharbat, Sirka & Arq', 'Lauq & Saoot', 'Khamira & Itrifal', 'Roghan & Oils',
-    'Hamdard', 'New Shama', 'Dehlvi', 'Rex',
+    'Unani Medicines',
+    'Habbe & Qurs',
+    'Majun & Jawarish',
+    'Safoof, Labub & Kushta',
+    'Sharbat, Sirka & Arq',
+    'Lauq & Saoot',
+    'Khamira & Itrifal',
+    'Roghan & Oils',
+    'Unani Brands',
   ],
   'Baby Care': [
-    'Tonics & Supplements', 'Shampoos & Bath Gels', 'Baby Oils', 'Baby Powder', 'Soaps', 'Wipes & Diapers', 'Gift Packs',
+    'Tonics & Supplements',
+    'Bath & Skin',
+    'Wipes & Diapers',
+    'Gift Packs',
   ],
 } as const;
 
@@ -158,7 +346,49 @@ function getDefaultCategoryForType(productType: VendorProductType): string {
   return VENDOR_CATEGORY_MAP[productType][0];
 }
 
-const EMPTY_PROD = { name: '', brand: '', category: '', price: '', mrp: '', stock: '', description: '', benefit: '', requiresPrescription: false, image: '', isPopular: false, productType: 'Generic Medicine' as VendorProductType, isPopularGeneric: false, isPopularAyurveda: false, isPopularHomeopathy: false, isPopularLabTests: false };
+function getDefaultSubcategoryForHomeopathyCategory(category: string): string {
+  const key = category as HomeopathyCategory;
+  const options = HOMEOPATHY_SUBCATEGORY_MAP[key] || [];
+  return options[0] || '';
+}
+
+function getDefaultSubcategoryForAyurvedaCategory(category: string): string {
+  const key = category as AyurvedaCategory;
+  const options = AYURVEDA_SUBCATEGORY_MAP[key] || [];
+  return options[0] || '';
+}
+
+function getDefaultSubcategoryForNutritionCategory(category: string): string {
+  const key = category as NutritionCategory;
+  const options = NUTRITION_SUBCATEGORY_MAP[key] || [];
+  return options[0] || '';
+}
+
+function getDefaultSubcategoryForPersonalCareCategory(category: string): string {
+  const key = category as PersonalCareCategory;
+  const options = PERSONAL_CARE_SUBCATEGORY_MAP[key] || [];
+  return options[0] || '';
+}
+
+function getDefaultSubcategoryForBabyCareCategory(category: string): string {
+  const key = category as BabyCareCategory;
+  const options = BABY_CARE_SUBCATEGORY_MAP[key] || [];
+  return options[0] || '';
+}
+
+function getDefaultSubcategoryForFitnessCategory(category: string): string {
+  const key = category as FitnessCategory;
+  const options = FITNESS_SUBCATEGORY_MAP[key] || [];
+  return options[0] || '';
+}
+
+function getDefaultSubcategoryForUnaniCategory(category: string): string {
+  const key = category as UnaniCategory;
+  const options = UNANI_SUBCATEGORY_MAP[key] || [];
+  return options[0] || '';
+}
+
+const EMPTY_PROD = { name: '', brand: '', category: '', subcategory: '', potency: '', quantity: '', quantityUnit: 'None', diseaseCategory: '', diseaseSubcategory: '', price: '', mrp: '', stock: '', description: '', benefit: '', requiresPrescription: false, image: '', isPopular: false, productType: 'Generic Medicine' as VendorProductType, isPopularGeneric: false, isPopularAyurveda: false, isPopularHomeopathy: false, isPopularLabTests: false };
 const EMPTY_LAB  = { name: '', category: '', price: '', mrp: '', description: '', icon: '', duration: '', testsIncluded: '', popular: false };
 
 /**
@@ -252,12 +482,27 @@ export default function AdminMedicines() {
   const openAddProd = () => { setEditMed(null); setProdForm(EMPTY_PROD); setImageUrl(''); setShowProdForm(true); };
   const openEditProd = (m: Medicine) => {
     setEditMed(m);
-    setProdForm({ name: m.name, brand: m.brand || '', category: m.category, price: String(m.price), mrp: String(m.mrp || ''), stock: String(m.stock), description: m.description || '', benefit: m.benefit || '', requiresPrescription: m.requiresPrescription || false, image: m.image || '', isPopular: m.isPopular || false, productType: (m.productType as VendorProductType) || 'Generic Medicine', isPopularGeneric: (m as any).isPopularGeneric || false, isPopularAyurveda: (m as any).isPopularAyurveda || false, isPopularHomeopathy: (m as any).isPopularHomeopathy || false, isPopularLabTests: (m as any).isPopularLabTests || false });
+    const productType = (m.productType as VendorProductType) || 'Generic Medicine';
+    const isHomeopathy = productType === 'Homeopathy';
+    const isAyurveda = productType === 'Ayurveda Medicine';
+    const isNutrition = productType === 'Nutrition';
+    const isPersonalCare = productType === 'Personal Care';
+    const isBabyCare = productType === 'Baby Care';
+    const isFitness = productType === 'Fitness';
+    const isUnani = productType === 'Unani';
+    setProdForm({ name: m.name, brand: m.brand || '', category: m.category, subcategory: isHomeopathy ? (m.subcategory || getDefaultSubcategoryForHomeopathyCategory(m.category)) : isAyurveda ? (m.subcategory || getDefaultSubcategoryForAyurvedaCategory(m.category)) : isNutrition ? (m.subcategory || getDefaultSubcategoryForNutritionCategory(m.category)) : isPersonalCare ? (m.subcategory || getDefaultSubcategoryForPersonalCareCategory(m.category)) : isBabyCare ? (m.subcategory || getDefaultSubcategoryForBabyCareCategory(m.category)) : isFitness ? (m.subcategory || getDefaultSubcategoryForFitnessCategory(m.category)) : isUnani ? (m.subcategory || getDefaultSubcategoryForUnaniCategory(m.category)) : '', potency: m.potency || '', quantity: m.quantity !== undefined ? String(m.quantity) : '', quantityUnit: m.quantityUnit || 'None', diseaseCategory: (m as any).diseaseCategory || '', diseaseSubcategory: (m as any).diseaseSubcategory || '', price: String(m.price), mrp: String(m.mrp || ''), stock: String(m.stock), description: m.description || '', benefit: m.benefit || '', requiresPrescription: m.requiresPrescription || false, image: m.image || '', isPopular: m.isPopular || false, productType, isPopularGeneric: (m as any).isPopularGeneric || false, isPopularAyurveda: (m as any).isPopularAyurveda || false, isPopularHomeopathy: (m as any).isPopularHomeopathy || false, isPopularLabTests: (m as any).isPopularLabTests || false });
     setImageUrl(m.image || '');
     setShowProdForm(true);
   };
   const saveProd = async () => {
     if (!prodForm.name || !prodForm.category || !prodForm.price) { alert('Name, category and price are required.'); return; }
+    if (prodForm.productType === 'Homeopathy' && !prodForm.subcategory) { alert('Please select a homeopathy subcategory.'); return; }
+    if (prodForm.productType === 'Ayurveda Medicine' && !prodForm.subcategory) { alert('Please select an ayurveda subcategory.'); return; }
+    if (prodForm.productType === 'Nutrition' && !prodForm.subcategory) { alert('Please select a nutrition subcategory.'); return; }
+    if (prodForm.productType === 'Personal Care' && !prodForm.subcategory) { alert('Please select a personal care subcategory.'); return; }
+    if (prodForm.productType === 'Baby Care' && !prodForm.subcategory) { alert('Please select a baby care subcategory.'); return; }
+    if (prodForm.productType === 'Fitness' && !prodForm.subcategory) { alert('Please select a fitness subcategory.'); return; }
+    if (prodForm.productType === 'Unani' && !prodForm.subcategory) { alert('Please select an unani subcategory.'); return; }
     setMedSaving(true);
     try {
       // If editing and image changed, delete old image from Cloudinary
@@ -284,7 +529,7 @@ export default function AdminMedicines() {
         }
       }
       
-      const payload = { name: prodForm.name, brand: prodForm.brand, category: prodForm.category, productType: prodForm.productType || 'Generic Medicine', price: Number(prodForm.price), mrp: prodForm.mrp ? Number(prodForm.mrp) : undefined, stock: Number(prodForm.stock) || 0, description: prodForm.description, benefit: prodForm.benefit || undefined, requiresPrescription: prodForm.requiresPrescription, image: imageUrl || undefined, isActive: true, isPopular: prodForm.isPopular || false, isPopularGeneric: prodForm.isPopularGeneric || false, isPopularAyurveda: prodForm.isPopularAyurveda || false, isPopularHomeopathy: prodForm.isPopularHomeopathy || false, isPopularLabTests: prodForm.isPopularLabTests || false };
+      const payload = { name: prodForm.name, brand: prodForm.brand, category: prodForm.category, subcategory: (prodForm.productType === 'Homeopathy' || prodForm.productType === 'Ayurveda Medicine' || prodForm.productType === 'Nutrition' || prodForm.productType === 'Personal Care' || prodForm.productType === 'Baby Care' || prodForm.productType === 'Fitness' || prodForm.productType === 'Unani') ? (prodForm.subcategory || undefined) : undefined, potency: prodForm.potency || undefined, quantity: prodForm.quantity ? Number(prodForm.quantity) : undefined, quantityUnit: prodForm.quantityUnit || 'None', diseaseCategory: prodForm.diseaseCategory || undefined, diseaseSubcategory: prodForm.diseaseSubcategory || undefined, productType: prodForm.productType || 'Generic Medicine', price: Number(prodForm.price), mrp: prodForm.mrp ? Number(prodForm.mrp) : undefined, stock: Number(prodForm.stock) || 0, description: prodForm.description, benefit: prodForm.benefit || undefined, requiresPrescription: prodForm.requiresPrescription, image: imageUrl || undefined, isActive: true, isPopular: prodForm.isPopular || false, isPopularGeneric: prodForm.isPopularGeneric || false, isPopularAyurveda: prodForm.isPopularAyurveda || false, isPopularHomeopathy: prodForm.isPopularHomeopathy || false, isPopularLabTests: prodForm.isPopularLabTests || false };
       if (editMed) await fetch(`/api/admin/products/${editMed._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       else await fetch('/api/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       setShowProdForm(false); setEditMed(null); setImageUrl(''); await fetchProducts();
@@ -629,17 +874,97 @@ export default function AdminMedicines() {
                   <input type="text" placeholder="Product Name *" value={prodForm.name} onChange={(e) => setProdForm({ ...prodForm, name: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm" />
                   <select value={prodForm.productType || 'Generic Medicine'} onChange={(e) => {
                     const productType = e.target.value as VendorProductType;
-                    setProdForm({ ...prodForm, productType, category: getDefaultCategoryForType(productType) });
+                    const category = getDefaultCategoryForType(productType);
+                    const subcategory = productType === 'Homeopathy'
+                      ? getDefaultSubcategoryForHomeopathyCategory(category)
+                      : productType === 'Ayurveda Medicine'
+                        ? getDefaultSubcategoryForAyurvedaCategory(category)
+                        : productType === 'Nutrition'
+                          ? getDefaultSubcategoryForNutritionCategory(category)
+                          : productType === 'Personal Care'
+                            ? getDefaultSubcategoryForPersonalCareCategory(category)
+                            : productType === 'Baby Care'
+                              ? getDefaultSubcategoryForBabyCareCategory(category)
+                              : productType === 'Fitness'
+                                ? getDefaultSubcategoryForFitnessCategory(category)
+                                : productType === 'Unani'
+                                  ? getDefaultSubcategoryForUnaniCategory(category)
+                        : '';
+                    setProdForm({ ...prodForm, productType, category, subcategory });
                   }} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm">
                     {(Object.keys(VENDOR_CATEGORY_MAP) as VendorProductType[]).map((productType) => (
                       <option key={productType} value={productType}>{productType}</option>
                     ))}
                   </select>
-                  <select value={prodForm.category} onChange={(e) => setProdForm({ ...prodForm, category: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm">
+                  <select value={prodForm.category} onChange={(e) => {
+                    const category = e.target.value;
+                    const subcategory = prodForm.productType === 'Homeopathy'
+                      ? getDefaultSubcategoryForHomeopathyCategory(category)
+                      : prodForm.productType === 'Ayurveda Medicine'
+                        ? getDefaultSubcategoryForAyurvedaCategory(category)
+                        : prodForm.productType === 'Nutrition'
+                          ? getDefaultSubcategoryForNutritionCategory(category)
+                          : prodForm.productType === 'Personal Care'
+                            ? getDefaultSubcategoryForPersonalCareCategory(category)
+                            : prodForm.productType === 'Baby Care'
+                              ? getDefaultSubcategoryForBabyCareCategory(category)
+                              : prodForm.productType === 'Fitness'
+                                ? getDefaultSubcategoryForFitnessCategory(category)
+                                : prodForm.productType === 'Unani'
+                                  ? getDefaultSubcategoryForUnaniCategory(category)
+                        : '';
+                    setProdForm({ ...prodForm, category, subcategory });
+                  }} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm">
                     <option value="">Category *</option>
                     {VENDOR_CATEGORY_MAP[prodForm.productType as VendorProductType || 'Generic Medicine'].map((c) => <option key={c}>{c}</option>)}
                   </select>
+                  {(prodForm.productType === 'Homeopathy' || prodForm.productType === 'Ayurveda Medicine' || prodForm.productType === 'Nutrition' || prodForm.productType === 'Personal Care' || prodForm.productType === 'Baby Care' || prodForm.productType === 'Fitness' || prodForm.productType === 'Unani') && (
+                    <select value={prodForm.subcategory} onChange={(e) => setProdForm({ ...prodForm, subcategory: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm">
+                      <option value="">Subcategory *</option>
+                      {(
+                        prodForm.productType === 'Homeopathy'
+                          ? (HOMEOPATHY_SUBCATEGORY_MAP[prodForm.category as HomeopathyCategory] || [])
+                          : prodForm.productType === 'Ayurveda Medicine'
+                            ? (AYURVEDA_SUBCATEGORY_MAP[prodForm.category as AyurvedaCategory] || [])
+                            : prodForm.productType === 'Nutrition'
+                              ? (NUTRITION_SUBCATEGORY_MAP[prodForm.category as NutritionCategory] || [])
+                              : prodForm.productType === 'Personal Care'
+                                ? (PERSONAL_CARE_SUBCATEGORY_MAP[prodForm.category as PersonalCareCategory] || [])
+                                : prodForm.productType === 'Baby Care'
+                                  ? (BABY_CARE_SUBCATEGORY_MAP[prodForm.category as BabyCareCategory] || [])
+                                  : prodForm.productType === 'Fitness'
+                                    ? (FITNESS_SUBCATEGORY_MAP[prodForm.category as FitnessCategory] || [])
+                                    : (UNANI_SUBCATEGORY_MAP[prodForm.category as UnaniCategory] || [])
+                      ).map((subcategory) => (
+                        <option key={subcategory} value={subcategory}>{subcategory}</option>
+                      ))}
+                    </select>
+                  )}
+                  <select value={prodForm.diseaseCategory || ''} onChange={(e) => {
+                    const diseaseCategory = e.target.value;
+                    const options = DISEASE_SUBCATEGORY_MAP[diseaseCategory as DiseaseCategory] || [];
+                    setProdForm({ ...prodForm, diseaseCategory, diseaseSubcategory: options[0] || '' });
+                  }} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm">
+                    <option value="">Disease Category (Optional)</option>
+                    {(Object.keys(DISEASE_SUBCATEGORY_MAP) as DiseaseCategory[]).map((diseaseCategory) => (
+                      <option key={diseaseCategory} value={diseaseCategory}>{diseaseCategory}</option>
+                    ))}
+                  </select>
+                  <select value={prodForm.diseaseSubcategory || ''} onChange={(e) => setProdForm({ ...prodForm, diseaseSubcategory: e.target.value })} disabled={!prodForm.diseaseCategory} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm disabled:bg-slate-100 disabled:text-slate-400">
+                    <option value="">Disease Subcategory (Optional)</option>
+                    {((DISEASE_SUBCATEGORY_MAP[prodForm.diseaseCategory as DiseaseCategory] || [])).map((diseaseSubcategory) => (
+                      <option key={diseaseSubcategory} value={diseaseSubcategory}>{diseaseSubcategory}</option>
+                    ))}
+                  </select>
                   <input type="text" placeholder="Brand" value={prodForm.brand} onChange={(e) => setProdForm({ ...prodForm, brand: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm" />
+                  <select value={prodForm.potency || ''} onChange={(e) => setProdForm({ ...prodForm, potency: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm">
+                    <option value="">Potency (Optional)</option>
+                    {POTENCY_OPTIONS.map((potency) => <option key={potency} value={potency}>{potency}</option>)}
+                  </select>
+                  <input type="number" step="0.01" min="0" placeholder="Quantity (Optional)" value={prodForm.quantity || ''} onChange={(e) => setProdForm({ ...prodForm, quantity: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm" />
+                  <select value={prodForm.quantityUnit || 'None'} onChange={(e) => setProdForm({ ...prodForm, quantityUnit: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm">
+                    {QUANTITY_UNIT_OPTIONS.map((unit) => <option key={unit} value={unit}>{unit}</option>)}
+                  </select>
                   <input type="number" placeholder="Price ₹ *" value={prodForm.price} onChange={(e) => setProdForm({ ...prodForm, price: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm" />
                   <input type="number" placeholder="MRP ₹" value={prodForm.mrp} onChange={(e) => setProdForm({ ...prodForm, mrp: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm" />
                   <input type="number" placeholder="Stock Qty" value={prodForm.stock} onChange={(e) => setProdForm({ ...prodForm, stock: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm" />

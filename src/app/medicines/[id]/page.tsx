@@ -10,6 +10,9 @@ interface Product {
   name: string;
   brand?: string;
   category: string;
+  potency?: string;
+  quantity?: number;
+  quantityUnit?: string;
   productType?: string;
   description?: string;
   price: number;
@@ -39,6 +42,27 @@ interface ProductReview {
   createdAt: string;
 }
 
+const POTENCY_OPTIONS = ['1000 CH', '3 CH', '10M CH', '200 CH', '30 CH', '12 CH', '6 CH', 'CM CH', '50M CH'];
+const QUANTITY_UNIT_OPTIONS = ['None', 'BAGS (Bag)', 'BOTTLES (Btl)', 'BOX (Box)', 'BUNDLES (Bdl)', 'CANS (Can)', 'CAPSULES (CAPS)', 'CARTONS (Ctn)', 'DOZENS (Dzn)', 'GRAMMES (Gm)', 'KILOGRAMS (Kg)', 'LITRE (Ltr)', 'METERS (Mtr)', 'MILILITRE (MI)', 'NUMBERS (Nos)', 'PACKS (Pac)', 'PAIRS (Prs)', 'PIECES (Pcs)', 'QUINTAL (Qtl)', 'ROLLS (Rol)', 'SACHET (SACH)', 'SQUARE FEET (Sqf)', 'SQUARE METERS (Sqm)', 'TABLETS (Tbs)'];
+
+const normalizeText = (value?: string) => (value || '').trim().toLowerCase();
+const isUnitNone = (value?: string) => !value || value === 'None';
+
+const getQuantityLabel = (item: Product) => {
+  const hasQuantity = item.quantity !== undefined && item.quantity !== null;
+  const hasUnit = !isUnitNone(item.quantityUnit);
+  if (hasQuantity && hasUnit) return `${item.quantity} ${item.quantityUnit}`;
+  if (hasQuantity) return String(item.quantity);
+  if (hasUnit) return item.quantityUnit as string;
+  return 'None';
+};
+
+const getQuantityVariantKey = (item: Product) => {
+  const qty = item.quantity !== undefined && item.quantity !== null ? String(item.quantity) : '';
+  const unit = isUnitNone(item.quantityUnit) ? 'None' : String(item.quantityUnit);
+  return `${qty}|${unit}`;
+};
+
 export default function MedicineDetailsPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -64,6 +88,8 @@ export default function MedicineDetailsPage() {
   const [reviewSummary, setReviewSummary] = useState({ averageRating: 0, total: 0 });
   const [activeTab, setActiveTab] = useState<'info' | 'safety' | 'specs'>('info');
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [potencyProducts, setPotencyProducts] = useState<Product[]>([]);
+  const [quantityProducts, setQuantityProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -111,11 +137,138 @@ export default function MedicineDetailsPage() {
     }
   }, []);
 
+  const fetchPotencyProducts = useCallback(async (currentProduct: Product) => {
+    if (!currentProduct?.name) {
+      setPotencyProducts([]);
+      return;
+    }
+
+    try {
+      const params = new URLSearchParams({
+        category: currentProduct.category,
+        search: currentProduct.name,
+        limit: '100',
+      });
+
+      if (currentProduct.productType) {
+        params.set('productType', currentProduct.productType);
+      }
+
+      const res = await fetch(`/api/products?${params.toString()}`, { cache: 'no-store' });
+      const data = await res.json();
+
+      if (!res.ok || !Array.isArray(data.products)) {
+        setPotencyProducts([]);
+        return;
+      }
+
+      const currentName = normalizeText(currentProduct.name);
+      const currentBrand = normalizeText(currentProduct.brand);
+
+      const familyProducts = data.products.filter((item: Product) => {
+        if (!item?.potency) return false;
+        if (normalizeText(item.name) !== currentName) return false;
+        if (currentBrand && normalizeText(item.brand) !== currentBrand) return false;
+        return true;
+      });
+
+      const byPotency = new Map<string, Product>();
+      familyProducts.forEach((item: Product) => {
+        byPotency.set(item.potency as string, item);
+      });
+      if (currentProduct.potency) {
+        byPotency.set(currentProduct.potency, currentProduct);
+      }
+
+      const sorted = Array.from(byPotency.values()).sort((a, b) => {
+        const aIndex = POTENCY_OPTIONS.indexOf(a.potency || '');
+        const bIndex = POTENCY_OPTIONS.indexOf(b.potency || '');
+        const safeAIndex = aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex;
+        const safeBIndex = bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex;
+        if (safeAIndex !== safeBIndex) return safeAIndex - safeBIndex;
+        return (a.potency || '').localeCompare(b.potency || '');
+      });
+
+      setPotencyProducts(sorted);
+    } catch {
+      setPotencyProducts([]);
+    }
+  }, []);
+
+  const fetchQuantityProducts = useCallback(async (currentProduct: Product) => {
+    if (!currentProduct?.name) {
+      setQuantityProducts([]);
+      return;
+    }
+
+    try {
+      const params = new URLSearchParams({
+        category: currentProduct.category,
+        search: currentProduct.name,
+        limit: '100',
+      });
+
+      if (currentProduct.productType) {
+        params.set('productType', currentProduct.productType);
+      }
+
+      const res = await fetch(`/api/products?${params.toString()}`, { cache: 'no-store' });
+      const data = await res.json();
+
+      if (!res.ok || !Array.isArray(data.products)) {
+        setQuantityProducts([]);
+        return;
+      }
+
+      const currentName = normalizeText(currentProduct.name);
+      const currentBrand = normalizeText(currentProduct.brand);
+
+      const familyProducts = data.products.filter((item: Product) => {
+        if (normalizeText(item.name) !== currentName) return false;
+        if (currentBrand && normalizeText(item.brand) !== currentBrand) return false;
+        const hasQuantity = item.quantity !== undefined && item.quantity !== null;
+        const hasUnit = !isUnitNone(item.quantityUnit);
+        return hasQuantity || hasUnit;
+      });
+
+      const byQuantity = new Map<string, Product>();
+      familyProducts.forEach((item: Product) => {
+        byQuantity.set(getQuantityVariantKey(item), item);
+      });
+
+      const currentHasQuantity = currentProduct.quantity !== undefined && currentProduct.quantity !== null;
+      const currentHasUnit = !isUnitNone(currentProduct.quantityUnit);
+      if (currentHasQuantity || currentHasUnit) {
+        byQuantity.set(getQuantityVariantKey(currentProduct), currentProduct);
+      }
+
+      const sorted = Array.from(byQuantity.values()).sort((a, b) => {
+        const aUnit = isUnitNone(a.quantityUnit) ? 'None' : (a.quantityUnit as string);
+        const bUnit = isUnitNone(b.quantityUnit) ? 'None' : (b.quantityUnit as string);
+        const aUnitIndex = QUANTITY_UNIT_OPTIONS.indexOf(aUnit);
+        const bUnitIndex = QUANTITY_UNIT_OPTIONS.indexOf(bUnit);
+        const safeAUnitIndex = aUnitIndex === -1 ? Number.MAX_SAFE_INTEGER : aUnitIndex;
+        const safeBUnitIndex = bUnitIndex === -1 ? Number.MAX_SAFE_INTEGER : bUnitIndex;
+        if (safeAUnitIndex !== safeBUnitIndex) return safeAUnitIndex - safeBUnitIndex;
+
+        const aQty = a.quantity ?? Number.MAX_SAFE_INTEGER;
+        const bQty = b.quantity ?? Number.MAX_SAFE_INTEGER;
+        return aQty - bQty;
+      });
+
+      setQuantityProducts(sorted);
+    } catch {
+      setQuantityProducts([]);
+    }
+  }, []);
+
   useEffect(() => {
     if (product) {
       fetchRelatedProducts(product);
+      fetchPotencyProducts(product);
+      fetchQuantityProducts(product);
     }
-  }, [product, fetchRelatedProducts]);
+  }, [product, fetchRelatedProducts, fetchPotencyProducts, fetchQuantityProducts]);
 
   const fetchReviews = useCallback(async (page = 1, append = false) => {
     if (!productId) return;
@@ -415,6 +568,66 @@ export default function MedicineDetailsPage() {
                   <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4 leading-tight">
                     {product.name}
                   </h1>
+
+                  {/* Potency Selector */}
+                  {potencyProducts.length > 0 && (
+                    <div className="mb-6">
+                      <p className="text-sm font-semibold text-slate-700 mb-2">Select Potency</p>
+                      <div className="flex flex-wrap gap-2">
+                        {potencyProducts.map((potencyProduct) => {
+                          const isActive = potencyProduct._id === product._id;
+                          return (
+                            <button
+                              key={potencyProduct._id}
+                              type="button"
+                              onClick={() => {
+                                if (!isActive) {
+                                  router.push(`/medicines/${potencyProduct._id}`);
+                                }
+                              }}
+                              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
+                                isActive
+                                  ? 'bg-emerald-600 text-white border-emerald-600'
+                                  : 'bg-white text-slate-700 border-slate-300 hover:border-emerald-500 hover:text-emerald-700'
+                              }`}
+                            >
+                              {potencyProduct.potency}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Quantity Selector */}
+                  {quantityProducts.length > 0 && (
+                    <div className="mb-6">
+                      <p className="text-sm font-semibold text-slate-700 mb-2">Select Quantity</p>
+                      <div className="flex flex-wrap gap-2">
+                        {quantityProducts.map((quantityProduct) => {
+                          const isActive = quantityProduct._id === product._id;
+                          return (
+                            <button
+                              key={`quantity-${quantityProduct._id}`}
+                              type="button"
+                              onClick={() => {
+                                if (!isActive) {
+                                  router.push(`/medicines/${quantityProduct._id}`);
+                                }
+                              }}
+                              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
+                                isActive
+                                  ? 'bg-emerald-600 text-white border-emerald-600'
+                                  : 'bg-white text-slate-700 border-slate-300 hover:border-emerald-500 hover:text-emerald-700'
+                              }`}
+                            >
+                              {getQuantityLabel(quantityProduct)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Rating */}
                   <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-200">
@@ -957,6 +1170,11 @@ export default function MedicineDetailsPage() {
                         {/* Product Details */}
                         <div className="p-4">
                           <p className="text-xs text-slate-500 mb-1">{relProduct.brand || 'MySanjeevni'}</p>
+                          {getQuantityLabel(relProduct) && (
+                            <p className="text-[11px] font-semibold text-indigo-700 mb-1">
+                              Qty: {getQuantityLabel(relProduct)}
+                            </p>
+                          )}
                           <h3 className="font-bold text-slate-900 text-sm line-clamp-2 mb-2">
                             {relProduct.name}
                           </h3>

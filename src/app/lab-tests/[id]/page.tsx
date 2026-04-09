@@ -36,6 +36,9 @@ interface BookingForm {
   collectionDate: string;
   collectionTime: string;
   address: string;
+  patientPincode: string;
+  patientAge: string;
+  patientGender: 'MALE' | 'FEMALE' | 'OTHER';
   notes: string;
 }
 
@@ -88,6 +91,9 @@ export default function LabTestDetailsPage() {
     collectionDate: '',
     collectionTime: '',
     address: '',
+    patientPincode: '',
+    patientAge: '',
+    patientGender: 'MALE',
     notes: '',
   });
 
@@ -138,6 +144,19 @@ export default function LabTestDetailsPage() {
     if (!isAuthenticated || !token) {
       redirectToLogin();
       return;
+    }
+
+    if (bookingForm.testId.startsWith('thyrocare_')) {
+      if (!/^\d{6}$/.test(bookingForm.patientPincode.trim())) {
+        alert('Please enter a valid 6-digit pincode for Thyrocare booking.');
+        return;
+      }
+
+      const age = Number(bookingForm.patientAge);
+      if (!Number.isInteger(age) || age < 0 || age > 120) {
+        alert('Please enter a valid age between 0 and 120.');
+        return;
+      }
     }
 
     try {
@@ -211,6 +230,9 @@ export default function LabTestDetailsPage() {
             },
             body: JSON.stringify({
               ...bookingForm,
+              patientPincode: bookingForm.patientPincode || undefined,
+              patientAge: bookingForm.patientAge ? Number(bookingForm.patientAge) : undefined,
+              patientGender: bookingForm.patientGender,
               razorpayOrderId: paymentResponse.razorpay_order_id,
               razorpayPaymentId: paymentResponse.razorpay_payment_id,
               razorpaySignature: paymentResponse.razorpay_signature,
@@ -341,7 +363,7 @@ export default function LabTestDetailsPage() {
               </div>
 
               {/* Image Section */}
-              <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-lg p-8 mb-6 h-64 flex items-center justify-center">
+              <div className="bg-linear-to-br from-emerald-50 to-teal-50 rounded-lg p-8 mb-6 h-64 flex items-center justify-center">
                 {test.image ? (
                   <img
                     src={test.image}
@@ -585,6 +607,71 @@ export default function LabTestDetailsPage() {
                         rows={3}
                       />
                     </div>
+                  )}
+
+                  {bookingForm.testId.startsWith('thyrocare_') && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">
+                          Pincode <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          maxLength={6}
+                          inputMode="numeric"
+                          placeholder="6-digit pincode"
+                          value={bookingForm.patientPincode}
+                          onChange={(e) =>
+                            setBookingForm({
+                              ...bookingForm,
+                              patientPincode: e.target.value.replace(/\D/g, '').slice(0, 6),
+                            })
+                          }
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-1">
+                            Age <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            max={120}
+                            placeholder="Years"
+                            value={bookingForm.patientAge}
+                            onChange={(e) =>
+                              setBookingForm({
+                                ...bookingForm,
+                                patientAge: e.target.value,
+                              })
+                            }
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-1">
+                            Gender <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={bookingForm.patientGender}
+                            onChange={(e) =>
+                              setBookingForm({
+                                ...bookingForm,
+                                patientGender: e.target.value as 'MALE' | 'FEMALE' | 'OTHER',
+                              })
+                            }
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                          >
+                            <option value="MALE">Male</option>
+                            <option value="FEMALE">Female</option>
+                            <option value="OTHER">Other</option>
+                          </select>
+                        </div>
+                      </div>
+                    </>
                   )}
 
                   {/* Notes */}

@@ -1,5 +1,8 @@
 import mongoose from 'mongoose';
 
+const POTENCY_OPTIONS = ['1000 CH', '3 CH', '10M CH', '200 CH', '30 CH', '12 CH', '6 CH', 'CM CH', '50M CH'];
+const QUANTITY_UNIT_OPTIONS = ['None', 'BAGS (Bag)', 'BOTTLES (Btl)', 'BOX (Box)', 'BUNDLES (Bdl)', 'CANS (Can)', 'CAPSULES (CAPS)', 'CARTONS (Ctn)', 'DOZENS (Dzn)', 'GRAMMES (Gm)', 'KILOGRAMS (Kg)', 'LITRE (Ltr)', 'METERS (Mtr)', 'MILILITRE (MI)', 'NUMBERS (Nos)', 'PACKS (Pac)', 'PAIRS (Prs)', 'PIECES (Pcs)', 'QUINTAL (Qtl)', 'ROLLS (Rol)', 'SACHET (SACH)', 'SQUARE FEET (Sqf)', 'SQUARE METERS (Sqm)', 'TABLETS (Tbs)'];
+
 const productSchema = new mongoose.Schema(
   {
     // Product Info
@@ -16,6 +19,28 @@ const productSchema = new mongoose.Schema(
     category: {
       type: String,
       required: true,
+    },
+    subcategory: {
+      type: String,
+    },
+    potency: {
+      type: String,
+      enum: POTENCY_OPTIONS,
+    },
+    quantity: {
+      type: Number,
+      min: 0,
+    },
+    quantityUnit: {
+      type: String,
+      enum: QUANTITY_UNIT_OPTIONS,
+      default: 'None',
+    },
+    diseaseCategory: {
+      type: String,
+    },
+    diseaseSubcategory: {
+      type: String,
     },
     productType: {
       type: String,

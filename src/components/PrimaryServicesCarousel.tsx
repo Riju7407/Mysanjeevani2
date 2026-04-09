@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -22,8 +23,39 @@ const SERVICES: Service[] = [
 ];
 
 export default function PrimaryServicesCarousel() {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return (
+      <section className="bg-linear-to-b from-white via-gray-50 to-white py-16">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="mb-12 text-center">
+            <h2 className="text-4xl font-bold text-gray-900 mb-3">Our Primary Services</h2>
+            <p className="text-gray-600 text-lg">Comprehensive healthcare solutions at your fingertips</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {SERVICES.map((service) => (
+              <div key={service.label} className="mb-4">
+                <div className="relative overflow-hidden rounded-3xl h-80 bg-gray-200/70 animate-pulse" />
+                <div className="text-center mt-5">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">{service.label}</h3>
+                  <p className="text-sm text-gray-600 leading-relaxed mb-4">{service.desc}</p>
+                  <span className="inline-block px-6 py-2.5 rounded-full font-bold text-sm bg-gray-900 text-white">Explore →</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <section className="bg-gradient-to-b from-white via-gray-50 to-white py-16">
+    <section className="bg-linear-to-b from-white via-gray-50 to-white py-16">
       <div className="max-w-7xl mx-auto px-4">
         <div className="mb-12 text-center">
           <h2 className="text-4xl font-bold text-gray-900 mb-3">Our Primary Services</h2>
@@ -48,10 +80,10 @@ export default function PrimaryServicesCarousel() {
                   />
 
                   {/* Gradient Overlay */}
-                  <div className={`absolute inset-0 bg-gradient-to-br ${service.bgGradient} opacity-20 group-hover:opacity-10 transition-all duration-300`}></div>
+                  <div className={`absolute inset-0 bg-linear-to-br ${service.bgGradient} opacity-20 group-hover:opacity-10 transition-all duration-300`}></div>
 
                   {/* Subtle dark overlay for depth */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-black/5 to-transparent group-hover:via-black/0 transition-all duration-300"></div>
+                  <div className="absolute inset-0 bg-linear-to-t from-black/20 via-black/5 to-transparent group-hover:via-black/0 transition-all duration-300"></div>
 
                   {/* Decorative Elements */}
                   <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-125 transition-transform duration-300"></div>
@@ -72,7 +104,7 @@ export default function PrimaryServicesCarousel() {
                   </p>
 
                   {/* CTA Button */}
-                  <button className="px-6 py-2.5 rounded-full font-bold text-sm transition-all duration-300 bg-gradient-to-r from-gray-900 to-gray-700 text-white hover:from-teal-600 hover:to-teal-700 shadow-md hover:shadow-lg hover:-translate-y-1">
+                  <button className="px-6 py-2.5 rounded-full font-bold text-sm transition-all duration-300 bg-linear-to-r from-gray-900 to-gray-700 text-white hover:from-teal-600 hover:to-teal-700 shadow-md hover:shadow-lg hover:-translate-y-1">
                     Explore →
                   </button>
                 </div>
