@@ -1,13 +1,13 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, Suspense, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
 type InquiryCategory = 'general' | 'order' | 'account' | 'payment' | 'doctor' | 'other';
 
-export default function ContactSupportPage() {
+function ContactSupportContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderId = searchParams.get('orderId') || '';
@@ -191,5 +191,13 @@ export default function ContactSupportPage() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function ContactSupportPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-50" />}>
+      <ContactSupportContent />
+    </Suspense>
   );
 }

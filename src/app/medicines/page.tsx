@@ -11,6 +11,7 @@ interface Product {
   _id: string;
   name: string;
   brand: string;
+  potency?: string;
   quantity?: number;
   quantityUnit?: string;
   productType?: string;
