@@ -269,7 +269,24 @@ function MedicinesContent() {
       p.benefit,
     ].some((field) => equalsIgnoreCase(field, urlSubcategory));
 
-    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || (p.brand || '').toLowerCase().includes(search.toLowerCase());
+    const searchText = search.trim().toLowerCase();
+    const quantityText = p.quantity !== undefined && p.quantity !== null ? String(p.quantity) : '';
+    const matchSearch =
+      !searchText ||
+      [
+        p.name,
+        p.brand,
+        p.category,
+        p.subcategory,
+        p.diseaseCategory,
+        p.diseaseSubcategory,
+        p.potency,
+        p.quantityUnit,
+        quantityText,
+        getQuantityLabel(p),
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(searchText));
     return matchCat && urlCategoryMatch && urlSubcategoryMatch && matchSearch;
   });
 

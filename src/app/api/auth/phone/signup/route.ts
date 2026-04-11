@@ -10,6 +10,7 @@ import { normalizePhone, normalizeRole, type PhoneLoginRole } from '@/lib/phoneA
 
 const OTP_TTL_MS = Math.max(10, Number(process.env.OTP_TTL_SECONDS || '300')) * 1000;
 const RESEND_COOLDOWN_SECONDS = Math.max(30, Number(process.env.OTP_RESEND_COOLDOWN_SECONDS || '60'));
+const IS_DEV = process.env.NODE_ENV !== 'production';
 
 function generateOtp(): string {
   if (process.env.OTP_TEST_MODE === 'true') {
@@ -67,32 +68,34 @@ export async function POST(request: NextRequest) {
 
     const clientIp = getClientIp(request);
 
-    // Rate limiting
-    const ipLimit = await consumeRateLimit('phone-signup-ip', clientIp, 10, 60 * 60 * 1000);
-    if (!ipLimit.allowed) {
-      return NextResponse.json(
-        {
-          error: `Too many signup attempts from this IP. Try again in ${ipLimit.retryAfterSeconds}s.`,
-          retryAfterSeconds: ipLimit.retryAfterSeconds,
-        },
-        { status: 429 }
-      );
-    }
+    // Rate limiting (relaxed in development to avoid local testing lockouts)
+    if (!IS_DEV) {
+      const ipLimit = await consumeRateLimit('phone-signup-ip', clientIp, 30, 15 * 60 * 1000);
+      if (!ipLimit.allowed) {
+        return NextResponse.json(
+          {
+            error: `Too many signup attempts from this IP. Try again in ${ipLimit.retryAfterSeconds}s.`,
+            retryAfterSeconds: ipLimit.retryAfterSeconds,
+          },
+          { status: 429 }
+        );
+      }
 
-    const phoneLimit = await consumeRateLimit(
-      'phone-signup-phone',
-      `${role}:${normalizedPhone}`,
-      3,
-      24 * 60 * 60 * 1000 // 24 hours
-    );
-    if (!phoneLimit.allowed) {
-      return NextResponse.json(
-        {
-          error: 'Too many signup attempts for this number today. Try again in 24 hours.',
-          retryAfterSeconds: phoneLimit.retryAfterSeconds,
-        },
-        { status: 429 }
+      const phoneLimit = await consumeRateLimit(
+        'phone-signup-phone',
+        `${role}:${normalizedPhone}`,
+        6,
+        15 * 60 * 1000
       );
+      if (!phoneLimit.allowed) {
+        return NextResponse.json(
+          {
+            error: `Too many OTP requests for this number. Try again in ${phoneLimit.retryAfterSeconds}s.`,
+            retryAfterSeconds: phoneLimit.retryAfterSeconds,
+          },
+          { status: 429 }
+        );
+      }
     }
 
     // Check if phone already exists

@@ -7,13 +7,15 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
 interface Order {
-  id: string;
+  _id?: string;
+  id?: string;
+  orderId?: string;
   userId: string;
-  items: any[];
-  totalAmount: number;
-  paymentMethod: string;
-  status: string;
-  createdAt: string;
+  items?: any[];
+  totalAmount?: number;
+  paymentMethod?: string;
+  status?: string;
+  createdAt?: string;
 }
 
 export default function OrdersPage() {
@@ -73,6 +75,18 @@ export default function OrdersPage() {
     }
   };
 
+  const getPaymentLabel = (method?: string) => {
+    const normalized = String(method || '').trim().toLowerCase();
+    if (!normalized) return 'COD';
+    if (normalized === 'cod') return 'COD';
+    if (normalized === 'cash_on_delivery') return 'COD';
+    return normalized.toUpperCase();
+  };
+
+  const getOrderId = (order: Order): string => {
+    return String(order?._id || order?.id || order?.orderId || '').trim();
+  };
+
   if (!user) {
     return null;
   }
@@ -103,18 +117,28 @@ export default function OrdersPage() {
           ) : (
             <div className="grid gap-6">
               {orders.map((order) => (
+                (() => {
+                  const resolvedOrderId = getOrderId(order);
+                  const safeOrderId = resolvedOrderId || 'N/A';
+                  const safeStatus = String(order?.status || 'processing').toLowerCase();
+                  const safePaymentMethod = String(order?.paymentMethod || 'cod').toLowerCase();
+                  const safeItems = Array.isArray(order?.items) ? order.items : [];
+                  const safeTotalAmount = Number(order?.totalAmount || 0);
+                  const safeCreatedAt = order?.createdAt ? new Date(order.createdAt) : new Date();
+
+                  return (
                 <div
-                  key={order.id}
+                  key={`${safeOrderId}-${order?.createdAt || ''}`}
                   className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition cursor-pointer"
-                  onClick={() => setSelectedOrder(selectedOrder?.id === order.id ? null : order)}
+                  onClick={() => setSelectedOrder(getOrderId(selectedOrder as Order) === resolvedOrderId ? null : order)}
                 >
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold text-gray-900">
-                        Order #{order.id.toUpperCase()}
+                        Order #{safeOrderId.toUpperCase()}
                       </h3>
                       <p className="text-sm text-gray-600">
-                        {new Date(order.createdAt).toLocaleDateString('en-IN', {
+                        {safeCreatedAt.toLocaleDateString('en-IN', {
                           day: 'numeric',
                           month: 'short',
                           year: 'numeric',
@@ -124,11 +148,11 @@ export default function OrdersPage() {
                       </p>
                     </div>
                     <div className="flex flex-col gap-2">
-                      <span className={`px-4 py-2 rounded-full text-sm font-semibold text-center ${getStatusColor(order.status)}`}>
-                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                      <span className={`px-4 py-2 rounded-full text-sm font-semibold text-center ${getStatusColor(safeStatus)}`}>
+                        {safeStatus.charAt(0).toUpperCase() + safeStatus.slice(1)}
                       </span>
                       <p className="text-right text-lg font-bold text-emerald-600">
-                        ₹{order.totalAmount.toFixed(2)}
+                        ₹{safeTotalAmount.toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -137,12 +161,12 @@ export default function OrdersPage() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-4 border-t border-gray-200 border-b">
                     <div>
                       <p className="text-xs text-gray-600">Items</p>
-                      <p className="font-semibold text-gray-900">{order.items.length}</p>
+                      <p className="font-semibold text-gray-900">{safeItems.length}</p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-600">Payment</p>
                       <p className="font-semibold text-gray-900">
-                        {getPaymentIcon(order.paymentMethod)} {order.paymentMethod.toUpperCase()}
+                        {getPaymentIcon(safePaymentMethod)} {getPaymentLabel(safePaymentMethod)}
                       </p>
                     </div>
                     <div>
@@ -156,11 +180,11 @@ export default function OrdersPage() {
                   </div>
 
                   {/* Expandable Order Details */}
-                  {selectedOrder?.id === order.id && (
+                  {getOrderId(selectedOrder as Order) === resolvedOrderId && (
                     <div className="mt-6 pt-6 border-t border-gray-200">
                       <h4 className="font-semibold text-gray-900 mb-4">Order Items</h4>
                       <div className="space-y-3">
-                        {order.items.map((item, idx) => (
+                        {safeItems.map((item, idx) => (
                           <div key={idx} className="flex justify-between items-center text-sm">
                             <div>
                               <p className="text-gray-900 font-medium">{item.name}</p>
@@ -177,11 +201,11 @@ export default function OrdersPage() {
                       <div className="mt-4 pt-4 border-t border-gray-200 space-y-2 text-sm">
                         <div className="flex justify-between">
                           <span className="text-gray-600">Subtotal:</span>
-                          <span className="font-medium">₹{(order.totalAmount * 0.9).toFixed(2)}</span>
+                          <span className="font-medium">₹{(safeTotalAmount * 0.9).toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Discount:</span>
-                          <span className="font-medium text-green-600">-₹{((order.totalAmount * 0.9) * 0.1).toFixed(2)}</span>
+                          <span className="font-medium text-green-600">-₹{((safeTotalAmount * 0.9) * 0.1).toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Delivery:</span>
@@ -189,24 +213,29 @@ export default function OrdersPage() {
                         </div>
                         <div className="flex justify-between pt-2 border-t border-gray-200 font-bold">
                           <span>Total:</span>
-                          <span className="text-emerald-600">₹{order.totalAmount.toFixed(2)}</span>
+                          <span className="text-emerald-600">₹{safeTotalAmount.toFixed(2)}</span>
                         </div>
                       </div>
 
                       <div className="mt-6 flex gap-3">
                         <button
-                          onClick={() => router.push(`/track?orderId=${encodeURIComponent(order.id)}`)}
+                          onClick={() => router.push(`/track?orderId=${encodeURIComponent(safeOrderId)}`)}
                           className="flex-1 px-4 py-2 border border-emerald-600 text-emerald-600 rounded-lg hover:bg-emerald-50 font-medium transition"
                         >
                           📞 Track Order
                         </button>
-                        <button className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition">
+                        <button
+                          onClick={() => router.push(`/contact-support?orderId=${encodeURIComponent(safeOrderId)}`)}
+                          className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition"
+                        >
                           💬 Contact Support
                         </button>
                       </div>
                     </div>
                   )}
                 </div>
+                  );
+                })()
               ))}
             </div>
           )}

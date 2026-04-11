@@ -25,6 +25,8 @@ interface Medicine {
   benefit?: string;
   stock: number;
   description: string;
+  safetyInformation?: string;
+  specifications?: string;
   image?: string;
   rating?: number;
   reviews?: number;
@@ -342,6 +344,20 @@ const VENDOR_CATEGORY_MAP = {
 
 type VendorProductType = keyof typeof VENDOR_CATEGORY_MAP;
 
+const FEATURED_CARD_COLORS = [
+  '#ffffff',
+  '#fef3c7',
+  '#fee2e2',
+  '#dbeafe',
+  '#dcfce7',
+  '#f3e8ff',
+  '#fce7f3',
+  '#ecfeff',
+];
+
+const getRandomFeaturedCardColor = () =>
+  FEATURED_CARD_COLORS[Math.floor(Math.random() * FEATURED_CARD_COLORS.length)];
+
 function getDefaultCategoryForType(productType: VendorProductType): string {
   return VENDOR_CATEGORY_MAP[productType][0];
 }
@@ -388,7 +404,7 @@ function getDefaultSubcategoryForUnaniCategory(category: string): string {
   return options[0] || '';
 }
 
-const EMPTY_PROD = { name: '', brand: '', category: '', subcategory: '', potency: '', quantity: '', quantityUnit: 'None', diseaseCategory: '', diseaseSubcategory: '', price: '', mrp: '', stock: '', description: '', benefit: '', requiresPrescription: false, image: '', isPopular: false, productType: 'Generic Medicine' as VendorProductType, isPopularGeneric: false, isPopularAyurveda: false, isPopularHomeopathy: false, isPopularLabTests: false };
+const EMPTY_PROD = { name: '', brand: '', category: '', subcategory: '', potency: '', quantity: '', quantityUnit: 'None', diseaseCategory: '', diseaseSubcategory: '', price: '', mrp: '', stock: '', description: '', safetyInformation: '', specifications: '', benefit: '', requiresPrescription: false, image: '', isPopular: false, productType: 'Generic Medicine' as VendorProductType, isPopularGeneric: false, isPopularAyurveda: false, isPopularHomeopathy: false, isPopularLabTests: false };
 const EMPTY_LAB  = { name: '', category: '', price: '', mrp: '', description: '', icon: '', duration: '', testsIncluded: '', popular: false };
 
 /**
@@ -420,6 +436,7 @@ export default function AdminMedicines() {
   const [medLoading, setMedLoading] = useState(true);
   const [medSaving, setMedSaving] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
+  const [featureSubmittingId, setFeatureSubmittingId] = useState<string | null>(null);
 
   // ── Lab Tests state ───────────────────────────────────────────────────────
   const [labTests, setLabTests] = useState<LabTest[]>([]);
@@ -490,7 +507,7 @@ export default function AdminMedicines() {
     const isBabyCare = productType === 'Baby Care';
     const isFitness = productType === 'Fitness';
     const isUnani = productType === 'Unani';
-    setProdForm({ name: m.name, brand: m.brand || '', category: m.category, subcategory: isHomeopathy ? (m.subcategory || getDefaultSubcategoryForHomeopathyCategory(m.category)) : isAyurveda ? (m.subcategory || getDefaultSubcategoryForAyurvedaCategory(m.category)) : isNutrition ? (m.subcategory || getDefaultSubcategoryForNutritionCategory(m.category)) : isPersonalCare ? (m.subcategory || getDefaultSubcategoryForPersonalCareCategory(m.category)) : isBabyCare ? (m.subcategory || getDefaultSubcategoryForBabyCareCategory(m.category)) : isFitness ? (m.subcategory || getDefaultSubcategoryForFitnessCategory(m.category)) : isUnani ? (m.subcategory || getDefaultSubcategoryForUnaniCategory(m.category)) : '', potency: m.potency || '', quantity: m.quantity !== undefined ? String(m.quantity) : '', quantityUnit: m.quantityUnit || 'None', diseaseCategory: (m as any).diseaseCategory || '', diseaseSubcategory: (m as any).diseaseSubcategory || '', price: String(m.price), mrp: String(m.mrp || ''), stock: String(m.stock), description: m.description || '', benefit: m.benefit || '', requiresPrescription: m.requiresPrescription || false, image: m.image || '', isPopular: m.isPopular || false, productType, isPopularGeneric: (m as any).isPopularGeneric || false, isPopularAyurveda: (m as any).isPopularAyurveda || false, isPopularHomeopathy: (m as any).isPopularHomeopathy || false, isPopularLabTests: (m as any).isPopularLabTests || false });
+    setProdForm({ name: m.name, brand: m.brand || '', category: m.category, subcategory: isHomeopathy ? (m.subcategory || getDefaultSubcategoryForHomeopathyCategory(m.category)) : isAyurveda ? (m.subcategory || getDefaultSubcategoryForAyurvedaCategory(m.category)) : isNutrition ? (m.subcategory || getDefaultSubcategoryForNutritionCategory(m.category)) : isPersonalCare ? (m.subcategory || getDefaultSubcategoryForPersonalCareCategory(m.category)) : isBabyCare ? (m.subcategory || getDefaultSubcategoryForBabyCareCategory(m.category)) : isFitness ? (m.subcategory || getDefaultSubcategoryForFitnessCategory(m.category)) : isUnani ? (m.subcategory || getDefaultSubcategoryForUnaniCategory(m.category)) : '', potency: m.potency || '', quantity: m.quantity !== undefined ? String(m.quantity) : '', quantityUnit: m.quantityUnit || 'None', diseaseCategory: (m as any).diseaseCategory || '', diseaseSubcategory: (m as any).diseaseSubcategory || '', price: String(m.price), mrp: String(m.mrp || ''), stock: String(m.stock), description: m.description || '', safetyInformation: (m as any).safetyInformation || '', specifications: (m as any).specifications || '', benefit: m.benefit || '', requiresPrescription: m.requiresPrescription || false, image: m.image || '', isPopular: m.isPopular || false, productType, isPopularGeneric: (m as any).isPopularGeneric || false, isPopularAyurveda: (m as any).isPopularAyurveda || false, isPopularHomeopathy: (m as any).isPopularHomeopathy || false, isPopularLabTests: (m as any).isPopularLabTests || false });
     setImageUrl(m.image || '');
     setShowProdForm(true);
   };
@@ -529,7 +546,7 @@ export default function AdminMedicines() {
         }
       }
       
-      const payload = { name: prodForm.name, brand: prodForm.brand, category: prodForm.category, subcategory: (prodForm.productType === 'Homeopathy' || prodForm.productType === 'Ayurveda Medicine' || prodForm.productType === 'Nutrition' || prodForm.productType === 'Personal Care' || prodForm.productType === 'Baby Care' || prodForm.productType === 'Fitness' || prodForm.productType === 'Unani') ? (prodForm.subcategory || undefined) : undefined, potency: prodForm.potency || undefined, quantity: prodForm.quantity ? Number(prodForm.quantity) : undefined, quantityUnit: prodForm.quantityUnit || 'None', diseaseCategory: prodForm.diseaseCategory || undefined, diseaseSubcategory: prodForm.diseaseSubcategory || undefined, productType: prodForm.productType || 'Generic Medicine', price: Number(prodForm.price), mrp: prodForm.mrp ? Number(prodForm.mrp) : undefined, stock: Number(prodForm.stock) || 0, description: prodForm.description, benefit: prodForm.benefit || undefined, requiresPrescription: prodForm.requiresPrescription, image: imageUrl || undefined, isActive: true, isPopular: prodForm.isPopular || false, isPopularGeneric: prodForm.isPopularGeneric || false, isPopularAyurveda: prodForm.isPopularAyurveda || false, isPopularHomeopathy: prodForm.isPopularHomeopathy || false, isPopularLabTests: prodForm.isPopularLabTests || false };
+      const payload = { name: prodForm.name, brand: prodForm.brand, category: prodForm.category, subcategory: (prodForm.productType === 'Homeopathy' || prodForm.productType === 'Ayurveda Medicine' || prodForm.productType === 'Nutrition' || prodForm.productType === 'Personal Care' || prodForm.productType === 'Baby Care' || prodForm.productType === 'Fitness' || prodForm.productType === 'Unani') ? (prodForm.subcategory || undefined) : undefined, potency: prodForm.potency || undefined, quantity: prodForm.quantity ? Number(prodForm.quantity) : undefined, quantityUnit: prodForm.quantityUnit || 'None', diseaseCategory: prodForm.diseaseCategory || undefined, diseaseSubcategory: prodForm.diseaseSubcategory || undefined, productType: prodForm.productType || 'Generic Medicine', price: Number(prodForm.price), mrp: prodForm.mrp ? Number(prodForm.mrp) : undefined, stock: Number(prodForm.stock) || 0, description: prodForm.description, safetyInformation: prodForm.safetyInformation || undefined, specifications: prodForm.specifications || undefined, benefit: prodForm.benefit || undefined, requiresPrescription: prodForm.requiresPrescription, image: imageUrl || undefined, isActive: true, isPopular: prodForm.isPopular || false, isPopularGeneric: prodForm.isPopularGeneric || false, isPopularAyurveda: prodForm.isPopularAyurveda || false, isPopularHomeopathy: prodForm.isPopularHomeopathy || false, isPopularLabTests: prodForm.isPopularLabTests || false };
       if (editMed) await fetch(`/api/admin/products/${editMed._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       else await fetch('/api/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       setShowProdForm(false); setEditMed(null); setImageUrl(''); await fetchProducts();
@@ -559,6 +576,89 @@ export default function AdminMedicines() {
     
     await fetch(`/api/admin/products/${m._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updatePayload) });
     setMedicines((p) => p.map((x) => x._id === m._id ? { ...x, isPopular: !x.isPopular, isPopularGeneric: productType === 'Generic Medicine' ? newIsPopular : x.isPopularGeneric, isPopularAyurveda: productType === 'Ayurveda Medicine' ? newIsPopular : (x as any).isPopularAyurveda, isPopularHomeopathy: productType === 'Homeopathy' ? newIsPopular : (x as any).isPopularHomeopathy, isPopularLabTests: productType === 'Lab Tests' ? newIsPopular : (x as any).isPopularLabTests } : x));
+  };
+  const addToFeaturedProducts = async (m: Medicine) => {
+    if ((m.approvalStatus || 'approved') !== 'approved') {
+      alert('Only approved products can be added to featured products.');
+      return;
+    }
+    if (!m.image) {
+      alert('Please add a product image before featuring this product.');
+      return;
+    }
+
+    const token = localStorage.getItem('adminToken');
+    const expiresAt = localStorage.getItem('tokenExpiresAt');
+    let adminEmail = localStorage.getItem('adminEmail');
+
+    if (!adminEmail) {
+      const user = localStorage.getItem('user');
+      if (user) {
+        try {
+          const userData = JSON.parse(user);
+          adminEmail = userData.email;
+        } catch {
+          adminEmail = null;
+        }
+      }
+    }
+
+    if (!token || !expiresAt || !adminEmail) {
+      alert('Admin authentication missing. Please logout and login again.');
+      return;
+    }
+
+    const productType = (m.productType as VendorProductType) || 'Generic Medicine';
+    const category: VendorProductType =
+      Object.prototype.hasOwnProperty.call(VENDOR_CATEGORY_MAP, productType)
+        ? productType
+        : 'Generic Medicine';
+
+    const allowedSubcategories = VENDOR_CATEGORY_MAP[category] as readonly string[];
+    const preferredSubcategory =
+      [m.subcategory, m.category, m.brand, m.name]
+        .map((value) => (value || '').trim())
+        .find((value) => !!value && allowedSubcategories.includes(value)) ||
+      allowedSubcategories[0] ||
+      'General';
+
+    const payload = {
+      brandName: (m.brand || m.name || '').trim(),
+      category,
+      subcategory: preferredSubcategory,
+      imageUrl: m.image,
+      cardBgColor: getRandomFeaturedCardColor(),
+    };
+
+    if (!payload.brandName) {
+      alert('Product name/brand is required to add featured product.');
+      return;
+    }
+
+    setFeatureSubmittingId(m._id);
+    try {
+      const response = await fetch('/api/featured-products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          'x-token-expires-at': expiresAt,
+          'x-admin-email': adminEmail,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'Failed to add product to featured list');
+      }
+
+      alert('Product added to featured products successfully.');
+    } catch (error: any) {
+      alert(error?.message || 'Failed to add product to featured products.');
+    } finally {
+      setFeatureSubmittingId(null);
+    }
   };
   const approveProd = async (m: Medicine) => {
     await fetch(`/api/admin/products/${m._id}`, {
@@ -970,6 +1070,8 @@ export default function AdminMedicines() {
                   <input type="number" placeholder="Stock Qty" value={prodForm.stock} onChange={(e) => setProdForm({ ...prodForm, stock: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm" />
                   <input type="text" placeholder="Benefit tag (e.g. Immunity)" value={prodForm.benefit} onChange={(e) => setProdForm({ ...prodForm, benefit: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm" />
                   <textarea placeholder="Description" value={prodForm.description} onChange={(e) => setProdForm({ ...prodForm, description: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm md:col-span-3" rows={2} />
+                  <textarea placeholder="Safety Information (one point per line)" value={prodForm.safetyInformation || ''} onChange={(e) => setProdForm({ ...prodForm, safetyInformation: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm md:col-span-3" rows={3} />
+                  <textarea placeholder="Specifications (one point per line)" value={prodForm.specifications || ''} onChange={(e) => setProdForm({ ...prodForm, specifications: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm md:col-span-3" rows={3} />
                 </div>
                 <label className="flex items-center gap-2 cursor-pointer mb-6 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
                   <input type="checkbox" checked={prodForm.requiresPrescription} onChange={(e) => setProdForm({ ...prodForm, requiresPrescription: e.target.checked })} className="w-5 h-5 rounded border-slate-300 accent-emerald-600" />
@@ -1036,7 +1138,7 @@ export default function AdminMedicines() {
                         </td>
                         <td className="px-6 py-4"><button onClick={() => toggleProdPopular(m)} disabled={(m.approvalStatus || 'approved') !== 'approved'} className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${m.isPopular ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} ${(m.approvalStatus || 'approved') !== 'approved' ? 'opacity-50 cursor-not-allowed' : ''}`}>{m.isPopular ? '⭐ Popular' : 'Not Popular'}</button></td>
                         <td className="px-6 py-4"><button onClick={() => toggleProdActive(m)} className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${m.isActive ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>{m.isActive ? 'Active' : 'Inactive'}</button></td>
-                        <td className="px-6 py-4"><div className="flex gap-3 flex-wrap">{(m.approvalStatus || 'approved') === 'pending' && <><button onClick={() => approveProd(m)} className="text-emerald-600 hover:text-emerald-800 text-sm font-medium hover:underline">Approve</button><button onClick={() => rejectProd(m)} className="text-amber-600 hover:text-amber-800 text-sm font-medium hover:underline">Reject</button></>}<button onClick={() => openEditProd(m)} className="text-blue-600 hover:text-blue-800 text-sm font-medium hover:underline">Edit</button><button onClick={() => deleteProd(m._id)} className="text-red-600 hover:text-red-800 text-sm font-medium hover:underline">Delete</button></div></td>
+                        <td className="px-6 py-4"><div className="flex gap-3 flex-wrap">{(m.approvalStatus || 'approved') === 'pending' && <><button onClick={() => approveProd(m)} className="text-emerald-600 hover:text-emerald-800 text-sm font-medium hover:underline">Approve</button><button onClick={() => rejectProd(m)} className="text-amber-600 hover:text-amber-800 text-sm font-medium hover:underline">Reject</button></>}<button onClick={() => addToFeaturedProducts(m)} disabled={featureSubmittingId === m._id || (m.approvalStatus || 'approved') !== 'approved'} className={`text-sm font-medium ${(featureSubmittingId === m._id || (m.approvalStatus || 'approved') !== 'approved') ? 'text-slate-400 cursor-not-allowed' : 'text-violet-600 hover:text-violet-800 hover:underline'}`}>{featureSubmittingId === m._id ? 'Adding...' : 'Add to Featured'}</button><button onClick={() => openEditProd(m)} className="text-blue-600 hover:text-blue-800 text-sm font-medium hover:underline">Edit</button><button onClick={() => deleteProd(m._id)} className="text-red-600 hover:text-red-800 text-sm font-medium hover:underline">Delete</button></div></td>
                       </tr>
                     ))}
                   </tbody>

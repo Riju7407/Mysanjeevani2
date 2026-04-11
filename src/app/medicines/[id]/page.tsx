@@ -25,6 +25,8 @@ interface Product {
   benefit?: string;
   dosage?: string;
   packaging?: string;
+  safetyInformation?: string;
+  specifications?: string;
   manufacturer?: string;
   requiresPrescription?: boolean;
   healthConcerns?: string[];
@@ -48,6 +50,73 @@ const QUANTITY_UNIT_OPTIONS = ['None', 'BAGS (Bag)', 'BOTTLES (Btl)', 'BOX (Box)
 const normalizeText = (value?: string) => (value || '').trim().toLowerCase();
 const isUnitNone = (value?: string) => !value || value === 'None';
 
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const getBaseProductName = (value?: string) => {
+  const source = normalizeText(value);
+  if (!source) return '';
+
+  let base = source;
+
+  // Remove known potency labels from the end of name.
+  const potencyAlternation = POTENCY_OPTIONS.map((p) => escapeRegExp(p.toLowerCase())).join('|');
+  if (potencyAlternation) {
+    base = base.replace(new RegExp(`\\b(${potencyAlternation})\\b`, 'gi'), ' ');
+  }
+
+  // Remove quantity tokens such as "10 ml", "30 tablets", etc.
+  base = base.replace(/\b\d+(?:\.\d+)?\s*(ml|l|gm|g|kg|pcs|tabs?|tablets?|caps?|capsules?|bottles?|box|boxes|pack|packs|nos)\b/gi, ' ');
+
+  return base.replace(/\s+/g, ' ').trim();
+};
+
+const isLikelySameFamily = (currentProduct: Product, item: Product) => {
+  const currentName = normalizeText(currentProduct.name);
+  const itemName = normalizeText(item.name);
+  if (!itemName) return false;
+
+  const currentBaseName = getBaseProductName(currentProduct.name);
+  const itemBaseName = getBaseProductName(item.name);
+
+  const directNameMatch = itemName === currentName;
+  const baseNameMatch = Boolean(currentBaseName && itemBaseName && itemBaseName === currentBaseName);
+  const looseNameMatch = Boolean(
+    currentBaseName && itemName && (itemName.includes(currentBaseName) || currentName.includes(itemBaseName))
+  );
+
+  if (!directNameMatch && !baseNameMatch && !looseNameMatch) return false;
+
+  const currentBrand = normalizeText(currentProduct.brand);
+  const itemBrand = normalizeText(item.brand);
+  if (currentBrand && itemBrand && currentBrand !== itemBrand) return false;
+
+  return true;
+};
+
+const getVariantCandidates = async (currentProduct: Product): Promise<Product[]> => {
+  const categoryRes = await fetch(
+    `/api/products?category=${encodeURIComponent(currentProduct.category)}&limit=300`,
+    { cache: 'no-store' }
+  );
+  const categoryData = await categoryRes.json();
+  const categoryProducts: Product[] = categoryRes.ok && Array.isArray(categoryData.products) ? categoryData.products : [];
+
+  // Fallback for older/misaligned records where variants are not under the same category.
+  if (categoryProducts.some((item) => isLikelySameFamily(currentProduct, item))) {
+    return categoryProducts;
+  }
+
+  const globalRes = await fetch('/api/products?limit=500', { cache: 'no-store' });
+  const globalData = await globalRes.json();
+  const globalProducts: Product[] = globalRes.ok && Array.isArray(globalData.products) ? globalData.products : [];
+
+  const byId = new Map<string, Product>();
+  [...categoryProducts, ...globalProducts].forEach((item) => {
+    if (item?._id) byId.set(item._id, item);
+  });
+  return Array.from(byId.values());
+};
+
 const getQuantityLabel = (item: Product) => {
   const hasQuantity = item.quantity !== undefined && item.quantity !== null;
   const hasUnit = !isUnitNone(item.quantityUnit);
@@ -62,6 +131,12 @@ const getQuantityVariantKey = (item: Product) => {
   const unit = isUnitNone(item.quantityUnit) ? 'None' : String(item.quantityUnit);
   return `${qty}|${unit}`;
 };
+
+const toLineItems = (value?: string): string[] =>
+  (value || '')
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^[-*•]\s*/, '').trim())
+    .filter(Boolean);
 
 export default function MedicineDetailsPage() {
   const params = useParams<{ id: string }>();
@@ -144,33 +219,8 @@ export default function MedicineDetailsPage() {
     }
 
     try {
-      const params = new URLSearchParams({
-        category: currentProduct.category,
-        search: currentProduct.name,
-        limit: '100',
-      });
-
-      if (currentProduct.productType) {
-        params.set('productType', currentProduct.productType);
-      }
-
-      const res = await fetch(`/api/products?${params.toString()}`, { cache: 'no-store' });
-      const data = await res.json();
-
-      if (!res.ok || !Array.isArray(data.products)) {
-        setPotencyProducts([]);
-        return;
-      }
-
-      const currentName = normalizeText(currentProduct.name);
-      const currentBrand = normalizeText(currentProduct.brand);
-
-      const familyProducts = data.products.filter((item: Product) => {
-        if (!item?.potency) return false;
-        if (normalizeText(item.name) !== currentName) return false;
-        if (currentBrand && normalizeText(item.brand) !== currentBrand) return false;
-        return true;
-      });
+      const candidates = await getVariantCandidates(currentProduct);
+      const familyProducts = candidates.filter((item: Product) => item?.potency && isLikelySameFamily(currentProduct, item));
 
       const byPotency = new Map<string, Product>();
       familyProducts.forEach((item: Product) => {
@@ -202,30 +252,9 @@ export default function MedicineDetailsPage() {
     }
 
     try {
-      const params = new URLSearchParams({
-        category: currentProduct.category,
-        search: currentProduct.name,
-        limit: '100',
-      });
-
-      if (currentProduct.productType) {
-        params.set('productType', currentProduct.productType);
-      }
-
-      const res = await fetch(`/api/products?${params.toString()}`, { cache: 'no-store' });
-      const data = await res.json();
-
-      if (!res.ok || !Array.isArray(data.products)) {
-        setQuantityProducts([]);
-        return;
-      }
-
-      const currentName = normalizeText(currentProduct.name);
-      const currentBrand = normalizeText(currentProduct.brand);
-
-      const familyProducts = data.products.filter((item: Product) => {
-        if (normalizeText(item.name) !== currentName) return false;
-        if (currentBrand && normalizeText(item.brand) !== currentBrand) return false;
+      const candidates = await getVariantCandidates(currentProduct);
+      const familyProducts = candidates.filter((item: Product) => {
+        if (!isLikelySameFamily(currentProduct, item)) return false;
         const hasQuantity = item.quantity !== undefined && item.quantity !== null;
         const hasUnit = !isUnitNone(item.quantityUnit);
         return hasQuantity || hasUnit;
@@ -319,6 +348,9 @@ export default function MedicineDetailsPage() {
     if (!product?.mrp || product.mrp <= product.price) return 0;
     return Math.round(((product.mrp - product.price) / product.mrp) * 100);
   }, [product]);
+
+  const safetyItems = useMemo(() => toLineItems(product?.safetyInformation), [product?.safetyInformation]);
+  const specificationItems = useMemo(() => toLineItems(product?.specifications), [product?.specifications]);
 
   const redirectToLogin = () => {
     const returnTo = `${window.location.pathname}${window.location.search}`;
@@ -820,11 +852,17 @@ export default function MedicineDetailsPage() {
                       <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                         <h4 className="font-bold text-orange-900 mb-2">⚠️ Safety Information</h4>
                         <ul className="space-y-2 text-sm text-orange-900">
-                          <li>• Read the label carefully before use</li>
-                          <li>• Store in a cool and dry place away from direct sunlight</li>
-                          <li>• Keep out of reach of children</li>
-                          <li>• Use as directed by physician</li>
-                          <li>• Do not use if allergic to any ingredients</li>
+                          {safetyItems.length > 0 ? (
+                            safetyItems.map((item) => <li key={item}>• {item}</li>)
+                          ) : (
+                            <>
+                              <li>• Read the label carefully before use</li>
+                              <li>• Store in a cool and dry place away from direct sunlight</li>
+                              <li>• Keep out of reach of children</li>
+                              <li>• Use as directed by physician</li>
+                              <li>• Do not use if allergic to any ingredients</li>
+                            </>
+                          )}
                         </ul>
                       </div>
                       {product.requiresPrescription && (
@@ -839,6 +877,16 @@ export default function MedicineDetailsPage() {
 
                   {activeTab === 'specs' && (
                     <div className="space-y-4">
+                      {specificationItems.length > 0 && (
+                        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                          <h4 className="font-bold text-slate-900 mb-2">Specifications</h4>
+                          <ul className="space-y-2 text-sm text-slate-700">
+                            {specificationItems.map((item) => (
+                              <li key={item}>• {item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {product.manufacturer && (
                           <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">

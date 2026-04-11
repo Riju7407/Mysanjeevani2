@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { LogoImage } from '@/components/Logo';
@@ -24,14 +24,144 @@ export default function SignupPage() {
 
   const [identityDocument, setIdentityDocument] = useState<File | null>(null);
   const [identityDocumentPreview, setIdentityDocumentPreview] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [phoneVerificationToken, setPhoneVerificationToken] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpCooldownSeconds, setOtpCooldownSeconds] = useState(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [uploadingDocument, setUploadingDocument] = useState(false);
   const router = useRouter();
 
+  useEffect(() => {
+    if (otpCooldownSeconds <= 0) return;
+
+    const timer = setInterval(() => {
+      setOtpCooldownSeconds((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [otpCooldownSeconds]);
+
+  const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const isValidPhone = (phone: string) => /^\d{10}$/.test(phone);
+
+  const resetOtpState = () => {
+    setOtp('');
+    setOtpSent(false);
+    setOtpVerified(false);
+    setPhoneVerificationToken('');
+    setOtpCooldownSeconds(0);
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const sanitizedValue = name === 'phone' ? value.replace(/\D/g, '').slice(0, 10) : value;
+    if (name === 'phone') {
+      resetOtpState();
+    }
+    setFormData((prev) => ({ ...prev, [name]: sanitizedValue }));
+  };
+
+  const handleSendOtp = async () => {
+    setError('');
+
+    const normalizedPhone = formData.phone.replace(/\D/g, '').trim();
+    const normalizedEmail = formData.email.trim().toLowerCase();
+
+    if (!formData.fullName.trim()) {
+      setError('Full name is required before sending OTP');
+      return;
+    }
+
+    if (!isValidPhone(normalizedPhone)) {
+      setError('Please enter a valid 10-digit phone number before sending OTP');
+      return;
+    }
+
+    if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
+      setError('Please enter a valid email address before sending OTP');
+      return;
+    }
+
+    setOtpLoading(true);
+    try {
+      const response = await fetch('/api/auth/phone/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: normalizedPhone,
+          fullName: formData.fullName.trim(),
+          email: normalizedEmail,
+          role: formData.role,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.error || 'Failed to send OTP');
+        return;
+      }
+
+      setOtpSent(true);
+      setOtpVerified(false);
+      setOtp('');
+      setOtpCooldownSeconds(Number(data.cooldownSeconds) || 60);
+    } catch (err) {
+      setError('Failed to send OTP. Please try again.');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    setError('');
+    const normalizedPhone = formData.phone.replace(/\D/g, '').trim();
+
+    if (!isValidPhone(normalizedPhone)) {
+      setError('Please enter a valid 10-digit phone number');
+      return;
+    }
+
+    if (!/^\d{6}$/.test(otp)) {
+      setError('Please enter a valid 6-digit OTP');
+      return;
+    }
+
+    setOtpLoading(true);
+    try {
+      const response = await fetch('/api/auth/phone/verify-signup-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: normalizedPhone,
+          otp,
+          role: formData.role,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.error || 'OTP verification failed');
+        return;
+      }
+
+      setOtpVerified(true);
+      setPhoneVerificationToken(data.phoneVerificationToken || '');
+      setError('');
+    } catch (err) {
+      setError('OTP verification failed. Please try again.');
+    } finally {
+      setOtpLoading(false);
+    }
   };
 
   const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -83,6 +213,11 @@ export default function SignupPage() {
     e.preventDefault();
     setError('');
 
+    const normalizedEmail = formData.email.trim().toLowerCase();
+    const normalizedPhone = formData.phone.replace(/\D/g, '').trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^\d{10}$/;
+
     // Validation
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
@@ -94,8 +229,33 @@ export default function SignupPage() {
       return;
     }
 
-    if (!formData.phone.trim()) {
+    if (!normalizedEmail) {
+      setError('Email address is required');
+      return;
+    }
+
+    if (!emailRegex.test(normalizedEmail)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    if (!normalizedPhone) {
       setError('Phone number is required');
+      return;
+    }
+
+    if (!phoneRegex.test(normalizedPhone)) {
+      setError('Please enter a valid 10-digit phone number');
+      return;
+    }
+
+    if (!otpVerified) {
+      setError('Please verify your phone number using OTP before creating your account');
+      return;
+    }
+
+    if (!phoneVerificationToken) {
+      setError('Phone verification session expired. Please verify OTP again');
       return;
     }
 
@@ -134,12 +294,13 @@ export default function SignupPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fullName: formData.fullName,
-          email: formData.email,
-          phone: formData.phone,
+          email: normalizedEmail,
+          phone: normalizedPhone,
           fullAddress: formData.fullAddress,
           role: formData.role,
           businessType: formData.role === 'vendor' ? formData.businessType : undefined,
           password: formData.password,
+          phoneVerificationToken,
           // Doctor specific
           registrationNumber: formData.role === 'doctor' ? formData.registrationNumber : undefined,
           identityDocumentUrl: formData.role === 'doctor' ? documentUrl : undefined,
@@ -364,6 +525,7 @@ export default function SignupPage() {
                   value={formData.email}
                   onChange={handleChange}
                   required
+                  autoComplete="email"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
                   placeholder="your@email.com"
                 />
@@ -384,9 +546,56 @@ export default function SignupPage() {
                   value={formData.phone}
                   onChange={handleChange}
                   required
+                  inputMode="numeric"
+                  pattern="[0-9]{10}"
+                  maxLength={10}
+                  autoComplete="tel"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
                   placeholder="9876543210"
                 />
+              </div>
+
+              {/* OTP Verification */}
+              <div className="space-y-3 rounded-lg border border-gray-200 p-4 bg-gray-50">
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSendOtp}
+                    disabled={otpLoading || otpCooldownSeconds > 0 || otpVerified}
+                    className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition"
+                  >
+                    {otpLoading ? 'Sending...' : otpVerified ? 'Phone Verified' : otpSent ? 'Resend OTP' : 'Send OTP'}
+                  </button>
+                  {otpCooldownSeconds > 0 && !otpVerified && (
+                    <span className="text-xs text-gray-600 self-center">Resend in {otpCooldownSeconds}s</span>
+                  )}
+                </div>
+
+                {otpSent && !otpVerified && (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      maxLength={6}
+                      inputMode="numeric"
+                      placeholder="Enter 6-digit OTP"
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleVerifyOtp}
+                      disabled={otpLoading || otp.length !== 6}
+                      className="px-4 py-2 border border-emerald-600 text-emerald-700 rounded-lg hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition"
+                    >
+                      {otpLoading ? 'Verifying...' : 'Verify OTP'}
+                    </button>
+                  </div>
+                )}
+
+                {otpVerified && (
+                  <p className="text-sm text-emerald-700 font-medium">Phone number verified successfully.</p>
+                )}
               </div>
 
               <div>
@@ -458,7 +667,7 @@ export default function SignupPage() {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading || uploadingDocument}
+                disabled={loading || uploadingDocument || !otpVerified}
                 className="w-full py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition"
               >
                 {loading || uploadingDocument ? 'Processing...' : 'Create Account'}

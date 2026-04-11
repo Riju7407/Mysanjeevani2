@@ -453,7 +453,6 @@ export default function HomePage() {
             <div className="flex flex-wrap lg:justify-end gap-2">
               <button onClick={() => router.push('/doctor-consultation')} className="rounded-lg bg-white text-teal-700 px-4 py-2 text-sm font-bold hover:bg-teal-50 transition">Consult Doctor</button>
               <button onClick={() => router.push('/lab-tests')} className="rounded-lg bg-white text-teal-700 px-4 py-2 text-sm font-bold hover:bg-teal-50 transition">Book Lab Test</button>
-              <button onClick={() => router.push('/offers')} className="rounded-lg border border-white/70 text-white px-4 py-2 text-sm font-bold hover:bg-white/10 transition">View Offers</button>
             </div>
           </div>
         </div>
@@ -672,12 +671,6 @@ export default function HomePage() {
                 className="flex-1 sm:flex-none rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2.5 transition"
               >
                 Create Account
-              </button>
-              <button
-                onClick={() => router.push('/offers')}
-                className="flex-1 sm:flex-none rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-bold px-4 py-2.5 hover:bg-slate-50 transition"
-              >
-                View Offers
               </button>
             </div>
           </div>

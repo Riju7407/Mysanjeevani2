@@ -65,6 +65,8 @@ const productSchema = new mongoose.Schema(
     healthConcerns: [String],
     dosage: String,
     packaging: String,
+    safetyInformation: String,
+    specifications: String,
     expiryDate: Date,
     requiresPrescription: {
       type: Boolean,
@@ -141,3 +143,12 @@ const productSchema = new mongoose.Schema(
 
 export const Product =
   mongoose.models.Product || mongoose.model('Product', productSchema);
+
+// In dev hot-reload, mongoose can reuse an older cached model schema.
+// Ensure newly added fields are present so updates are not silently dropped.
+if (!Product.schema.path('safetyInformation') || !Product.schema.path('specifications')) {
+  Product.schema.add({
+    safetyInformation: String,
+    specifications: String,
+  });
+}

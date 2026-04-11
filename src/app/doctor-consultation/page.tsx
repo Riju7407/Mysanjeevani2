@@ -436,7 +436,7 @@ export default function DoctorConsultationPage() {
                 : 'text-gray-600 border-transparent hover:text-emerald-600'
             }`}
           >
-            ?? Find Doctors
+            Find Doctors
           </button>
           <button
             onClick={() => setActiveTab('mine')}
@@ -446,7 +446,7 @@ export default function DoctorConsultationPage() {
                 : 'text-gray-600 border-transparent hover:text-emerald-600'
             }`}
           >
-            ?? My Consultations
+            My Consultations
           </button>
         </div>
         {activeTab === 'find' && (
@@ -456,7 +456,7 @@ export default function DoctorConsultationPage() {
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900">
-                    {selectedDept === 'All' ? '????? Find a Doctor' : `?? ${selectedDept}`}
+                    {selectedDept === 'All' ? 'Find a Doctor' : selectedDept}
                   </h1>
                   <p className="text-gray-600 mt-1 text-sm">
                     {sortedDoctors.length} {sortedDoctors.length === 1 ? 'doctor' : 'doctors'} available

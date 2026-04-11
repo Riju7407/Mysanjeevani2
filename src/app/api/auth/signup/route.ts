@@ -5,6 +5,41 @@ import { User } from '@/lib/models/User';
 import { Vendor } from '@/lib/models/Vendor';
 import { Doctor } from '@/lib/models/Doctor';
 
+const PHONE_VERIFICATION_TOKEN_MAX_AGE_MS = 15 * 60 * 1000;
+
+function validatePhoneVerificationToken(token: string, phone: string, role: string): boolean {
+  try {
+    if (!token || !token.includes('.')) return false;
+
+    const [encodedPayload, providedSignature] = token.split('.');
+    if (!encodedPayload || !providedSignature) return false;
+
+    const secret = process.env.OTP_HASH_SECRET || 'MySanjeevni-phone-otp';
+    const expectedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(encodedPayload)
+      .digest('hex');
+
+    if (providedSignature !== expectedSignature) return false;
+
+    const payload = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8'));
+    if (!payload?.phone || !payload?.role || !payload?.verifiedAt) return false;
+
+    if (String(payload.phone) !== String(phone)) return false;
+    if (String(payload.role) !== String(role)) return false;
+
+    const verifiedAt = Number(payload.verifiedAt);
+    if (!Number.isFinite(verifiedAt)) return false;
+
+    const ageMs = Date.now() - verifiedAt;
+    if (ageMs < 0 || ageMs > PHONE_VERIFICATION_TOKEN_MAX_AGE_MS) return false;
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -20,9 +55,11 @@ export async function POST(request: NextRequest) {
       registrationNumber,
       identityDocumentUrl,
       identityDocumentType,
+      phoneVerificationToken,
     } = body;
 
     const normalizedEmail = email?.toLowerCase().trim();
+    const normalizedPhone = phone?.toString().replace(/\D/g, '').trim();
     const normalizedFullAddress = fullAddress?.trim();
     const requestedRole = role || 'user';
     const allowedRoles = ['user', 'vendor', 'doctor'];
@@ -31,7 +68,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid role selected' }, { status: 400 });
     }
 
-    if (!normalizedEmail || !password || !fullName || !phone || !normalizedFullAddress) {
+    if (!normalizedEmail || !password || !fullName || !normalizedPhone || !normalizedFullAddress) {
       return NextResponse.json(
         { error: 'Missing required fields. Full name, email, phone, full address and password are required.' },
         { status: 400 }
@@ -43,8 +80,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid email format' }, { status: 400 });
     }
 
+    const phoneRegex = /^\d{10}$/;
+    if (!phoneRegex.test(normalizedPhone)) {
+      return NextResponse.json({ error: 'Invalid phone number. Please enter a valid 10-digit phone number' }, { status: 400 });
+    }
+
     if (password.length < 6) {
       return NextResponse.json({ error: 'Password must be at least 6 characters long' }, { status: 400 });
+    }
+
+    if (!validatePhoneVerificationToken(String(phoneVerificationToken || ''), normalizedPhone, requestedRole)) {
+      return NextResponse.json(
+        { error: 'Phone verification required. Please verify OTP before signup.' },
+        { status: 401 }
+      );
     }
 
     await connectDB();
@@ -61,7 +110,7 @@ export async function POST(request: NextRequest) {
         vendorName: fullName,
         email: normalizedEmail,
         password: hashedPassword,
-        phone,
+        phone: normalizedPhone,
         businessType: businessType || 'other',
         address: businessAddress || { street: normalizedFullAddress },
         status: 'pending',
@@ -119,7 +168,7 @@ export async function POST(request: NextRequest) {
       const newUser = await User.create({
         fullName,
         email: normalizedEmail,
-        phone,
+        phone: normalizedPhone,
         fullAddress: normalizedFullAddress,
         password: hashedPassword,
         role: 'doctor',
@@ -134,7 +183,7 @@ export async function POST(request: NextRequest) {
         userId: newUser._id,
         name: fullName,
         email: normalizedEmail,
-        phone,
+        phone: normalizedPhone,
         registrationNumber,
         identityDocumentUrl,
         identityDocumentType: identityDocumentType || 'medical-license',
@@ -170,7 +219,7 @@ export async function POST(request: NextRequest) {
     const newUser = await User.create({
       fullName,
       email: normalizedEmail,
-      phone,
+      phone: normalizedPhone,
       fullAddress: normalizedFullAddress,
       password: hashedPassword,
       role: requestedRole,

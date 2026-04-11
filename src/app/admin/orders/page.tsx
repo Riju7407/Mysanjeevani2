@@ -20,6 +20,10 @@ export default function AdminOrders() {
     filterOrders();
   }, [orders, searchTerm, statusFilter]);
 
+  const getOrderId = (order: any): string => {
+    return String(order?._id || order?.id || order?.orderId || '').trim();
+  };
+
   const fetchOrders = async () => {
     try {
       const ordersStr = localStorage.getItem('orders') || '[]';
@@ -38,7 +42,7 @@ export default function AdminOrders() {
     if (searchTerm) {
       filtered = filtered.filter(
         (order) =>
-          order._id?.includes(searchTerm) ||
+          getOrderId(order).toLowerCase().includes(searchTerm.toLowerCase()) ||
           order.customerEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           order.customerName?.toLowerCase().includes(searchTerm.toLowerCase())
       );
@@ -53,7 +57,7 @@ export default function AdminOrders() {
 
   const updateOrderStatus = (orderId: string, newStatus: string) => {
     const updated = orders.map((order) =>
-      order._id === orderId ? { ...order, status: newStatus } : order
+      getOrderId(order) === orderId ? { ...order, status: newStatus } : order
     );
     localStorage.setItem('orders', JSON.stringify(updated));
     setOrders(updated);
@@ -172,9 +176,9 @@ export default function AdminOrders() {
             <tbody className="divide-y">
               {filteredOrders.length > 0 ? (
                 filteredOrders.map((order, index) => (
-                  <tr key={order._id || `order-${index}`} className="hover:bg-gray-50">
+                  <tr key={getOrderId(order) || `order-${index}`} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                      #{order._id?.substring(0, 8)}
+                      #{(getOrderId(order) || 'N/A').substring(0, 8)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       <div>{order.customerName || 'N/A'}</div>
@@ -189,7 +193,7 @@ export default function AdminOrders() {
                     <td className="px-6 py-4">
                       <select
                         value={order.status || 'pending'}
-                        onChange={(e) => updateOrderStatus(order._id, e.target.value)}
+                        onChange={(e) => updateOrderStatus(getOrderId(order), e.target.value)}
                         className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer ${getStatusBadgeColor(
                           order.status || 'pending'
                         )}`}
@@ -260,7 +264,7 @@ export default function AdminOrders() {
             <div className="grid grid-cols-2 gap-6 mb-6">
               <div>
                 <p className="text-sm text-gray-600">Order ID</p>
-                <p className="text-lg font-semibold text-gray-900">#{selectedOrder._id}</p>
+                <p className="text-lg font-semibold text-gray-900">#{getOrderId(selectedOrder) || 'N/A'}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Order Date</p>

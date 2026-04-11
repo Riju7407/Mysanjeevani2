@@ -57,6 +57,8 @@ export async function POST(request: NextRequest) {
 
     const newProduct = await Product.create({
       ...body,
+      safetyInformation: body.safetyInformation || undefined,
+      specifications: body.specifications || undefined,
       approvalStatus: body.approvalStatus || 'approved',
       isActive: body.isActive !== undefined ? body.isActive : true,
       isPopular: body.isPopular !== undefined ? body.isPopular : false,

@@ -226,11 +226,36 @@ export default function AdminConsultations() {
 
   // ── DELETE DOCTOR ──
   const deleteDoctor = async (id: string) => {
-    if (!confirm('Delete this doctor?')) return;
+    if (!confirm('Delete this doctor? This will permanently delete doctor profile and login account.')) return;
     try {
       await fetch(`/api/admin/doctors/${id}`, { method: 'DELETE' });
       fetchDoctors();
     } catch {}
+  };
+
+  const deletePendingDoctorUser = async (u: UnlinkedDoctorUser) => {
+    if (!confirm('Delete this pending doctor account? This will permanently delete login account.')) return;
+    try {
+      const currentUserRaw = localStorage.getItem('user');
+      const currentUser = currentUserRaw ? JSON.parse(currentUserRaw) : null;
+      const currentRole = currentUser?.role || 'user';
+
+      const res = await fetch(`/api/admin/doctors/pending-user/${u._id}`, {
+        method: 'DELETE',
+        headers: {
+          'x-user-role': currentRole,
+        },
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete pending doctor account');
+      }
+
+      setUnlinkedDoctors((prev) => prev.filter((item) => item._id !== u._id));
+    } catch (e: any) {
+      alert(e?.message || 'Failed to delete pending doctor account');
+    }
   };
 
   return (
@@ -427,12 +452,20 @@ export default function AdminConsultations() {
                       <p className="text-xs text-gray-600 truncate">{u.email}</p>
                       {u.phone && <p className="text-xs text-gray-500">{u.phone}</p>}
                     </div>
-                    <button
-                      onClick={() => openAddDoctorFromUser(u)}
-                      className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-medium"
-                    >
-                      Create Profile
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => openAddDoctorFromUser(u)}
+                        className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-medium"
+                      >
+                        Create Profile
+                      </button>
+                      <button
+                        onClick={() => deletePendingDoctorUser(u)}
+                        className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg font-medium"
+                      >
+                        Delete Account
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

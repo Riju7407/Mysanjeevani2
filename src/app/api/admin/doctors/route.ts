@@ -37,9 +37,22 @@ export async function GET(request: NextRequest) {
       .select('fullName email phone role')
       .lean();
 
-    const linkedEmails = new Set((doctors as any[]).map((d) => String(d.email || '').toLowerCase()));
+    const linkedEmails = new Set(
+      (doctors as any[]).map((d) => String(d.email || '').trim().toLowerCase())
+    );
+    const linkedPhones = new Set(
+      (doctors as any[])
+        .map((d) => String(d.phone || '').replace(/\D/g, ''))
+        .filter(Boolean)
+    );
     const unlinkedDoctorUsers = (doctorUsers as any[])
-      .filter((u) => !linkedEmails.has(String(u.email || '').toLowerCase()))
+      .filter((u) => {
+        const userEmail = String(u.email || '').trim().toLowerCase();
+        const userPhone = String(u.phone || '').replace(/\D/g, '');
+        const linkedByEmail = userEmail && linkedEmails.has(userEmail);
+        const linkedByPhone = userPhone && linkedPhones.has(userPhone);
+        return !linkedByEmail && !linkedByPhone;
+      })
       .map((u) => ({
         _id: u._id,
         fullName: u.fullName,
@@ -85,18 +98,25 @@ export async function POST(request: NextRequest) {
       avatar,
     } = body;
 
-    if (!name || !email || !department || !specialization || !consultationFee) {
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
+    if (!name || !normalizedEmail || !department || !specialization || !consultationFee) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const existing = await Doctor.findOne({ email });
+    const existing = await Doctor.findOne({ email: normalizedEmail });
     if (existing) {
       return NextResponse.json({ error: 'Doctor with this email already exists' }, { status: 409 });
     }
 
+    const linkedUser = await User.findOne({ role: 'doctor', email: normalizedEmail })
+      .select('_id')
+      .lean();
+
     const doctor = await Doctor.create({
+      userId: (linkedUser as any)?._id,
       name,
-      email,
+      email: normalizedEmail,
       phone: phone || '',
       department,
       specialization,

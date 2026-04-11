@@ -73,10 +73,6 @@ function inferProductTypeFromCategory(category?: string): VendorProductType | nu
   return null;
 }
 
-function isCategoryValidForType(productType: VendorProductType, category: string): boolean {
-  return (VENDOR_CATEGORY_MAP[productType] as readonly string[]).includes(category);
-}
-
 function normalizeCategoryForType(productType: VendorProductType, category?: string): string {
   const raw = (category || '').trim();
   const normalized = raw.toLowerCase();
@@ -99,6 +95,19 @@ function normalizeCategoryForType(productType: VendorProductType, category?: str
 
   const exactMatch = VENDOR_CATEGORY_MAP[productType].find((c) => c.toLowerCase() === normalized);
   return exactMatch || raw;
+}
+
+function resolveTypeAndCategory(productType: string | undefined, category: string) {
+  const rawType = (productType || '').trim();
+  const rawCategory = (category || '').trim();
+  const inferredType = inferProductTypeFromCategory(rawCategory);
+  const resolvedType = (rawType || inferredType || 'Generic Medicine') as VendorProductType;
+
+  // Keep compatibility for legacy category aliases, but do not block categories
+  // that come from newer vendor UI category maps.
+  const normalizedCategory = normalizeCategoryForType(resolvedType, rawCategory) || rawCategory;
+
+  return { resolvedType, normalizedCategory };
 }
 
 // GET vendor products
@@ -139,7 +148,19 @@ export async function POST(request: NextRequest) {
     await connectDB();
 
     const body = await request.json();
-    const { vendorId, name, description, price, productType, category, stock, image, ...otherFields } = body;
+    const {
+      vendorId,
+      name,
+      description,
+      price,
+      productType,
+      category,
+      stock,
+      image,
+      safetyInformation,
+      specifications,
+      ...otherFields
+    } = body;
 
     if (!vendorId || !name || !price || !category) {
       return NextResponse.json(
@@ -155,17 +176,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const resolvedType: VendorProductType | null = productType || inferProductTypeFromCategory(category);
-    const normalizedCategory = resolvedType ? normalizeCategoryForType(resolvedType, category) : category;
-    if (!resolvedType || !isCategoryValidForType(resolvedType, normalizedCategory)) {
-      return NextResponse.json(
-        {
-          error:
-            'Invalid product type/category selection. Please select a valid category for the selected product type.',
-        },
-        { status: 400 }
-      );
-    }
+    const { resolvedType, normalizedCategory } = resolveTypeAndCategory(productType, category);
 
     // Verify vendor exists and is verified
     const vendor = await Vendor.findById(vendorId);
@@ -185,6 +196,7 @@ export async function POST(request: NextRequest) {
 
     // Create product
     const newProduct = await Product.create({
+      ...otherFields,
       name,
       description,
       price,
@@ -195,10 +207,15 @@ export async function POST(request: NextRequest) {
       vendorId,
       vendorName: vendor.vendorName,
       vendorRating: vendor.rating,
+      safetyInformation: typeof safetyInformation === 'string' ? safetyInformation : undefined,
+      specifications: typeof specifications === 'string' ? specifications : undefined,
       approvalStatus: 'pending',
       isActive: false,
       isPopular: false,
-      ...otherFields,
+      isPopularGeneric: false,
+      isPopularAyurveda: false,
+      isPopularHomeopathy: false,
+      isPopularLabTests: false,
     });
 
     return NextResponse.json(
@@ -223,7 +240,7 @@ export async function PUT(request: NextRequest) {
     await connectDB();
 
     const body = await request.json();
-    const { productId, vendorId, ...updateData } = body;
+    const { productId, vendorId, safetyInformation, specifications, ...updateData } = body;
 
     if (!productId || !vendorId) {
       return NextResponse.json(
@@ -241,20 +258,21 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const nextCategoryRaw = updateData.category || product.category;
-    const nextType: VendorProductType | null =
-      updateData.productType ||
-      product.productType ||
-      inferProductTypeFromCategory(nextCategoryRaw);
+    const nextCategoryRaw = String(updateData.category || product.category || '');
+    const { resolvedType: nextType, normalizedCategory: nextCategory } = resolveTypeAndCategory(
+      String(updateData.productType || product.productType || ''),
+      nextCategoryRaw
+    );
 
-    const nextCategory = nextType ? normalizeCategoryForType(nextType, nextCategoryRaw) : nextCategoryRaw;
+    const normalizedSafetyInformation =
+      typeof safetyInformation === 'string'
+        ? safetyInformation
+        : (product as any).safetyInformation || '';
 
-    if (!nextType || !isCategoryValidForType(nextType, nextCategory)) {
-      return NextResponse.json(
-        { error: 'Invalid product type/category selection for update' },
-        { status: 400 }
-      );
-    }
+    const normalizedSpecifications =
+      typeof specifications === 'string'
+        ? specifications
+        : (product as any).specifications || '';
 
     if (Object.prototype.hasOwnProperty.call(updateData, 'image') && updateData.image) {
       if (!isCloudinaryImageUrl(updateData.image)) {
@@ -270,6 +288,8 @@ export async function PUT(request: NextRequest) {
       productId,
       {
         ...updateData,
+        safetyInformation: normalizedSafetyInformation,
+        specifications: normalizedSpecifications,
         productType: nextType,
         category: nextCategory,
         approvalStatus: 'pending',
@@ -277,7 +297,7 @@ export async function PUT(request: NextRequest) {
         isPopular: false,
         updatedAt: new Date(),
       },
-      { new: true }
+      { new: true, runValidators: true }
     );
 
     return NextResponse.json(
