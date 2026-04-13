@@ -87,6 +87,8 @@ const doctorSchema = new mongoose.Schema(
     qualification: { type: String, default: '' },
     bio: { type: String, default: '' },
     consultationFee: { type: Number, default: 0 },
+    // Stored as YYYY-MM-DD values selected by doctor for booking availability.
+    availableDates: { type: [String], default: [] },
     timeSlots: [timeSlotSchema],
     isAvailable: { type: Boolean, default: true },
     rating: { type: Number, default: 0, min: 0, max: 5 },

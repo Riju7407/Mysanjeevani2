@@ -113,7 +113,7 @@ export default function WellnessPage() {
         </div>
       </div>
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 py-10 w-full">
+      <main id="products-section" className="flex-1 max-w-7xl mx-auto px-4 py-10 w-full">
         {/* Results Header */}
         <div className="mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">

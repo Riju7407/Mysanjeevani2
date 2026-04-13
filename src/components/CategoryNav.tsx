@@ -324,32 +324,37 @@ const COLOR_STYLES: Record<string, any> = {
 export default function CategoryNav({ isMobile = false }: { isMobile?: boolean }) {
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
 
+  const buildHref = (path: string, params?: Record<string, string>) => {
+    const query = new URLSearchParams(params).toString();
+    return `${path}${query ? `?${query}` : ''}#products-section`;
+  };
+
   const getSubcategoryHref = (categoryName: string, subcategoryName: string) => {
     if (categoryName === 'Medicines') {
-      return `/medicines?subcategory=${encodeURIComponent(subcategoryName)}`;
+      return buildHref('/medicines', { subcategory: subcategoryName });
     }
 
     if (categoryName === 'Ayurveda') {
-      return `/medicines?category=ayurveda&subcategory=${encodeURIComponent(subcategoryName)}`;
+      return buildHref('/ayurveda', { category: subcategoryName });
     }
 
     if (categoryName === 'Homeopathy') {
-      return `/medicines?category=homeopathy&subcategory=${encodeURIComponent(subcategoryName)}`;
+      return buildHref('/homeopathy', { category: subcategoryName });
     }
 
-    return `/medicines?category=${encodeURIComponent(categoryName.toLowerCase())}&subcategory=${encodeURIComponent(subcategoryName)}`;
+    return buildHref('/medicines', { category: categoryName.toLowerCase(), subcategory: subcategoryName });
   };
 
   const getCategoryHref = (category: Category) => {
-    if (category.name === 'Medicines') return '/medicines';
-    if (category.name === 'Ayurveda') return '/medicines?category=ayurveda';
-    if (category.name === 'Homeopathy') return '/medicines?category=homeopathy';
+    if (category.name === 'Medicines') return buildHref('/medicines');
+    if (category.name === 'Ayurveda') return buildHref('/ayurveda');
+    if (category.name === 'Homeopathy') return buildHref('/homeopathy');
 
     if (category.groupedSubcategories) {
-      return `/medicines?category=${encodeURIComponent(category.name.toLowerCase())}`;
+      return buildHref('/medicines', { category: category.name.toLowerCase() });
     }
 
-    return category.href;
+    return buildHref(category.href);
   };
 
   if (isMobile) {
@@ -456,7 +461,7 @@ export default function CategoryNav({ isMobile = false }: { isMobile?: boolean }
                 {category.subcategories.map((subcat, idx) => (
                   <Link
                     key={subcat}
-                    href={subcat === 'All' ? category.href : getSubcategoryHref(category.name, subcat)}
+                    href={subcat === 'All' ? getCategoryHref(category) : getSubcategoryHref(category.name, subcat)}
                     className={`text-center px-2 py-2 text-sm rounded transition-colors duration-150 ${
                       idx === 0
                         ? `${COLOR_STYLES[category.color].text} font-semibold col-span-full mb-2 pb-3 border-b border-gray-200 ${COLOR_STYLES[category.color].hover}`

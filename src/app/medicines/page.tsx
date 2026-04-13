@@ -78,6 +78,38 @@ function normalizeText(value?: string) {
   return (value || '').trim().toLowerCase();
 }
 
+function normalizeFilterToken(value?: string) {
+  return (value || '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+function matchesFilterValue(field?: string, query?: string) {
+  const normalizedField = normalizeFilterToken(field);
+  const normalizedQuery = normalizeFilterToken(query);
+
+  if (!normalizedField || !normalizedQuery) return false;
+  return (
+    normalizedField === normalizedQuery ||
+    normalizedField.includes(normalizedQuery) ||
+    normalizedQuery.includes(normalizedField)
+  );
+}
+
+const HEADER_CATEGORY_ALIASES: Record<string, string[]> = {
+  medicines: ['generic medicine', 'medicines', 'branded', 'generic'],
+  nutrition: ['sports nutrition', 'health food and drinks', 'vitamin and dietary supplements', 'organic products', 'green teas', 'digestives'],
+  'personal care': ['aroma oils', 'mens grooming', 'female care', 'skin care', 'bath and shower', 'hair care', 'elderly care', 'mosquito repellents', 'oral care'],
+  fitness: ['supports and splints', 'health devices', 'fitness equipment', 'hospital supplies', 'aroma therapy', 'disability aids', 'massagers', 'bandages and tapes', 'walking sticks'],
+  'sexual wellness': ['supplements', 'condoms', 'sexual wellness'],
+  disease: ['mind', 'face', 'hair', 'eyes and ear', 'nose and throat', 'nervous system', 'mouth gums and teeth', 'respiratory', 'rectum and piles', 'digestive system', 'heart and cardiovascular', 'urinary system', 'bone joint and muscles', 'skin and nails', 'fevers and flu', 'male problems', 'female problems', 'old age problems', 'children problems', 'lifestyle diseases', 'tonics'],
+  unani: ['unani medicines', 'habbe and qurs', 'majun and jawarish', 'safoof labub and kushta', 'sharbat sirka and arq', 'lauq and saoot', 'khamira and itrifal', 'roghan and oils', 'unani brands'],
+  'baby care': ['tonics and supplements', 'bath and skin', 'wipes and diapers', 'gift packs'],
+};
+
 function equalsIgnoreCase(left?: string, right?: string) {
   return normalizeText(left) === normalizeText(right);
 }
@@ -93,9 +125,9 @@ function getQuantityLabel(product: Product) {
 }
 
 const TAB_CONFIG = [
-  { key: 'medicines', label: '💊 Medicines', color: 'emerald' },
-  { key: 'ayurveda', label: '🌿 Ayurveda', color: 'amber' },
-  { key: 'homeopathy', label: '🌸 Homeopathy', color: 'pink' },
+  { key: 'medicines', label: 'Medicines', color: 'emerald' },
+  { key: 'ayurveda', label: 'Ayurveda', color: 'amber' },
+  { key: 'homeopathy', label: 'Homeopathy', color: 'pink' },
 ];
 
 const COLOR_MAP: Record<string, { active: string; btn: string; tag: string; ring: string }> = {
@@ -109,6 +141,7 @@ function MedicinesContent() {
   const router = useRouter();
   const urlCategory = searchParams.get('category') || '';
   const urlSubcategory = searchParams.get('subcategory') || '';
+  const urlSearch = searchParams.get('search') || '';
   const productsSectionRef = useRef<HTMLDivElement | null>(null);
   const hasAutoScrolledRef = useRef(false);
 
@@ -151,8 +184,12 @@ function MedicinesContent() {
   }, [urlSubcategory, activeTab]);
 
   useEffect(() => {
+    setSearch(urlSearch);
+  }, [urlSearch]);
+
+  useEffect(() => {
     hasAutoScrolledRef.current = false;
-  }, [urlCategory, urlSubcategory]);
+  }, [urlCategory, urlSubcategory, urlSearch]);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -213,28 +250,19 @@ function MedicinesContent() {
     const productType = (p.productType || '').trim();
     const normalizedType = productType.toLowerCase();
     const isLabTestType = normalizedType === 'lab tests' || normalizedType === 'lab test';
+    const isAyurvedaType = productType === 'Ayurveda Medicine' || normalizedCategory === 'Ayurveda' || AYUR_CATEGORIES.includes(normalizedCategory);
+    const isHomeopathyType = productType === 'Homeopathy' || normalizedCategory === 'Homeopathy' || HOMEO_CATEGORIES.includes(normalizedCategory);
 
     if (activeTab === 'ayurveda') {
-      return (
-        productType === 'Ayurveda Medicine' ||
-        normalizedCategory === 'Ayurveda' ||
-        AYUR_CATEGORIES.includes(normalizedCategory)
-      );
+      return isAyurvedaType;
     }
 
     if (activeTab === 'homeopathy') {
-      return (
-        productType === 'Homeopathy' ||
-        normalizedCategory === 'Homeopathy' ||
-        HOMEO_CATEGORIES.includes(normalizedCategory)
-      );
+      return isHomeopathyType;
     }
 
-    return !isLabTestType && (
-      productType === 'Generic Medicine' ||
-      normalizedCategory === 'Medicines' ||
-      tabCategories.includes(normalizedCategory)
-    );
+    // Medicines tab should include all non-lab products except Ayurveda/Homeopathy buckets.
+    return !isLabTestType && !isAyurvedaType && !isHomeopathyType;
   });
 
   const displayed = tabFiltered.filter((p) => {
@@ -259,7 +287,15 @@ function MedicinesContent() {
         return categoryFields.some((field) => equalsIgnoreCase(field, 'Homeopathy')) || equalsIgnoreCase(p.productType, 'Homeopathy');
       }
 
-      return categoryFields.some((field) => equalsIgnoreCase(field, urlCategory));
+      const normalizedCategoryKey = normalizeFilterToken(urlCategory);
+      const categoryCandidates = [
+        urlCategory,
+        ...(HEADER_CATEGORY_ALIASES[normalizedCategoryKey] || []),
+      ];
+
+      return categoryCandidates.some((candidate) =>
+        categoryFields.some((field) => matchesFilterValue(field, candidate))
+      );
     })();
 
     const urlSubcategoryMatch = !urlSubcategory || [
@@ -268,7 +304,10 @@ function MedicinesContent() {
       p.diseaseCategory,
       p.diseaseSubcategory,
       p.benefit,
-    ].some((field) => equalsIgnoreCase(field, urlSubcategory));
+      p.productType,
+      p.name,
+      p.description,
+    ].some((field) => matchesFilterValue(field, urlSubcategory));
 
     const searchText = search.trim().toLowerCase();
     const quantityText = p.quantity !== undefined && p.quantity !== null ? String(p.quantity) : '';
@@ -328,7 +367,7 @@ function MedicinesContent() {
 
   useEffect(() => {
     if (loading) return;
-    if (!urlCategory && !urlSubcategory) return;
+    if (!urlCategory && !urlSubcategory && !urlSearch) return;
     if (hasAutoScrolledRef.current) return;
 
     const section = productsSectionRef.current;
@@ -338,7 +377,7 @@ function MedicinesContent() {
     window.requestAnimationFrame(() => {
       section.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
-  }, [loading, urlCategory, urlSubcategory]);
+  }, [loading, urlCategory, urlSubcategory, urlSearch]);
 
   const col = COLOR_MAP[TAB_CONFIG.find((t) => t.key === activeTab)!.color];
 
@@ -412,13 +451,13 @@ function MedicinesContent() {
         </div>
       )}
 
-      <div ref={productsSectionRef} className="flex-1 max-w-7xl mx-auto px-4 py-10 w-full">
+      <div id="products-section" ref={productsSectionRef} className="flex-1 max-w-7xl mx-auto px-4 py-10 w-full">
         {/* Results Header */}
         <div className="mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                {activeTab === 'medicines' ? '💊 Medicines' : activeTab === 'ayurveda' ? '🌿 Ayurveda' : '🌸 Homeopathy'}
+                {activeTab === 'medicines' ? 'Medicines' : activeTab === 'ayurveda' ? 'Ayurveda' : 'Homeopathy'}
               </h1>
               <p className="text-gray-600 mt-1 text-sm">
                 {sortedDisplayed.length} {sortedDisplayed.length === 1 ? 'product' : 'products'} available

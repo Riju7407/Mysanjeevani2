@@ -11,6 +11,7 @@ export default function Header() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [cartCount, setCartCount] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
 
   useEffect(() => {
@@ -55,17 +56,26 @@ export default function Header() {
     router.replace('/');
   };
 
+  const handleSearch = () => {
+    const q = searchQuery.trim();
+    if (!q) {
+      router.push('/medicines#products-section');
+      return;
+    }
+    router.push(`/medicines?search=${encodeURIComponent(q)}#products-section`);
+  };
+
   return (
     <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-gray-100">
       {/* Top Bar - Similar to 1mg */}
-      <div className="bg-linear-to-r from-emerald-600 to-emerald-500 text-white py-2 px-4">
-        <div className="max-w-7xl mx-auto flex justify-between items-center text-sm">
-          <div className="flex items-center gap-4">
-            <span>Trusted by 5 Crore+ Indians</span>
-            <span className="text-emerald-100">|</span>
-            <span>India's Healthcare Platform</span>
+      <div className="bg-linear-to-r from-emerald-600 to-emerald-500 text-white py-2 px-3 sm:px-4">
+        <div className="max-w-7xl mx-auto flex justify-between items-center text-[11px] sm:text-sm gap-3">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <span className="truncate">Trusted by 5 Crore+ Indians</span>
+            <span className="text-emerald-100 hidden sm:inline">|</span>
+            <span className="hidden sm:inline">India's Healthcare Platform</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="hidden sm:flex items-center gap-4 shrink-0">
             <Link href="/help" className="hover:text-emerald-100">
               Help
             </Link>
@@ -78,14 +88,14 @@ export default function Header() {
 
       {/* Main Navigation */}
       <div className="bg-white">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
+          <div className="flex justify-between items-center gap-3">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-3">
-              <div className="h-12 w-12">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 shrink-0">
                 <LogoImage />
               </div>
-              <div className="text-xl font-bold hidden sm:block">
+              <div className="text-lg sm:text-xl font-bold hidden sm:block">
                 <span className="text-emerald-600">My</span><span className="text-orange-500">Sanjeevni</span>
               </div>
             </Link>
@@ -95,10 +105,23 @@ export default function Header() {
               <div className="w-full relative">
                 <input
                   type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSearch();
+                    }
+                  }}
                   placeholder="Search for medicines, health conditions, products..."
                   className="w-full px-4 py-3 rounded-lg bg-gray-100 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
                 />
-                <button className="absolute right-3 top-3 text-gray-400">
+                <button
+                  type="button"
+                  onClick={handleSearch}
+                  className="absolute right-3 top-3 text-gray-400 hover:text-emerald-600"
+                  aria-label="Search"
+                >
                   <svg
                     className="w-5 h-5"
                     fill="none"
@@ -269,25 +292,62 @@ export default function Header() {
               </div>
             </div>
 
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden text-gray-700"
-            >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            {/* Mobile Actions */}
+            <div className="md:hidden flex items-center gap-2">
+              <Link
+                href="/cart"
+                className="relative rounded-lg border border-gray-200 p-2 text-emerald-700"
+                aria-label="Cart"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
-            </button>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 9m10 0l2-9m-8 9h8m-8 0a1 1 0 11-2 0 1 1 0 012 0zm8 0a1 1 0 11-2 0 1 1 0 012 0z" />
+                </svg>
+                {cartCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-[10px] font-bold rounded-full min-w-5 h-5 px-1 flex items-center justify-center">
+                    {cartCount}
+                  </span>
+                )}
+              </Link>
+
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="text-gray-700 rounded-lg border border-gray-200 p-2"
+                aria-label="Open menu"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile Search */}
+          <div className="md:hidden mt-3">
+            <div className="w-full relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSearch();
+                  }
+                }}
+                placeholder="Search medicines and products..."
+                className="w-full px-4 py-2.5 rounded-lg bg-gray-100 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+              />
+              <button
+                type="button"
+                onClick={handleSearch}
+                className="absolute right-3 top-2.5 text-gray-400 hover:text-emerald-600"
+                aria-label="Search"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           {/* Category Navigation */}
@@ -297,18 +357,34 @@ export default function Header() {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="md:hidden bg-white border-t border-gray-100 p-4 space-y-2">
+        <div className="md:hidden bg-white border-t border-gray-100 p-4 space-y-2 max-h-[75vh] overflow-y-auto">
           <CategoryNav isMobile={true} />
           <div className="border-t border-gray-100 pt-3"></div>
-          <Link href="/login" className="block w-full text-center bg-linear-to-r from-emerald-600 to-emerald-700 text-white py-3 rounded-lg hover:from-emerald-700 hover:to-emerald-800 font-semibold shadow-md hover:shadow-lg transition duration-200">
-            SignIn
-          </Link>
-          <Link href="/signup" className="block w-full text-center bg-linear-to-r from-orange-500 to-orange-600 text-white py-3 rounded-lg hover:from-orange-600 hover:to-orange-700 font-semibold shadow-md hover:shadow-lg transition duration-200">
-            SignUp
-          </Link>
-          <Link href="/vendor/register" className="block w-full text-center bg-emerald-100 text-emerald-700 py-2 rounded-lg font-semibold hover:bg-emerald-200">
-            Become a Vendor
-          </Link>
+          {user ? (
+            <>
+              <Link href="/profile" className="block w-full text-center bg-emerald-50 text-emerald-700 py-2.5 rounded-lg font-semibold hover:bg-emerald-100">
+                My Profile
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="block w-full text-center bg-red-50 text-red-700 py-2.5 rounded-lg font-semibold hover:bg-red-100"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/login" className="block w-full text-center bg-linear-to-r from-emerald-600 to-emerald-700 text-white py-3 rounded-lg hover:from-emerald-700 hover:to-emerald-800 font-semibold shadow-md hover:shadow-lg transition duration-200">
+                SignIn
+              </Link>
+              <Link href="/signup" className="block w-full text-center bg-linear-to-r from-orange-500 to-orange-600 text-white py-3 rounded-lg hover:from-orange-600 hover:to-orange-700 font-semibold shadow-md hover:shadow-lg transition duration-200">
+                SignUp
+              </Link>
+              <Link href="/vendor/register" className="block w-full text-center bg-emerald-100 text-emerald-700 py-2 rounded-lg font-semibold hover:bg-emerald-200">
+                Become a Vendor
+              </Link>
+            </>
+          )}
         </div>
       )}
     </header>

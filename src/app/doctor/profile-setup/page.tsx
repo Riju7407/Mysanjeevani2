@@ -89,7 +89,7 @@ export default function DoctorProfileSetup() {
           if (data.doctor.experience) setFormData((prev) => ({ ...prev, experience: data.doctor.experience }));
           if (data.doctor.qualification) setFormData((prev) => ({ ...prev, qualification: data.doctor.qualification }));
           if (data.doctor.bio) setFormData((prev) => ({ ...prev, bio: data.doctor.bio }));
-          if (data.doctor.consultationFee) setFormData((prev) => ({ ...prev, consultationFee: data.doctor.consultationFee }));
+          if (data.doctor.consultationFee !== undefined) setFormData((prev) => ({ ...prev, consultationFee: data.doctor.consultationFee }));
           if (data.doctor.timeSlots) setTimeSlots(data.doctor.timeSlots);
         }
       } else {
@@ -318,6 +318,7 @@ export default function DoctorProfileSetup() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none resize-none"
                 />
               </div>
+
             </div>
 
             {/* Availability Section */}

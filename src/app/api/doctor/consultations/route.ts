@@ -8,6 +8,14 @@ export async function GET(request: NextRequest) {
   try {
     await connectDB();
 
+    // Failsafe: auto-complete stale in-progress consultations.
+    const staleThresholdMs = 2 * 60 * 1000;
+    const staleBefore = new Date(Date.now() - staleThresholdMs);
+    await DoctorConsultation.updateMany(
+      { status: 'in-progress', updatedAt: { $lt: staleBefore } },
+      { $set: { status: 'completed' } }
+    );
+
     const { searchParams } = new URL(request.url);
     const email = searchParams.get('email');
 
@@ -41,25 +49,35 @@ export async function GET(request: NextRequest) {
       cancelled: consultations.filter((c: any) => c.status === 'cancelled').length,
     };
 
-    return NextResponse.json({
-      doctorFound: true,
-      doctor: {
-        _id: doctor._id,
-        name: doctor.name,
-        email: doctor.email,
-        phone: doctor.phone || '',
-        department: doctor.department,
-        specialization: doctor.specialization,
-        experience: doctor.experience,
-        qualification: doctor.qualification || '',
-        bio: doctor.bio || '',
-        consultationFee: doctor.consultationFee || 0,
-        avatar: doctor.avatar || '👨‍⚕️',
-        isAvailable: doctor.isAvailable !== false,
+    return NextResponse.json(
+      {
+        doctorFound: true,
+        doctor: {
+          _id: doctor._id,
+          name: doctor.name,
+          email: doctor.email,
+          phone: doctor.phone || '',
+          department: doctor.department,
+          specialization: doctor.specialization,
+          experience: doctor.experience,
+          qualification: doctor.qualification || '',
+          bio: doctor.bio || '',
+          consultationFee: doctor.consultationFee || 0,
+          availableDates: doctor.availableDates || [],
+          avatar: doctor.avatar || '👨‍⚕️',
+          isAvailable: doctor.isAvailable !== false,
+        },
+        stats,
+        consultations,
       },
-      stats,
-      consultations,
-    });
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      }
+    );
   } catch (error: any) {
     console.error('Doctor consultations error:', error);
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });

@@ -467,7 +467,7 @@ export default function LabTestsPage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 max-w-7xl mx-auto px-4 py-10 w-full">
+      <div id="products-section" className="flex-1 max-w-7xl mx-auto px-4 py-10 w-full">
         {activeTab === 'tests' && (
           <>
             {/* Results Header */}

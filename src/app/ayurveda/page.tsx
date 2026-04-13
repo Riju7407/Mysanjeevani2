@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
@@ -12,6 +12,11 @@ const SORT_OPTIONS = [
   { value: 'price-high', label: 'Price: High to Low' },
   { value: 'rating', label: 'Highest Rated' },
 ];
+
+const AYURVEDA_CATEGORY_ALIASES: Record<string, string> = {
+  'vati & gutika & guggulu': 'Vati, Gutika & Guggulu',
+  'churan & powder & avleha & pak': 'Churan, Powder, Avaleha & Pak',
+};
 
 interface Product {
   _id: string;
@@ -36,24 +41,54 @@ function normalizeCategory(value?: string) {
   return value || '';
 }
 
+function normalizeText(value?: string) {
+  return (value || '').trim().toLowerCase();
+}
+
+function equalsIgnoreCase(left?: string, right?: string) {
+  return normalizeText(left) === normalizeText(right);
+}
+
 function isAyurvedaProduct(product: Product) {
   const productType = (product.productType || '').trim().toLowerCase();
   const normalizedCategory = normalizeCategory(product.category);
+  const normalizedBrand = normalizeText(product.brand);
+
+  const hasAyurvedaCategoryMatch = CATEGORIES.some((category) =>
+    equalsIgnoreCase(category, product.category)
+  );
+  const hasAyurvedaBrandMatch = CATEGORIES.some((category) =>
+    equalsIgnoreCase(category, normalizedBrand)
+  );
+
   return (
     productType === 'ayurveda medicine' ||
     String(normalizedCategory).toLowerCase() === 'ayurveda' ||
-    CATEGORIES.includes(product.category)
+    hasAyurvedaCategoryMatch ||
+    hasAyurvedaBrandMatch
   );
 }
 
-export default function AyurvedaPage() {
+function AyurvedaContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlCategory = searchParams.get('category') || '';
+  const urlSearch = searchParams.get('search') || '';
+  const productsSectionRef = useRef<HTMLDivElement | null>(null);
+  const hasAutoScrolledRef = useRef(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [sortOrder, setSortOrder] = useState('featured');
   const [cart, setCart] = useState<Record<string, number>>({});
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    const normalizedCategory = AYURVEDA_CATEGORY_ALIASES[urlCategory.trim().toLowerCase()] || urlCategory;
+    setSelectedCategory(normalizedCategory && CATEGORIES.includes(normalizedCategory) ? normalizedCategory : 'All');
+    setSearch(urlSearch);
+    hasAutoScrolledRef.current = false;
+  }, [urlCategory, urlSearch]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -83,8 +118,9 @@ export default function AyurvedaPage() {
     let result = ayurvedaProducts.filter((p) => {
       const matchCat =
         selectedCategory === 'All' ||
-        p.category === selectedCategory ||
-        p.benefit === selectedCategory;
+        equalsIgnoreCase(p.category, selectedCategory) ||
+        equalsIgnoreCase(p.benefit, selectedCategory) ||
+        equalsIgnoreCase(p.brand, selectedCategory);
       const keyword = search.toLowerCase();
       const matchSearch =
         !keyword ||
@@ -101,6 +137,20 @@ export default function AyurvedaPage() {
 
     return result;
   }, [ayurvedaProducts, selectedCategory, search, sortOrder]);
+
+  useEffect(() => {
+    if (loading) return;
+    if (!urlCategory && !urlSearch) return;
+    if (hasAutoScrolledRef.current) return;
+
+    const section = productsSectionRef.current;
+    if (!section) return;
+
+    hasAutoScrolledRef.current = true;
+    window.requestAnimationFrame(() => {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [loading, urlCategory, urlSearch, filtered.length]);
 
   const addToCart = (product: Product) => {
     setCart((prev) => ({ ...prev, [product._id]: (prev[product._id] || 0) + 1 }));
@@ -188,7 +238,7 @@ export default function AyurvedaPage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 max-w-7xl mx-auto px-4 py-10 w-full">
+      <div id="products-section" ref={productsSectionRef} className="flex-1 max-w-7xl mx-auto px-4 py-10 w-full">
         {/* Results Header */}
         <div className="mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -244,7 +294,8 @@ export default function AyurvedaPage() {
               {filtered.map((p) => (
                 <article
                   key={p._id}
-                  className="group w-full max-w-56 mx-auto bg-white/95 border border-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition duration-300 flex flex-col"
+                  onClick={() => router.push(`/medicines/${p._id}`)}
+                  className="group w-full max-w-56 mx-auto bg-white/95 border border-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition duration-300 flex flex-col cursor-pointer"
                 >
                   {/* Image Container */}
                   <div className="relative h-40 bg-linear-to-br from-white to-slate-50 flex items-center justify-center overflow-hidden">
@@ -342,5 +393,13 @@ export default function AyurvedaPage() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function AyurvedaPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <AyurvedaContent />
+    </Suspense>
   );
 }

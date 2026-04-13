@@ -14,12 +14,12 @@ interface Service {
 }
 
 const SERVICES: Service[] = [
-  { icon: '💊', label: 'Medicines', desc: 'Order medicines with discounts up to 25%', href: '/medicines', bgGradient: 'from-emerald-500 to-teal-500', image: '/Medicines.png' },
-  { icon: '🧪', label: 'Lab Tests', desc: 'Get tested at home, reports in 24hrs', href: '/Lab-Tests', bgGradient: 'from-blue-500 to-cyan-500', image: '/Lab-Tests.png' },
-  { icon: '👨‍⚕️', label: 'Doctor Consultation', desc: 'Video, audio & in-person consultations', href: '/doctor-consultation', bgGradient: 'from-purple-500 to-pink-500', image: '/Doctor-Consultation.png' },
-  { icon: '🌿', label: 'Ayurveda', desc: '100% authentic ayurvedic products', href: '/ayurveda', bgGradient: 'from-amber-500 to-yellow-500', image: '/Ayurveda.png' },
-  { icon: '🌸', label: 'Homeopathy', desc: 'FDA approved homeopathic remedies', href: '/homeopathy', bgGradient: 'from-rose-500 to-pink-500', image: '/Homeopathy.png' },
-  { icon: '🏥', label: 'Wellness', desc: 'Complete health and wellness programs', href: '/wellness', bgGradient: 'from-teal-500 to-cyan-500', image: '/Wellness.png' },
+  { icon: '💊', label: 'Medicines', desc: 'Order medicines with discounts up to 25%', href: '/medicines#products-section', bgGradient: 'from-emerald-500 to-teal-500', image: '/Medicines.png' },
+  { icon: '🧪', label: 'Lab Tests', desc: 'Get tested at home, reports in 24hrs', href: '/lab-tests#products-section', bgGradient: 'from-blue-500 to-cyan-500', image: '/Lab-Tests.png' },
+  { icon: '👨‍⚕️', label: 'Doctor Consultation', desc: 'Video, audio & in-person consultations', href: '/doctor-consultation#products-section', bgGradient: 'from-purple-500 to-pink-500', image: '/Doctor-Consultation.png' },
+  { icon: '🌿', label: 'Ayurveda', desc: '100% authentic ayurvedic products', href: '/ayurveda#products-section', bgGradient: 'from-amber-500 to-yellow-500', image: '/Ayurveda.png' },
+  { icon: '🌸', label: 'Homeopathy', desc: 'FDA approved homeopathic remedies', href: '/homeopathy#products-section', bgGradient: 'from-rose-500 to-pink-500', image: '/Homeopathy.png' },
+  { icon: '🏥', label: 'Wellness', desc: 'Complete health and wellness programs', href: '/wellness#products-section', bgGradient: 'from-teal-500 to-cyan-500', image: '/Wellness.png' },
 ];
 
 export default function PrimaryServicesCarousel() {

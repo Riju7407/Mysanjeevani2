@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -37,8 +37,21 @@ const SORT_OPTIONS = [
   { value: 'rating', label: 'Highest Rated' },
 ];
 
-export default function HomeopathyPage() {
+const HOMEOPATHY_CATEGORY_ALIASES: Record<string, string> = {
+  'dr. reckeweg (germany)': 'Dr. Reckeweg',
+  'willmar schwabe (germany)': 'Willmar Schwabe',
+  'willmar schwabe india': 'Schwabe India',
+  bjain: 'Bjain',
+  'millesimal lm potency': 'Milleimal LM Potency',
+};
+
+function HomeopathyContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlCategory = searchParams.get('category') || '';
+  const urlSearch = searchParams.get('search') || '';
+  const productsSectionRef = useRef<HTMLDivElement | null>(null);
+  const hasAutoScrolledRef = useRef(false);
 
   const [products, setProducts] = useState<HomeopathyProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,6 +75,13 @@ export default function HomeopathyPage() {
     return ['All', ...merged];
   }, [products]);
 
+  useEffect(() => {
+    const normalizedCategory = HOMEOPATHY_CATEGORY_ALIASES[urlCategory.trim().toLowerCase()] || urlCategory;
+    setSelectedCategory(normalizedCategory && categories.includes(normalizedCategory) ? normalizedCategory : 'All');
+    setSearch(urlSearch);
+    hasAutoScrolledRef.current = false;
+  }, [urlCategory, urlSearch, categories]);
+
   const filteredProducts = useMemo(() => {
     let result = products.filter((product) => {
       const matchesCategory =
@@ -84,6 +104,20 @@ export default function HomeopathyPage() {
 
     return result;
   }, [products, selectedCategory, search, sortOrder]);
+
+  useEffect(() => {
+    if (loading) return;
+    if (!urlCategory && !urlSearch) return;
+    if (hasAutoScrolledRef.current) return;
+
+    const section = productsSectionRef.current;
+    if (!section) return;
+
+    hasAutoScrolledRef.current = true;
+    window.requestAnimationFrame(() => {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [loading, urlCategory, urlSearch, filteredProducts.length]);
 
   useEffect(() => {
     const fetchHomeopathyProducts = async () => {
@@ -219,7 +253,7 @@ export default function HomeopathyPage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 max-w-7xl mx-auto px-4 py-10 w-full">
+      <div id="products-section" ref={productsSectionRef} className="flex-1 max-w-7xl mx-auto px-4 py-10 w-full">
         {/* Results Header */}
         <div className="mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -396,5 +430,13 @@ export default function HomeopathyPage() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function HomeopathyPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <HomeopathyContent />
+    </Suspense>
   );
 }

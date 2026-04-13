@@ -6,6 +6,15 @@ import { DoctorConsultation } from '@/lib/models/DoctorConsultation';
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
+
+    // Failsafe: auto-complete stale in-progress consultations.
+    const staleThresholdMs = 2 * 60 * 1000;
+    const staleBefore = new Date(Date.now() - staleThresholdMs);
+    await DoctorConsultation.updateMany(
+      { status: 'in-progress', updatedAt: { $lt: staleBefore } },
+      { $set: { status: 'completed' } }
+    );
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') || '';
     const doctorId = searchParams.get('doctorId') || '';
@@ -34,7 +43,16 @@ export async function GET(request: NextRequest) {
       .sort({ appointmentDate: 1, queueNumber: 1 })
       .lean();
 
-    return NextResponse.json({ consultations, total: consultations.length });
+    return NextResponse.json(
+      { consultations, total: consultations.length },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      }
+    );
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

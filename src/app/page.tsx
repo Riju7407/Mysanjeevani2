@@ -182,7 +182,7 @@ function PopularProductsDisplay({
                       className={`h-full w-full object-contain group-hover:scale-105 transition duration-300 ${isCompactPopularCard ? 'p-3' : 'p-4'}`}
                     />
                   ) : (
-                    <div className="text-5xl">{product.icon || '??'}</div>
+                    <div className="text-5xl">💊</div>
                   )}
                 </div>
 
@@ -331,7 +331,7 @@ export default function HomePage() {
           price: product.price,
           quantity: 1,
           brand: product.brand,
-          image: product.image || product.icon || '??',
+          image: product.image || product.icon || '💊',
           vendorName: 'MySanjeevni',
         });
       }
@@ -401,9 +401,9 @@ export default function HomePage() {
       {/* Hero Section */}
       <section className="w-full px-4 py-6">
         <div className="max-w-7xl mx-auto">
-          <div className="flex gap-4 h-56">
-            {/* Left Image Section - 30% Container */}
-            <div className="w-[30%] rounded-2xl overflow-hidden shadow-lg bg-gray-100">
+          <div className="flex flex-col lg:flex-row gap-4 lg:h-56">
+            {/* Left Image Section */}
+            <div className="w-full lg:w-[30%] h-44 sm:h-56 lg:h-auto rounded-2xl overflow-hidden shadow-lg bg-gray-100">
               <img
                 src="/h2.jpeg"
                 alt="Hero Left Banner"
@@ -417,8 +417,8 @@ export default function HomePage() {
               />
             </div>
 
-            {/* Carousel Section - 70% Container */}
-            <div className="w-[70%] rounded-2xl overflow-hidden shadow-lg bg-white">
+            {/* Carousel Section */}
+            <div className="w-full lg:w-[70%] rounded-2xl overflow-hidden shadow-lg bg-white min-h-[220px] sm:min-h-[280px] lg:min-h-0">
               <HeroCarousel />
             </div>
           </div>
@@ -481,7 +481,7 @@ export default function HomePage() {
               <p className="mt-1 text-sm text-slate-600">Start with immunity support, digestive care, and stress-balancing solutions.</p>
             </div>
             <button
-              onClick={() => router.push('/ayurveda')}
+              onClick={() => router.push('/ayurveda#products-section')}
               className="rounded-xl bg-amber-600 hover:bg-amber-700 text-white px-5 py-3 text-sm font-bold transition"
             >
               Explore Ayurveda
@@ -590,7 +590,7 @@ export default function HomePage() {
             </div>
             <div className="flex flex-col sm:flex-row lg:flex-col gap-3 lg:justify-self-end w-full lg:w-auto">
               <button
-                onClick={() => router.push('/medicines')}
+                onClick={() => router.push('/medicines#products-section')}
                 className="rounded-xl bg-white text-violet-700 font-bold px-5 py-3 hover:bg-violet-50 transition"
               >
                 Explore Medicines
@@ -633,7 +633,7 @@ export default function HomePage() {
               }`}
               style={{ transitionDelay: '50ms' }}
             >
-              <div className="mx-auto h-14 w-14 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-2xl font-black mb-4">?</div>
+              <div className="mx-auto h-14 w-14 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-2xl font-black mb-4">✓</div>
               <h3 className="font-extrabold text-slate-900 text-lg mb-2">100% Authentic</h3>
               <p className="text-sm text-slate-600">All medicines sourced from verified pharmacies</p>
             </article>
@@ -644,7 +644,7 @@ export default function HomePage() {
               }`}
               style={{ transitionDelay: '160ms' }}
             >
-              <div className="mx-auto h-14 w-14 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center text-2xl mb-4">???</div>
+              <div className="mx-auto h-14 w-14 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center text-2xl mb-4">🔒</div>
               <h3 className="font-extrabold text-slate-900 text-lg mb-2">Secure & Safe</h3>
               <p className="text-sm text-slate-600">SSL encrypted transactions and secure payment</p>
             </article>
@@ -655,7 +655,7 @@ export default function HomePage() {
               }`}
               style={{ transitionDelay: '260ms' }}
             >
-              <div className="mx-auto h-14 w-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-2xl mb-4">??</div>
+              <div className="mx-auto h-14 w-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-2xl mb-4">🚚</div>
               <h3 className="font-extrabold text-slate-900 text-lg mb-2">Fast Delivery</h3>
               <p className="text-sm text-slate-600">Get medicines delivered to your doorstep</p>
             </article>

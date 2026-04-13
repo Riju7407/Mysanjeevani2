@@ -30,6 +30,24 @@ html {
   overflow-x: hidden;
 }
 
+* {
+  box-sizing: border-box;
+}
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+input,
+textarea,
+select,
+button {
+  max-width: 100%;
+}
+
 /* Hide scrollbar while keeping functionality */
 .scrollbar-hide {
   -ms-overflow-style: none;  /* IE and Edge */

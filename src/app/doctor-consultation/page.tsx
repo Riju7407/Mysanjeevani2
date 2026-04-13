@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { OTPVerificationModal } from '@/components/OTPVerificationModal';
 
 const AgoraConsultationCall = dynamic(() => import('@/components/AgoraConsultationCall'), {
   ssr: false,
@@ -63,6 +64,7 @@ interface Doctor {
   experience: number;
   qualification: string;
   consultationFee: number;
+  availableDates?: string[];
   rating: number;
   totalReviews: number;
   timeSlots: TimeSlot[];
@@ -110,6 +112,26 @@ async function loadRazorpayScript() {
   });
 }
 
+function getValidAvailableDates(dates?: string[]) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return Array.from(
+    new Set(
+      (dates || []).filter((date) => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+        const currentDate = new Date(`${date}T00:00:00`);
+        return !Number.isNaN(currentDate.getTime()) && currentDate >= today;
+      })
+    )
+  ).sort();
+}
+
+function formatFeeLabel(fee?: number) {
+  const amount = Number(fee || 0);
+  return amount <= 0 ? 'Free' : `₹${amount}`;
+}
+
 export default function DoctorConsultationPage() {
   const router = useRouter();
   const isImageUrl = (value?: string) => !!value && /^(https?:\/\/|\/)/i.test(value);
@@ -128,6 +150,8 @@ export default function DoctorConsultationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [activeCall, setActiveCall] = useState<Consultation | null>(null);
+  const [showOTPModal, setShowOTPModal] = useState(false);
+  const [isOTPVerified, setIsOTPVerified] = useState(false);
 
   const redirectToLogin = () => {
     if (typeof window === 'undefined') return;
@@ -171,10 +195,11 @@ export default function DoctorConsultationPage() {
 
   const fetchConsultations = useCallback(async () => {
     const user = getUserData();
-    if (!user?._id) return;
+    const userId = user?._id || user?.id;
+    if (!userId) return;
     setLoadingConsultations(true);
     try {
-      const res = await fetch(`/api/consultations?userId=${user._id}`);
+      const res = await fetch(`/api/consultations?userId=${userId}`, { cache: 'no-store' });
       const data = await res.json();
       setConsultations(data.consultations || []);
     } catch {
@@ -199,27 +224,65 @@ export default function DoctorConsultationPage() {
       return;
     }
 
+    const availableDates = getValidAvailableDates(doctor.availableDates);
+
     setBookingDoctor(doctor);
     setForm({
       patientName: user?.fullName || '',
       patientPhone: user?.phone || '',
       patientEmail: user?.email || '',
-      appointmentDate: '',
+      appointmentDate: availableDates[0] || '',
       consultationType: 'in-person',
       symptoms: '',
     });
     setError('');
+    setIsOTPVerified(false);
     setShowBookingModal(true);
   };
 
   const handleBook = async () => {
+    // First check if OTP is verified
+    if (!isOTPVerified) {
+      setShowOTPModal(true);
+      return;
+    }
+
     const user = getUserData();
+    const userId = user?._id || user?.id;
     if (!user) { setError('Please log in to book a consultation.'); return; }
+    if (!userId) { setError('User account ID not found. Please log in again.'); return; }
     if (!form.patientName || !form.appointmentDate) { setError('Please fill in all required fields.'); return; }
     if (!bookingDoctor) return;
+
+    const allowedDates = getValidAvailableDates(bookingDoctor.availableDates);
+    if (allowedDates.length > 0 && !allowedDates.includes(form.appointmentDate)) {
+      setError('Please choose a valid appointment date from the doctor\'s available slots.');
+      return;
+    }
+
     setSubmitting(true);
     setError('');
     try {
+      if (Number(bookingDoctor.consultationFee || 0) <= 0) {
+        const freeRes = await fetch('/api/consultations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId,
+            doctorId: bookingDoctor._id,
+            ...form,
+          }),
+        });
+
+        const freeData = await freeRes.json();
+        if (!freeRes.ok) throw new Error(freeData.error || 'Free booking failed');
+
+        setBookingSuccess(freeData.consultation);
+        setShowBookingModal(false);
+        setSubmitting(false);
+        return;
+      }
+
       const sdkLoaded = await loadRazorpayScript();
       if (!sdkLoaded || !window.Razorpay) {
         throw new Error('Unable to load Razorpay. Please try again.');
@@ -233,7 +296,7 @@ export default function DoctorConsultationPage() {
           receipt: `consult_${Date.now()}`,
           notes: {
             flow: 'doctor-consultation',
-            userId: user._id,
+            userId,
             doctorId: bookingDoctor._id,
           },
         }),
@@ -278,7 +341,7 @@ export default function DoctorConsultationPage() {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                userId: user._id,
+                userId,
                 doctorId: bookingDoctor._id,
                 ...form,
                 razorpayOrderId: paymentResponse.razorpay_order_id,
@@ -329,6 +392,39 @@ export default function DoctorConsultationPage() {
     return isLiveMode && isJoinableStatus;
   };
 
+  const handleCallClose = async () => {
+    const currentCall = activeCall;
+    setActiveCall(null);
+
+    if (!currentCall || currentCall.status === 'completed' || currentCall.status === 'cancelled') {
+      return;
+    }
+
+    // Optimistically reflect call completion in current UI.
+    setConsultations((prev) =>
+      prev.map((item) =>
+        item._id === currentCall._id ? { ...item, status: 'completed' } : item
+      )
+    );
+
+    try {
+      const res = await fetch(`/api/consultations/${currentCall._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'completed' }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || 'Failed to mark consultation completed');
+      }
+    } catch {
+      // Keep close experience smooth even if status update fails temporarily.
+    } finally {
+      await fetchConsultations();
+    }
+  };
+
   const todayStr = new Date().toISOString().split('T')[0];
 
   // Apply sorting to doctors
@@ -359,7 +455,7 @@ export default function DoctorConsultationPage() {
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="?? Search by doctor name, specialization, department..."
+                  placeholder="Search by doctor name, specialization, department..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && fetchDoctors()}
@@ -407,7 +503,7 @@ export default function DoctorConsultationPage() {
         {bookingSuccess && (
           <div className="mb-6 bg-green-50 border border-green-200 rounded-xl p-5 flex items-start justify-between gap-4">
             <div>
-              <h3 className="font-bold text-green-800 text-lg mb-1">? Consultation Booked!</h3>
+              <h3 className="font-bold text-green-800 text-lg mb-1">Consultation Booked!</h3>
               <p className="text-green-700">
                 <strong>Doctor:</strong> {bookingSuccess.doctorName} &nbsp;|&nbsp;
                 <strong>Date:</strong> {new Date(bookingSuccess.appointmentDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -420,11 +516,11 @@ export default function DoctorConsultationPage() {
               </p>
               <p className="text-sm text-green-600 mt-1">Doctor will confirm your exact consultation time after reviewing your booking.</p>
             </div>
-            <button onClick={() => setBookingSuccess(null)} className="text-green-500 hover:text-green-700 text-xl">?</button>
+            <button onClick={() => setBookingSuccess(null)} className="text-green-500 hover:text-green-700 text-xl">×</button>
           </div>
         )}
 
-      <div className="flex-1 max-w-7xl mx-auto px-4 py-10 w-full">
+      <div id="products-section" className="flex-1 max-w-7xl mx-auto px-4 py-10 w-full">
 
         {/* Tab Navigation */}
         <div className="flex gap-2 mb-8 border-b border-gray-200">
@@ -482,7 +578,7 @@ export default function DoctorConsultationPage() {
               </div>
             ) : sortedDoctors.length === 0 ? (
               <div className="text-center py-20 bg-white border-2 border-dashed border-emerald-200 rounded-3xl shadow-sm">
-                <div className="text-7xl mb-4 opacity-50">?????</div>
+                <div className="text-3xl mb-4 opacity-70">No Results</div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">No doctors found</h3>
                 <p className="text-gray-600 mb-6">
                   {search
@@ -571,10 +667,14 @@ export default function DoctorConsultationPage() {
 
                         <div className="mb-2 flex items-end justify-between">
                           <div className="flex items-baseline gap-2">
-                            <span className="text-base font-black text-slate-900">&#8377;{doctor.consultationFee}</span>
+                            <span className="text-base font-black text-slate-900">{formatFeeLabel(doctor.consultationFee)}</span>
                           </div>
                           <span className="text-[11px] font-bold text-emerald-600">{doctor.experience} yrs</span>
                         </div>
+
+                        <p className="text-[11px] text-slate-500 mb-2">
+                          View Slots: {getValidAvailableDates(doctor.availableDates).length} date(s)
+                        </p>
 
                         <div className="flex gap-2 mt-auto">
                           <button
@@ -629,7 +729,7 @@ export default function DoctorConsultationPage() {
                 onClick={fetchConsultations}
                 className="text-emerald-600 text-sm font-medium border border-emerald-300 px-4 py-2 rounded-lg hover:bg-emerald-50"
               >
-                ? Refresh
+                Refresh
               </button>
             </div>
 
@@ -637,7 +737,7 @@ export default function DoctorConsultationPage() {
               <div className="text-center py-20 text-gray-500">Loading...</div>
             ) : consultations.length === 0 ? (
               <div className="text-center py-20 text-gray-400">
-                <div className="text-6xl mb-4">??</div>
+                <div className="text-2xl mb-4">No Data</div>
                 <p className="text-lg font-medium">No consultations yet</p>
                 <button
                   onClick={() => setActiveTab('find')}
@@ -660,18 +760,18 @@ export default function DoctorConsultationPage() {
                         </div>
                         <p className="text-sm text-emerald-700 font-medium mb-1">{c.doctorSpecialization} · {c.doctorDepartment}</p>
                         <p className="text-sm text-gray-600">
-                          ?? {new Date(c.appointmentDate).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
-                          {!c.allottedTime && <span> · ? Exact time pending</span>}
+                          Date: {new Date(c.appointmentDate).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                          {!c.allottedTime && <span> · Exact time pending</span>}
                         </p>
                         <p className="text-sm text-gray-600 mt-1">
                           Consultation Type: <span className="capitalize font-medium">{c.consultationType || 'in-person'}</span>
                         </p>
                         {c.allottedTime && (
-                          <p className="text-sm text-blue-700 font-medium mt-1">? Doctor confirmed time: <strong>{c.allottedTime}</strong></p>
+                          <p className="text-sm text-blue-700 font-medium mt-1">Doctor confirmed time: <strong>{c.allottedTime}</strong></p>
                         )}
                         {c.symptoms && <p className="text-sm text-gray-500 mt-1">Symptoms: {c.symptoms}</p>}
                         {c.notes && (
-                          <p className="text-sm text-gray-600 mt-2 bg-gray-50 rounded px-3 py-2">?? {c.notes}</p>
+                          <p className="text-sm text-gray-600 mt-2 bg-gray-50 rounded px-3 py-2">Note: {c.notes}</p>
                         )}
                       </div>
 
@@ -680,17 +780,17 @@ export default function DoctorConsultationPage() {
                           <p className="text-xs text-gray-500 mb-1">Your Token No.</p>
                           <p className="text-4xl font-extrabold text-emerald-700">#{c.queueNumber}</p>
                           <p className="text-xs text-gray-600 mt-1 font-medium">
-                            {c.patientsAhead === 0 ? "?? You're first!" : `${c.patientsAhead} patient(s) ahead`}
+                            {c.patientsAhead === 0 ? "You're first!" : `${c.patientsAhead} patient(s) ahead`}
                           </p>
-                          <p className="text-xs text-gray-400 mt-0.5">Fees: ?{c.fees}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">Fees: {formatFeeLabel(c.fees)}</p>
                         </div>
                       )}
 
                       {c.status === 'completed' && (
                         <div className="flex-shrink-0 bg-green-50 border border-green-200 rounded-xl p-4 text-center min-w-[110px]">
-                          <p className="text-3xl">?</p>
+                          <p className="text-2xl font-semibold">Done</p>
                           <p className="text-sm font-medium text-green-700 mt-1">Completed</p>
-                          <p className="text-xs text-gray-400">?{c.fees}</p>
+                          <p className="text-xs text-gray-400">{formatFeeLabel(c.fees)}</p>
                         </div>
                       )}
                     </div>
@@ -756,7 +856,7 @@ export default function DoctorConsultationPage() {
                 <div className="rounded-2xl border border-emerald-100 bg-white p-4">
                   <div className="flex items-center gap-3">
                     <div className="h-14 w-14 rounded-2xl bg-emerald-100 text-3xl flex items-center justify-center overflow-hidden">
-                      {bookingDoctor.avatar || '?????'}
+                      {bookingDoctor.avatar || 'Dr'}
                     </div>
                     <div className="min-w-0">
                       <p className="font-bold text-slate-900 truncate">{bookingDoctor.name}</p>
@@ -767,8 +867,23 @@ export default function DoctorConsultationPage() {
                   <div className="mt-4 space-y-2 text-sm text-slate-600">
                     <p>Department: <span className="font-medium text-slate-800">{bookingDoctor.department}</span></p>
                     <p>Experience: <span className="font-medium text-slate-800">{bookingDoctor.experience} years</span></p>
-                    <p>Consultation Fee: <span className="font-semibold text-emerald-700">?{bookingDoctor.consultationFee}</span></p>
+                    <p>Consultation Fee: <span className="font-semibold text-emerald-700">{formatFeeLabel(bookingDoctor.consultationFee)}</span></p>
                   </div>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                  <p className="text-xs font-semibold tracking-wide text-emerald-800 uppercase">View Slots</p>
+                  {getValidAvailableDates(bookingDoctor.availableDates).length === 0 ? (
+                    <p className="text-xs text-emerald-700 mt-2">No specific appointment dates set by doctor yet.</p>
+                  ) : (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {getValidAvailableDates(bookingDoctor.availableDates).map((date) => (
+                        <span key={date} className="rounded-full bg-white border border-emerald-200 px-2 py-1 text-[11px] text-emerald-800">
+                          {new Date(`${date}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -828,13 +943,33 @@ export default function DoctorConsultationPage() {
 
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-1">Appointment Date *</label>
-                    <input
-                      type="date"
-                      min={todayStr}
-                      value={form.appointmentDate}
-                      onChange={(e) => setForm({ ...form, appointmentDate: e.target.value })}
-                      className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400"
-                    />
+                    {getValidAvailableDates(bookingDoctor.availableDates).length > 0 ? (
+                      <select
+                        value={form.appointmentDate}
+                        onChange={(e) => setForm({ ...form, appointmentDate: e.target.value })}
+                        className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400"
+                      >
+                        <option value="">Select available date</option>
+                        {getValidAvailableDates(bookingDoctor.availableDates).map((date) => (
+                          <option key={date} value={date}>
+                            {new Date(`${date}T00:00:00`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="date"
+                        min={todayStr}
+                        value={form.appointmentDate}
+                        onChange={(e) => setForm({ ...form, appointmentDate: e.target.value })}
+                        className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400"
+                      />
+                    )}
+                    <p className="text-xs text-slate-500 mt-1">
+                      {getValidAvailableDates(bookingDoctor.availableDates).length > 0
+                        ? 'Only dates set by doctor are shown here.'
+                        : 'Doctor has not set specific dates yet, so you can pick any future date.'}
+                    </p>
                   </div>
 
                   <div>
@@ -876,7 +1011,7 @@ export default function DoctorConsultationPage() {
                     disabled={submitting}
                     className="w-full sm:w-auto rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 font-semibold transition disabled:opacity-60"
                   >
-                    {submitting ? 'Booking...' : `Confirm Booking • ?${bookingDoctor.consultationFee}`}
+                    {isOTPVerified ? (submitting ? 'Booking...' : `Confirm Booking • ${formatFeeLabel(bookingDoctor.consultationFee)}`) : 'Verify OTP & Book'}
                   </button>
                 </div>
               </div>
@@ -892,9 +1027,20 @@ export default function DoctorConsultationPage() {
           consultationType={activeCall.consultationType === 'video' ? 'video' : 'audio'}
           participantType="patient"
           participantLabel="Patient"
-          onClose={() => setActiveCall(null)}
+          onClose={handleCallClose}
         />
       )}
+
+      {/* OTP VERIFICATION MODAL */}
+      <OTPVerificationModal
+        isOpen={showOTPModal}
+        userPhone={form.patientPhone}
+        onVerifySuccess={() => {
+          setIsOTPVerified(true);
+          setShowOTPModal(false);
+        }}
+        onClose={() => setShowOTPModal(false)}
+      />
 
       <Footer />
     </div>

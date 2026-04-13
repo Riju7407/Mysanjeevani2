@@ -37,6 +37,7 @@ interface DoctorResponse {
     qualification?: string;
     bio?: string;
     consultationFee?: number;
+    availableDates?: string[];
     avatar?: string;
     isAvailable?: boolean;
   };
@@ -66,6 +67,9 @@ export default function DoctorPanelPage() {
   const [profileImageUploading, setProfileImageUploading] = useState(false);
   const [profileImageError, setProfileImageError] = useState('');
   const [profileImagePreview, setProfileImagePreview] = useState('');
+  const [newAvailableDate, setNewAvailableDate] = useState('');
+  const [datesSaving, setDatesSaving] = useState(false);
+  const [datesFeedback, setDatesFeedback] = useState('');
   const [timeUpdateError, setTimeUpdateError] = useState('');
   const [updatingTimeId, setUpdatingTimeId] = useState<string | null>(null);
   const [showTimeModal, setShowTimeModal] = useState(false);
@@ -80,6 +84,7 @@ export default function DoctorPanelPage() {
     experience: 0,
     qualification: '',
     consultationFee: 0,
+    availableDates: [] as string[],
     avatar: '👨‍⚕️',
     bio: '',
     isAvailable: true,
@@ -112,7 +117,7 @@ export default function DoctorPanelPage() {
     }
 
     try {
-      const res = await fetch(`/api/doctor/consultations?email=${encodeURIComponent(email)}`);
+      const res = await fetch(`/api/doctor/consultations?email=${encodeURIComponent(email)}`, { cache: 'no-store' });
       const data: DoctorResponse = await res.json();
 
       setDoctorFound(data.doctorFound);
@@ -127,6 +132,7 @@ export default function DoctorPanelPage() {
           experience: data.doctor.experience || 0,
           qualification: data.doctor.qualification || '',
           consultationFee: data.doctor.consultationFee || 0,
+          availableDates: Array.isArray(data.doctor.availableDates) ? data.doctor.availableDates : [],
           avatar: data.doctor.avatar || '👨‍⚕️',
           bio: data.doctor.bio || '',
           isAvailable: data.doctor.isAvailable !== false,
@@ -259,6 +265,62 @@ export default function DoctorPanelPage() {
     }
   };
 
+  const addAvailableDate = () => {
+    if (!newAvailableDate) return;
+    setDatesFeedback('');
+    setProfileForm((prev) => ({
+      ...prev,
+      availableDates: Array.from(new Set([...(prev.availableDates || []), newAvailableDate])).sort(),
+    }));
+    setNewAvailableDate('');
+  };
+
+  const removeAvailableDate = (dateToRemove: string) => {
+    setDatesFeedback('');
+    setProfileForm((prev) => ({
+      ...prev,
+      availableDates: (prev.availableDates || []).filter((date) => date !== dateToRemove),
+    }));
+  };
+
+  const saveAppointmentDates = async () => {
+    if (!user?.email) return;
+
+    setDatesSaving(true);
+    setDatesFeedback('');
+
+    try {
+      const rawUser = localStorage.getItem('user');
+      const parsedUser = rawUser ? JSON.parse(rawUser) : null;
+      const role = parsedUser?.role || 'doctor';
+
+      const res = await fetch('/api/doctor/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-role': role,
+        },
+        body: JSON.stringify({
+          email: user.email,
+          availableDates: profileForm.availableDates,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to save appointment dates');
+
+      setDoctorProfile((prev) => ({
+        ...(prev as any),
+        availableDates: profileForm.availableDates,
+      }));
+      setDatesFeedback('Appointment dates saved successfully.');
+    } catch (error: any) {
+      setDatesFeedback(error.message || 'Failed to save appointment dates');
+    } finally {
+      setDatesSaving(false);
+    }
+  };
+
   const openTimeModal = (consultation: Consultation) => {
     setSelectedConsultation(consultation);
     setExactTimeValue(toTimeInputValue(consultation.allottedTime));
@@ -347,6 +409,41 @@ export default function DoctorPanelPage() {
     }
   };
 
+  const handleCallClose = async () => {
+    const currentCall = activeCall;
+    setActiveCall(null);
+
+    if (!currentCall || currentCall.status === 'completed' || currentCall.status === 'cancelled') {
+      return;
+    }
+
+    // Optimistically reflect call completion in current UI.
+    setConsultations((prev) =>
+      prev.map((item) =>
+        item._id === currentCall._id ? { ...item, status: 'completed' } : item
+      )
+    );
+
+    try {
+      const res = await fetch(`/api/consultations/${currentCall._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'completed' }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || 'Failed to mark consultation completed');
+      }
+    } catch {
+      // Keep close experience smooth even if status update fails temporarily.
+    } finally {
+      if (user?.email) {
+        await fetchDoctorPanelData(user.email);
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 flex flex-col">
       <div className="flex-1 max-w-7xl mx-auto px-4 py-8 w-full">
@@ -364,7 +461,7 @@ export default function DoctorPanelPage() {
             </div>
             <div className="text-right">
               <p className="text-xs text-slate-500">Today</p>
-              <p className="text-sm font-semibold text-slate-900">{new Date().toLocaleDateString()}</p>
+              <p className="text-sm font-semibold text-slate-900">{new Date().toLocaleDateString('en-GB')}</p>
               <button
                 onClick={handleLogout}
                 className="mt-3 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium"
@@ -425,8 +522,71 @@ export default function DoctorPanelPage() {
                 <ProfileInfo label="Department" value={doctorProfile?.department} />
                 <ProfileInfo label="Specialization" value={doctorProfile?.specialization} />
                 <ProfileInfo label="Experience" value={`${doctorProfile?.experience || 0} years`} />
-                <ProfileInfo label="Consultation Fee" value={`₹${doctorProfile?.consultationFee || 0}`} />
+                <ProfileInfo label="Consultation Fee" value={formatFee(doctorProfile?.consultationFee)} />
               </div>
+            </section>
+
+            <section className="bg-white rounded-2xl border border-slate-200 p-5 mb-6">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">Appointment Dates</h2>
+                  <p className="text-sm text-slate-500 mt-1">Set the dates patients can book from View Slots and booking form.</p>
+                </div>
+                <button
+                  onClick={saveAppointmentDates}
+                  disabled={datesSaving}
+                  className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                >
+                  {datesSaving ? 'Saving...' : 'Save Dates'}
+                </button>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <input
+                  type="date"
+                  min={new Date().toISOString().split('T')[0]}
+                  value={newAvailableDate}
+                  onChange={(e) => setNewAvailableDate(e.target.value)}
+                  className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                />
+                <button
+                  type="button"
+                  onClick={addAvailableDate}
+                  className="border border-emerald-300 text-emerald-700 hover:bg-emerald-50 rounded-lg px-3 py-2 text-sm font-medium"
+                >
+                  Add Date
+                </button>
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                {(profileForm.availableDates || []).length === 0 ? (
+                  <p className="text-xs text-slate-500">No appointment dates added yet.</p>
+                ) : (
+                  (profileForm.availableDates || []).map((date) => (
+                    <button
+                      key={date}
+                      type="button"
+                      onClick={() => removeAvailableDate(date)}
+                      className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs text-emerald-800 hover:bg-emerald-100"
+                      title="Remove date"
+                    >
+                      {new Date(`${date}T00:00:00`).toLocaleDateString('en-IN', {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })}{' '}
+                      x
+                    </button>
+                  ))
+                )}
+              </div>
+
+              {datesFeedback && (
+                <p className={`mt-3 text-sm ${datesFeedback.toLowerCase().includes('failed') ? 'text-red-600' : 'text-emerald-700'}`}>
+                  {datesFeedback}
+                </p>
+              )}
             </section>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -740,7 +900,7 @@ export default function DoctorPanelPage() {
           consultationType={activeCall.consultationType === 'video' ? 'video' : 'audio'}
           participantType="doctor"
           participantLabel="Doctor"
-          onClose={() => setActiveCall(null)}
+          onClose={handleCallClose}
         />
       )}
     </div>
@@ -778,6 +938,11 @@ function InputField({
       />
     </div>
   );
+}
+
+function formatFee(fee?: number) {
+  const amount = Number(fee || 0);
+  return amount <= 0 ? 'Free' : `₹${amount}`;
 }
 
 function formatTimeForDisplay(value: string) {

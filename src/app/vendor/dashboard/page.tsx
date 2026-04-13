@@ -449,6 +449,19 @@ export default function VendorDashboard() {
     const token = localStorage.getItem('vendorToken');
 
     try {
+      // Validate required fields
+      if (!newProduct.name || newProduct.name.trim() === '') {
+        throw new Error('Product name is required');
+      }
+      
+      if (!newProduct.price || isNaN(parseFloat(newProduct.price))) {
+        throw new Error('Valid product price is required');
+      }
+      
+      if (!newProduct.category || newProduct.category.trim() === '') {
+        throw new Error('Product category is required');
+      }
+
       if (!imageUrl) {
         throw new Error('Please upload image to Cloudinary first');
       }
@@ -463,9 +476,9 @@ export default function VendorDashboard() {
           vendorId: vendorInfo?._id,
           ...newProduct,
           price: parseFloat(newProduct.price),
-          mrp: newProduct.mrp ? parseFloat(newProduct.mrp) : undefined,
-          quantity: newProduct.quantity ? parseFloat(newProduct.quantity) : undefined,
-          stock: parseInt(newProduct.stock),
+          mrp: newProduct.mrp && !isNaN(parseFloat(newProduct.mrp)) ? parseFloat(newProduct.mrp) : undefined,
+          quantity: newProduct.quantity && !isNaN(parseFloat(newProduct.quantity)) ? parseFloat(newProduct.quantity) : undefined,
+          stock: newProduct.stock && !isNaN(parseInt(newProduct.stock)) ? parseInt(newProduct.stock) : 0,
           image: imageUrl,
         }),
       });

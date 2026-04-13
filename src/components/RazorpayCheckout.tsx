@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRazorpayPayment } from '@/lib/hooks/useRazorpayPayment';
 import { useRouter } from 'next/navigation';
+import { OTPVerificationModal } from '@/components/OTPVerificationModal';
 
 interface CheckoutProps {
   userId: string;
@@ -38,8 +39,16 @@ export const RazorpayCheckout: React.FC<CheckoutProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [showOTPModal, setShowOTPModal] = useState(false);
+  const [isOTPVerified, setIsOTPVerified] = useState(false);
 
   const handleCheckout = async () => {
+    // First check if OTP is verified
+    if (!isOTPVerified) {
+      setShowOTPModal(true);
+      return;
+    }
+
     if (!deliveryAddress.trim()) {
       setError('Please enter delivery address');
       return;
@@ -118,8 +127,19 @@ export const RazorpayCheckout: React.FC<CheckoutProps> = ({
         disabled={loading}
         className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded transition-colors"
       >
-        {loading ? 'Processing...' : `Pay ₹${totalPrice}`}
+        {isOTPVerified ? (loading ? 'Processing...' : `Pay ₹${totalPrice}`) : 'Verify OTP & Pay'}
       </button>
+
+      {/* OTP VERIFICATION MODAL */}
+      <OTPVerificationModal
+        isOpen={showOTPModal}
+        userPhone={userPhone}
+        onVerifySuccess={() => {
+          setIsOTPVerified(true);
+          setShowOTPModal(false);
+        }}
+        onClose={() => setShowOTPModal(false)}
+      />
     </div>
   );
 };

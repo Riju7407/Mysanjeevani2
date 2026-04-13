@@ -813,7 +813,7 @@ export default function MedicineDetailsPage() {
                       {product.description && (
                         <div>
                           <h3 className="text-lg font-bold text-slate-900 mb-3">About this Product</h3>
-                          <p className="text-slate-700 leading-7">{product.description}</p>
+                          <p className="text-slate-700 leading-7 whitespace-pre-wrap break-words">{product.description}</p>
                         </div>
                       )}
 

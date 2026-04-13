@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
       qualification,
       bio,
       consultationFee,
+      availableDates,
       timeSlots,
     } = body;
 
@@ -73,7 +74,16 @@ export async function POST(request: NextRequest) {
     if (experience !== undefined) doctor.experience = experience;
     if (qualification) doctor.qualification = qualification;
     if (bio) doctor.bio = bio;
-    if (consultationFee) doctor.consultationFee = consultationFee;
+    if (consultationFee !== undefined) doctor.consultationFee = Number(consultationFee) || 0;
+    if (Array.isArray(availableDates)) {
+      doctor.availableDates = Array.from(
+        new Set(
+          availableDates
+            .map((date) => String(date || '').trim())
+            .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+        )
+      ).sort();
+    }
     if (timeSlots && Array.isArray(timeSlots)) {
       doctor.timeSlots = timeSlots as TimeSlot[];
     }

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { OTPVerificationModal } from '@/components/OTPVerificationModal';
 
 interface CartItem {
   id: string | number;
@@ -67,6 +68,8 @@ export default function CartPage() {
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showOTPModal, setShowOTPModal] = useState(false);
+  const [isOTPVerified, setIsOTPVerified] = useState(false);
   const [paypalClientId, setPaypalClientId] = useState('');
   const [paypalCurrency, setPaypalCurrency] = useState('USD');
   const [paypalConfigured, setPaypalConfigured] = useState(false);
@@ -314,6 +317,11 @@ export default function CartPage() {
     }
     if (cartItems.length === 0) {
       alert('Your cart is empty');
+      return;
+    }
+    // First check if OTP is verified
+    if (!isOTPVerified) {
+      setShowOTPModal(true);
       return;
     }
     setShowAddressForm(true);
@@ -582,67 +590,69 @@ export default function CartPage() {
                   </div>
 
                   <div className="divide-y divide-gray-200">
-                    {cartItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className="px-6 py-4 flex gap-4 items-center hover:bg-gray-50 transition"
-                      >
-                        {/* Product Image */}
-                        <div className="w-20 h-20 bg-emerald-50 rounded-lg flex items-center justify-center text-3xl flex-shrink-0">
-                          {isImageUrl(item.image) ? (
-                            <img
-                              src={item.image}
-                              alt={item.name}
-                              className="w-full h-full object-cover rounded-lg"
-                              loading="lazy"
-                            />
-                          ) : (
-                            item.image || '💊'
-                          )}
-                        </div>
+                    {cartItems.map((item) => {
+                      return (
+                        <div
+                          key={item.id}
+                          className="px-6 py-4 flex gap-4 items-center hover:bg-gray-50 transition"
+                        >
+                          {/* Product Image */}
+                          <div className="w-20 h-20 bg-emerald-50 rounded-lg flex items-center justify-center text-3xl flex-shrink-0">
+                            {isImageUrl(item.image) ? (
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="w-full h-full object-cover rounded-lg"
+                                loading="lazy"
+                              />
+                            ) : (
+                              item.image || '💊'
+                            )}
+                          </div>
 
-                        {/* Product Details */}
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900">{item.name}</h3>
-                          <p className="text-sm text-gray-600">{item.brand}</p>
-                          <p className="text-lg font-bold text-emerald-600 mt-1">
-                            ₹{item.price}
-                          </p>
-                        </div>
+                          {/* Product Details */}
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-gray-900">{item.name}</h3>
+                            <p className="text-sm text-gray-600">{item.brand}</p>
+                            <p className="text-lg font-bold text-emerald-600 mt-1">
+                              ₹{item.price}
+                            </p>
+                          </div>
 
-                        {/* Quantity Control */}
-                        <div className="flex items-center gap-3 bg-gray-100 rounded-lg px-3 py-2">
-                          <button
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                            className="text-gray-600 hover:text-gray-900 font-bold"
-                          >
-                            −
-                          </button>
-                          <span className="w-8 text-center font-semibold">
-                            {item.quantity}
-                          </span>
-                          <button
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                            className="text-gray-600 hover:text-gray-900 font-bold"
-                          >
-                            +
-                          </button>
-                        </div>
+                          {/* Quantity Control */}
+                          <div className="flex items-center gap-3 bg-gray-100 rounded-lg px-3 py-2">
+                            <button
+                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                              className="text-gray-600 hover:text-gray-900 font-bold"
+                            >
+                              −
+                            </button>
+                            <span className="w-8 text-center font-semibold">
+                              {item.quantity}
+                            </span>
+                            <button
+                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                              className="text-gray-600 hover:text-gray-900 font-bold"
+                            >
+                              +
+                            </button>
+                          </div>
 
-                        {/* Total & Remove */}
-                        <div className="text-right">
-                          <p className="font-bold text-gray-900">
-                            ₹{item.price * item.quantity}
-                          </p>
-                          <button
-                            onClick={() => removeFromCart(item.id)}
-                            className="text-sm text-red-600 hover:text-red-700 mt-2"
-                          >
-                            Remove
-                          </button>
+                          {/* Total & Remove */}
+                          <div className="text-right">
+                            <p className="font-bold text-gray-900">
+                              ₹{item.price * item.quantity}
+                            </p>
+                            <button
+                              onClick={() => removeFromCart(item.id)}
+                              className="text-sm text-red-600 hover:text-red-700 mt-2"
+                            >
+                              Remove
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -711,7 +721,7 @@ export default function CartPage() {
                     onClick={handleBuyNow}
                     className="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white py-3 rounded-lg font-bold transition"
                   >
-                    💳 Buy Now
+                    {isOTPVerified ? '💳 Buy Now' : '🔐 Verify OTP & Buy'}
                   </button>
 
                   <div className="mt-4 text-xs text-gray-600 text-center space-y-1">
@@ -963,6 +973,18 @@ export default function CartPage() {
           </div>
         </div>
       )}
+
+      {/* OTP VERIFICATION MODAL */}
+      <OTPVerificationModal
+        isOpen={showOTPModal}
+        userPhone={user?.phone || ''}
+        onVerifySuccess={() => {
+          setIsOTPVerified(true);
+          setShowOTPModal(false);
+          setShowAddressForm(true);
+        }}
+        onClose={() => setShowOTPModal(false)}
+      />
 
       <Footer />
     </div>

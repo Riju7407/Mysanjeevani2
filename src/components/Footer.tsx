@@ -7,9 +7,9 @@ export default function Footer() {
     <footer className="bg-gray-900 text-white mt-16">
       {/* Main Footer Content */}
       <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-8 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-8 mb-8">
           {/* About Section */}
-          <div>
+          <div className="lg:col-span-2">
             <h3 className="text-lg font-bold mb-4 text-emerald-400">MySanjeevni</h3>
             <p className="text-gray-400 text-sm leading-relaxed">
               India's trusted healthcare platform providing medicines, health products, and wellness solutions.
@@ -125,7 +125,7 @@ export default function Footer() {
                 <svg className="w-4 h-4 mt-0.5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
-                <a href="mailto:MYSANJEEVNI3693@GMAIL.COM" className="hover:text-white">
+                <a href="mailto:MYSANJEEVNI3693@GMAIL.COM" className="hover:text-white break-all">
                   MYSANJEEVNI3693@GMAIL.COM
                 </a>
               </li>
@@ -142,7 +142,7 @@ export default function Footer() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                <span>L-2/51 A, New Mahavir Nagar, Opp. Kangra Niketan, New Delhi-110018</span>
+                <span className="break-words">L-2/51 A, New Mahavir Nagar, Opp. Kangra Niketan, New Delhi-110018</span>
               </li>
             </ul>
           </div>
@@ -176,8 +176,8 @@ export default function Footer() {
 
         {/* Bottom Footer */}
         <div className="border-t border-gray-800 pt-8">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <p className="text-gray-400 text-sm">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-3 text-center md:text-left">
+            <p className="text-gray-400 text-sm break-words">
               © 2026 MySanjeevni. All rights reserved.
             </p>
           </div>

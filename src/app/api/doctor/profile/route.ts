@@ -24,6 +24,7 @@ export async function PUT(request: NextRequest) {
       qualification,
       bio,
       consultationFee,
+      availableDates,
       avatar,
       isAvailable,
     } = body;
@@ -41,6 +42,15 @@ export async function PUT(request: NextRequest) {
     if (qualification !== undefined) updates.qualification = qualification;
     if (bio !== undefined) updates.bio = bio;
     if (consultationFee !== undefined) updates.consultationFee = Number(consultationFee) || 0;
+    if (availableDates !== undefined && Array.isArray(availableDates)) {
+      updates.availableDates = Array.from(
+        new Set(
+          availableDates
+            .map((date) => String(date || '').trim())
+            .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+        )
+      ).sort();
+    }
     if (avatar !== undefined) updates.avatar = avatar;
     if (isAvailable !== undefined) updates.isAvailable = !!isAvailable;
 

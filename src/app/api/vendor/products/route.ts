@@ -52,6 +52,10 @@ const VENDOR_CATEGORY_MAP = {
 
 type VendorProductType = keyof typeof VENDOR_CATEGORY_MAP;
 
+function isVendorProductType(value: string): value is VendorProductType {
+  return Object.prototype.hasOwnProperty.call(VENDOR_CATEGORY_MAP, value);
+}
+
 function isCloudinaryImageUrl(url?: string): boolean {
   if (!url || typeof url !== 'string') return false;
   return /^https?:\/\/res\.cloudinary\.com\//i.test(url.trim());
@@ -76,24 +80,25 @@ function inferProductTypeFromCategory(category?: string): VendorProductType | nu
 function normalizeCategoryForType(productType: VendorProductType, category?: string): string {
   const raw = (category || '').trim();
   const normalized = raw.toLowerCase();
+  const categories = VENDOR_CATEGORY_MAP[productType] || VENDOR_CATEGORY_MAP['Generic Medicine'];
 
   if (productType === 'Generic Medicine' && (normalized === 'generic' || normalized === 'branded')) {
-    return VENDOR_CATEGORY_MAP[productType][0];
+    return categories[0];
   }
 
   if (productType === 'Ayurveda Medicine' && (normalized === 'ayurvedic' || normalized === 'ayurveda')) {
-    return VENDOR_CATEGORY_MAP[productType][0];
+    return categories[0];
   }
 
   if (productType === 'Homeopathy' && normalized === 'homeopathy') {
-    return VENDOR_CATEGORY_MAP[productType][0];
+    return categories[0];
   }
 
   if (productType === 'Lab Tests' && (normalized === 'lab tests' || normalized === 'lab-tests' || normalized === 'labtest')) {
-    return VENDOR_CATEGORY_MAP[productType][0];
+    return categories[0];
   }
 
-  const exactMatch = VENDOR_CATEGORY_MAP[productType].find((c) => c.toLowerCase() === normalized);
+  const exactMatch = categories.find((c) => c.toLowerCase() === normalized);
   return exactMatch || raw;
 }
 
@@ -101,7 +106,10 @@ function resolveTypeAndCategory(productType: string | undefined, category: strin
   const rawType = (productType || '').trim();
   const rawCategory = (category || '').trim();
   const inferredType = inferProductTypeFromCategory(rawCategory);
-  const resolvedType = (rawType || inferredType || 'Generic Medicine') as VendorProductType;
+  const legacyMappedType = rawType.toLowerCase() === 'nutrition' ? 'Generic Medicine' : rawType;
+  const resolvedType: VendorProductType = isVendorProductType(legacyMappedType)
+    ? legacyMappedType
+    : (inferredType || 'Generic Medicine');
 
   // Keep compatibility for legacy category aliases, but do not block categories
   // that come from newer vendor UI category maps.
@@ -159,6 +167,8 @@ export async function POST(request: NextRequest) {
       image,
       safetyInformation,
       specifications,
+      mrp,
+      quantity,
       ...otherFields
     } = body;
 
@@ -194,21 +204,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create product
+    // Safely convert numeric fields to avoid NaN values
+    const parsedPrice = price && !isNaN(parseFloat(price)) ? parseFloat(price) : 0;
+    const parsedStock = stock && !isNaN(parseInt(stock)) ? parseInt(stock) : 0;
+    const parsedMrp = mrp && !isNaN(parseFloat(mrp)) ? parseFloat(mrp) : undefined;
+    const parsedQuantity = quantity && !isNaN(parseFloat(quantity)) ? parseFloat(quantity) : undefined;
+
+    // Create product with properly typed numeric fields
     const newProduct = await Product.create({
       ...otherFields,
       name,
       description,
-      price,
+      price: parsedPrice,
       productType: resolvedType,
       category: normalizedCategory,
-      stock,
+      stock: parsedStock,
       image,
       vendorId,
       vendorName: vendor.vendorName,
       vendorRating: vendor.rating,
-      safetyInformation: typeof safetyInformation === 'string' ? safetyInformation : undefined,
-      specifications: typeof specifications === 'string' ? specifications : undefined,
+      mrp: parsedMrp,
+      quantity: parsedQuantity,
+      safetyInformation: typeof safetyInformation === 'string' ? safetyInformation.trim() : undefined,
+      specifications: typeof specifications === 'string' ? specifications.trim() : undefined,
       approvalStatus: 'pending',
       isActive: false,
       isPopular: false,
@@ -226,7 +244,12 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error: any) {
-    console.error('Error adding product:', error.message);
+    console.error('Error adding product:', error);
+    console.error('Error details:', {
+      message: error.message,
+      name: error.name,
+      code: error.code,
+    });
     return NextResponse.json(
       { error: error.message || 'Failed to add product' },
       { status: 500 }

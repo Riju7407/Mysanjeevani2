@@ -15,6 +15,10 @@ interface InfoPageLayoutProps {
   sections: InfoSection[];
 }
 
+function isFounderSection(heading: string): boolean {
+  return heading.trim().toLowerCase() === 'message from the founder';
+}
+
 const quickLinks = [
   { label: 'About Us', href: '/about' },
   { label: 'Careers', href: '/careers' },
@@ -62,13 +66,35 @@ export default function InfoPageLayout({
               {sections.map((section) => (
                 <article key={section.heading}>
                   <h2 className="text-2xl sm:text-3xl font-black text-emerald-700">{section.heading}</h2>
-                  <div className="mt-3 space-y-3">
-                    {section.content.map((paragraph, index) => (
-                      <p key={`${section.heading}-${index}`} className="text-slate-700 leading-7">
-                        {paragraph}
-                      </p>
-                    ))}
-                  </div>
+                  {isFounderSection(section.heading) ? (
+                    <div className="mt-4 rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-5 sm:p-6 shadow-sm">
+                      <div className="space-y-4 border-l-4 border-amber-400 pl-4 sm:pl-5">
+                        {section.content.map((paragraph, index) => {
+                          const isSignature =
+                            paragraph.startsWith('- Dr.') ||
+                            paragraph.toLowerCase().startsWith('founder,') ||
+                            paragraph.toLowerCase().includes('practitioner since');
+
+                          return (
+                            <p
+                              key={`${section.heading}-${index}`}
+                              className={isSignature ? 'text-slate-800 font-semibold leading-7' : 'text-slate-700 leading-7 italic'}
+                            >
+                              {paragraph}
+                            </p>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-3 space-y-3">
+                      {section.content.map((paragraph, index) => (
+                        <p key={`${section.heading}-${index}`} className="text-slate-700 leading-7">
+                          {paragraph}
+                        </p>
+                      ))}
+                    </div>
+                  )}
                 </article>
               ))}
             </div>

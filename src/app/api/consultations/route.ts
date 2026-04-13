@@ -10,6 +10,15 @@ const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
+
+    // Failsafe: auto-complete stale in-progress consultations.
+    const staleThresholdMs = 2 * 60 * 1000;
+    const staleBefore = new Date(Date.now() - staleThresholdMs);
+    await DoctorConsultation.updateMany(
+      { status: 'in-progress', updatedAt: { $lt: staleBefore } },
+      { $set: { status: 'completed' } }
+    );
+
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
     if (!userId) {
@@ -39,7 +48,16 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    return NextResponse.json({ consultations: enriched });
+    return NextResponse.json(
+      { consultations: enriched },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      }
+    );
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -68,27 +86,50 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
-      return NextResponse.json({ error: 'Payment verification fields are required' }, { status: 400 });
-    }
-
-    if (!RAZORPAY_KEY_SECRET) {
-      return NextResponse.json({ error: 'Payment gateway is not configured' }, { status: 500 });
-    }
-
-    const verificationBody = `${razorpayOrderId}|${razorpayPaymentId}`;
-    const expectedSignature = crypto
-      .createHmac('sha256', RAZORPAY_KEY_SECRET)
-      .update(verificationBody)
-      .digest('hex');
-
-    if (expectedSignature !== razorpaySignature) {
-      return NextResponse.json({ error: 'Payment signature verification failed' }, { status: 400 });
-    }
-
     const doctor = await Doctor.findById(doctorId).lean() as any;
     if (!doctor) {
       return NextResponse.json({ error: 'Doctor not found' }, { status: 404 });
+    }
+
+    const requestedDate = new Date(appointmentDate);
+    if (Number.isNaN(requestedDate.getTime())) {
+      return NextResponse.json({ error: 'Invalid appointment date' }, { status: 400 });
+    }
+
+    const requestedDateStr = requestedDate.toISOString().split('T')[0];
+    const availableDates = Array.isArray(doctor.availableDates)
+      ? doctor.availableDates
+          .map((date: unknown) => String(date || '').trim())
+          .filter((date: string) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+      : [];
+
+    if (availableDates.length > 0 && !availableDates.includes(requestedDateStr)) {
+      return NextResponse.json(
+        { error: 'Selected appointment date is not available for this doctor' },
+        { status: 400 }
+      );
+    }
+
+    const isFreeConsultation = Number(doctor.consultationFee || 0) <= 0;
+
+    if (!isFreeConsultation) {
+      if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+        return NextResponse.json({ error: 'Payment verification fields are required' }, { status: 400 });
+      }
+
+      if (!RAZORPAY_KEY_SECRET) {
+        return NextResponse.json({ error: 'Payment gateway is not configured' }, { status: 500 });
+      }
+
+      const verificationBody = `${razorpayOrderId}|${razorpayPaymentId}`;
+      const expectedSignature = crypto
+        .createHmac('sha256', RAZORPAY_KEY_SECRET)
+        .update(verificationBody)
+        .digest('hex');
+
+      if (expectedSignature !== razorpaySignature) {
+        return NextResponse.json({ error: 'Payment signature verification failed' }, { status: 400 });
+      }
     }
 
     // Compute queue number for this doctor on this date
@@ -119,12 +160,12 @@ export async function POST(request: NextRequest) {
       consultationType: consultationType || 'in-person',
       queueNumber,
       patientsAhead: queueNumber - 1,
-      fees: doctor.consultationFee,
+      fees: Number(doctor.consultationFee) || 0,
       paymentStatus: 'completed',
-      paymentMethod: 'razorpay',
-      paymentGateway: 'razorpay',
-      razorpayOrderId,
-      razorpayPaymentId,
+      paymentMethod: isFreeConsultation ? 'free' : 'razorpay',
+      paymentGateway: isFreeConsultation ? 'none' : 'razorpay',
+      razorpayOrderId: isFreeConsultation ? '' : razorpayOrderId,
+      razorpayPaymentId: isFreeConsultation ? '' : razorpayPaymentId,
       symptoms: symptoms || '',
       status: 'pending',
     });

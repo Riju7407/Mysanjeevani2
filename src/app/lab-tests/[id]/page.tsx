@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { OTPVerificationModal } from '@/components/OTPVerificationModal';
 
 interface LabTest {
   _id: string;
@@ -83,6 +84,8 @@ export default function LabTestDetailsPage() {
   const [error, setError] = useState('');
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [showOTPModal, setShowOTPModal] = useState(false);
+  const [isOTPVerified, setIsOTPVerified] = useState(false);
   const [bookingForm, setBookingForm] = useState<BookingForm>({
     testId: testId,
     testName: '',
@@ -137,10 +140,17 @@ export default function LabTestDetailsPage() {
       alert('Please select date and time');
       return;
     }
+    setIsOTPVerified(false);
     setShowBookingForm(true);
   };
 
   const handleBooking = async () => {
+    // First check if OTP is verified
+    if (!isOTPVerified) {
+      setShowOTPModal(true);
+      return;
+    }
+
     if (!isAuthenticated || !token) {
       redirectToLogin();
       return;
@@ -706,7 +716,7 @@ export default function LabTestDetailsPage() {
                       disabled={!bookingForm.collectionDate || !bookingForm.collectionTime}
                       className="flex-1 bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-emerald-700 transition disabled:opacity-50"
                     >
-                      Confirm Booking
+                      {isOTPVerified ? 'Confirm Booking' : 'Verify OTP & Book'}
                     </button>
                   </div>
                 </div>
@@ -717,6 +727,17 @@ export default function LabTestDetailsPage() {
       </div>
 
       <Footer />
+
+      {/* OTP VERIFICATION MODAL */}
+      <OTPVerificationModal
+        isOpen={showOTPModal}
+        userPhone={user?.phone || ''}
+        onVerifySuccess={() => {
+          setIsOTPVerified(true);
+          setShowOTPModal(false);
+        }}
+        onClose={() => setShowOTPModal(false)}
+      />
     </div>
   );
 }
