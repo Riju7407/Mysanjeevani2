@@ -49,6 +49,9 @@ const QUANTITY_UNIT_OPTIONS = ['None', 'BAGS (Bag)', 'BOTTLES (Btl)', 'BOX (Box)
 
 const normalizeText = (value?: string) => (value || '').trim().toLowerCase();
 const isUnitNone = (value?: string) => !value || value === 'None';
+const hasValidPotency = (value?: string) => Boolean((value || '').trim());
+const hasValidQuantityValue = (value?: number) =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0;
 
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -118,7 +121,7 @@ const getVariantCandidates = async (currentProduct: Product): Promise<Product[]>
 };
 
 const getQuantityLabel = (item: Product) => {
-  const hasQuantity = item.quantity !== undefined && item.quantity !== null;
+  const hasQuantity = hasValidQuantityValue(item.quantity);
   const hasUnit = !isUnitNone(item.quantityUnit);
   if (hasQuantity && hasUnit) return `${item.quantity} ${item.quantityUnit}`;
   if (hasQuantity) return String(item.quantity);
@@ -220,14 +223,16 @@ export default function MedicineDetailsPage() {
 
     try {
       const candidates = await getVariantCandidates(currentProduct);
-      const familyProducts = candidates.filter((item: Product) => item?.potency && isLikelySameFamily(currentProduct, item));
+      const familyProducts = candidates.filter(
+        (item: Product) => hasValidPotency(item?.potency) && isLikelySameFamily(currentProduct, item)
+      );
 
       const byPotency = new Map<string, Product>();
       familyProducts.forEach((item: Product) => {
-        byPotency.set(item.potency as string, item);
+        byPotency.set((item.potency as string).trim(), item);
       });
-      if (currentProduct.potency) {
-        byPotency.set(currentProduct.potency, currentProduct);
+      if (hasValidPotency(currentProduct.potency)) {
+        byPotency.set((currentProduct.potency as string).trim(), currentProduct);
       }
 
       const sorted = Array.from(byPotency.values()).sort((a, b) => {
@@ -255,7 +260,7 @@ export default function MedicineDetailsPage() {
       const candidates = await getVariantCandidates(currentProduct);
       const familyProducts = candidates.filter((item: Product) => {
         if (!isLikelySameFamily(currentProduct, item)) return false;
-        const hasQuantity = item.quantity !== undefined && item.quantity !== null;
+        const hasQuantity = hasValidQuantityValue(item.quantity);
         const hasUnit = !isUnitNone(item.quantityUnit);
         return hasQuantity || hasUnit;
       });
@@ -265,7 +270,7 @@ export default function MedicineDetailsPage() {
         byQuantity.set(getQuantityVariantKey(item), item);
       });
 
-      const currentHasQuantity = currentProduct.quantity !== undefined && currentProduct.quantity !== null;
+      const currentHasQuantity = hasValidQuantityValue(currentProduct.quantity);
       const currentHasUnit = !isUnitNone(currentProduct.quantityUnit);
       if (currentHasQuantity || currentHasUnit) {
         byQuantity.set(getQuantityVariantKey(currentProduct), currentProduct);
@@ -351,6 +356,18 @@ export default function MedicineDetailsPage() {
 
   const safetyItems = useMemo(() => toLineItems(product?.safetyInformation), [product?.safetyInformation]);
   const specificationItems = useMemo(() => toLineItems(product?.specifications), [product?.specifications]);
+  const selectablePotencyProducts = useMemo(
+    () => potencyProducts.filter((item) => hasValidPotency(item.potency)),
+    [potencyProducts]
+  );
+  const selectableQuantityProducts = useMemo(
+    () => quantityProducts.filter((item) => {
+      const hasQuantity = hasValidQuantityValue(item.quantity);
+      const hasUnit = !isUnitNone(item.quantityUnit);
+      return hasQuantity || hasUnit;
+    }),
+    [quantityProducts]
+  );
 
   const redirectToLogin = () => {
     const returnTo = `${window.location.pathname}${window.location.search}`;
@@ -602,11 +619,11 @@ export default function MedicineDetailsPage() {
                   </h1>
 
                   {/* Potency Selector */}
-                  {potencyProducts.length > 0 && (
+                  {selectablePotencyProducts.length > 1 && (
                     <div className="mb-6">
                       <p className="text-sm font-semibold text-slate-700 mb-2">Select Potency</p>
                       <div className="flex flex-wrap gap-2">
-                        {potencyProducts.map((potencyProduct) => {
+                        {selectablePotencyProducts.map((potencyProduct) => {
                           const isActive = potencyProduct._id === product._id;
                           return (
                             <button
@@ -623,7 +640,7 @@ export default function MedicineDetailsPage() {
                                   : 'bg-white text-slate-700 border-slate-300 hover:border-emerald-500 hover:text-emerald-700'
                               }`}
                             >
-                              {potencyProduct.potency}
+                              {(potencyProduct.potency || '').trim()}
                             </button>
                           );
                         })}
@@ -632,11 +649,11 @@ export default function MedicineDetailsPage() {
                   )}
 
                   {/* Quantity Selector */}
-                  {quantityProducts.length > 0 && (
+                  {selectableQuantityProducts.length > 1 && (
                     <div className="mb-6">
                       <p className="text-sm font-semibold text-slate-700 mb-2">Select Quantity</p>
                       <div className="flex flex-wrap gap-2">
-                        {quantityProducts.map((quantityProduct) => {
+                        {selectableQuantityProducts.map((quantityProduct) => {
                           const isActive = quantityProduct._id === product._id;
                           return (
                             <button
