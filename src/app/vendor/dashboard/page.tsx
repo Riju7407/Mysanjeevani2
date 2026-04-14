@@ -120,6 +120,8 @@ const UNANI_SUBCATEGORY_MAP = {
 } as const;
 type UnaniCategory = keyof typeof UNANI_SUBCATEGORY_MAP;
 
+const ORDER_STATUS_OPTIONS = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'] as const;
+
 const DISEASE_SUBCATEGORY_MAP = {
   Mind: ['Addiction', 'Anxiety & Depression', 'Sleeplessness', 'Weak Memory'],
   Face: ['Acne & Pimples', 'Dark Circles & Marks', 'Wrinkles & Aging'],
@@ -444,6 +446,68 @@ export default function VendorDashboard() {
     }
   };
 
+  const getOrderId = (order: any): string => {
+    return String(order?._id || order?.id || order?.orderId || '').trim();
+  };
+
+  const getOrderStatusColor = (status: string) => {
+    switch ((status || 'pending').toLowerCase()) {
+      case 'pending':
+        return 'bg-orange-100 text-orange-800';
+      case 'confirmed':
+        return 'bg-blue-100 text-blue-800';
+      case 'shipped':
+        return 'bg-indigo-100 text-indigo-800';
+      case 'delivered':
+        return 'bg-emerald-100 text-emerald-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-slate-100 text-slate-800';
+    }
+  };
+
+  const updateOrderStatus = (orderId: string, newStatus: string) => {
+    if (!vendorInfo?._id) return;
+
+    const normalizedStatus = String(newStatus || 'pending').toLowerCase();
+    if (!ORDER_STATUS_OPTIONS.includes(normalizedStatus as typeof ORDER_STATUS_OPTIONS[number])) {
+      return;
+    }
+
+    try {
+      const allOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+      const updatedOrders = allOrders.map((order: any) => {
+        const currentOrderId = getOrderId(order);
+        if (currentOrderId !== orderId) return order;
+
+        const belongsToVendor = Array.isArray(order.items) && order.items.some((item: any) => {
+          const itemVendorId = String(item?.vendorId || '').trim();
+          return itemVendorId === vendorInfo._id || itemVendorId === 'default-vendor';
+        });
+
+        if (!belongsToVendor) return order;
+
+        return {
+          ...order,
+          status: normalizedStatus,
+          updatedAt: new Date().toISOString(),
+        };
+      });
+
+      localStorage.setItem('orders', JSON.stringify(updatedOrders));
+      fetchVendorOrders(vendorInfo._id);
+
+      const updatedSelectedOrder = updatedOrders.find((order: any) => getOrderId(order) === orderId);
+      if (updatedSelectedOrder) {
+        setSelectedOrder(updatedSelectedOrder);
+      }
+    } catch (err) {
+      console.error('Error updating order status:', err);
+      alert('Failed to update order status. Please try again.');
+    }
+  };
+
   const handleAddProduct = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const token = localStorage.getItem('vendorToken');
@@ -475,6 +539,7 @@ export default function VendorDashboard() {
         body: JSON.stringify({
           vendorId: vendorInfo?._id,
           ...newProduct,
+          potency: newProduct.potency || undefined,
           price: parseFloat(newProduct.price),
           mrp: newProduct.mrp && !isNaN(parseFloat(newProduct.mrp)) ? parseFloat(newProduct.mrp) : undefined,
           quantity: newProduct.quantity && !isNaN(parseFloat(newProduct.quantity)) ? parseFloat(newProduct.quantity) : undefined,
@@ -1574,7 +1639,7 @@ export default function VendorDashboard() {
                     <tbody>
                       {vendorOrders.map((order, idx) => (
                         <tr key={idx} className="border-b hover:bg-gray-50">
-                          <td className="px-6 py-4 text-sm font-medium">#{order._id?.substring(0, 8)}</td>
+                          <td className="px-6 py-4 text-sm font-medium">#{getOrderId(order)?.substring(0, 8)}</td>
                           <td className="px-6 py-4 text-sm">
                             <div>{order.customerName || 'N/A'}</div>
                             <div className="text-xs text-gray-500">{order.customerEmail || 'N/A'}</div>
@@ -1584,15 +1649,19 @@ export default function VendorDashboard() {
                             {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'N/A'}
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              order.status === 'pending' ? 'bg-orange-100 text-orange-800' :
-                              order.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
-                              order.status === 'shipped' ? 'bg-indigo-100 text-indigo-800' :
-                              order.status === 'delivered' ? 'bg-emerald-100 text-emerald-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
-                              {order.status || 'pending'}
-                            </span>
+                            <select
+                              value={String(order.status || 'pending').toLowerCase()}
+                              onChange={(e) => updateOrderStatus(getOrderId(order), e.target.value)}
+                              className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer ${getOrderStatusColor(
+                                order.status || 'pending'
+                              )}`}
+                            >
+                              {ORDER_STATUS_OPTIONS.map((statusOption) => (
+                                <option key={statusOption} value={statusOption}>
+                                  {statusOption}
+                                </option>
+                              ))}
+                            </select>
                           </td>
                           <td className="px-6 py-4 text-sm">
                             <button
@@ -1728,15 +1797,19 @@ export default function VendorDashboard() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Order Status</p>
-                  <p className={`font-medium px-3 py-1 rounded-full w-fit text-sm ${
-                    selectedOrder.status === 'pending' ? 'bg-orange-100 text-orange-800' :
-                    selectedOrder.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
-                    selectedOrder.status === 'shipped' ? 'bg-indigo-100 text-indigo-800' :
-                    selectedOrder.status === 'delivered' ? 'bg-emerald-100 text-emerald-800' :
-                    'bg-red-100 text-red-800'
-                  }`}>
-                    {selectedOrder.status || 'pending'}
-                  </p>
+                  <select
+                    value={String(selectedOrder.status || 'pending').toLowerCase()}
+                    onChange={(e) => updateOrderStatus(getOrderId(selectedOrder), e.target.value)}
+                    className={`font-medium px-3 py-1 rounded-full w-fit text-sm cursor-pointer ${getOrderStatusColor(
+                      selectedOrder.status || 'pending'
+                    )}`}
+                  >
+                    {ORDER_STATUS_OPTIONS.map((statusOption) => (
+                      <option key={statusOption} value={statusOption}>
+                        {statusOption}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

@@ -209,10 +209,18 @@ export async function POST(request: NextRequest) {
     const parsedStock = stock && !isNaN(parseInt(stock)) ? parseInt(stock) : 0;
     const parsedMrp = mrp && !isNaN(parseFloat(mrp)) ? parseFloat(mrp) : undefined;
     const parsedQuantity = quantity && !isNaN(parseFloat(quantity)) ? parseFloat(quantity) : undefined;
+    const parsedPotency = typeof otherFields.potency === 'string' && otherFields.potency.trim()
+      ? otherFields.potency.trim()
+      : undefined;
+    const parsedQuantityUnit =
+      typeof otherFields.quantityUnit === 'string'
+        ? (otherFields.quantityUnit.trim() || 'None')
+        : (otherFields.quantityUnit || 'None');
 
     // Create product with properly typed numeric fields
     const newProduct = await Product.create({
       ...otherFields,
+      potency: parsedPotency,
       name,
       description,
       price: parsedPrice,
@@ -225,6 +233,7 @@ export async function POST(request: NextRequest) {
       vendorRating: vendor.rating,
       mrp: parsedMrp,
       quantity: parsedQuantity,
+      quantityUnit: parsedQuantityUnit,
       safetyInformation: typeof safetyInformation === 'string' ? safetyInformation.trim() : undefined,
       specifications: typeof specifications === 'string' ? specifications.trim() : undefined,
       approvalStatus: 'pending',
@@ -297,6 +306,15 @@ export async function PUT(request: NextRequest) {
         ? specifications
         : (product as any).specifications || '';
 
+    const normalizedPotency =
+      typeof updateData.potency === 'string'
+        ? (updateData.potency.trim() || undefined)
+        : updateData.potency;
+    const normalizedQuantityUnit =
+      typeof updateData.quantityUnit === 'string'
+        ? (updateData.quantityUnit.trim() || 'None')
+        : (updateData.quantityUnit || 'None');
+
     if (Object.prototype.hasOwnProperty.call(updateData, 'image') && updateData.image) {
       if (!isCloudinaryImageUrl(updateData.image)) {
         return NextResponse.json(
@@ -311,6 +329,8 @@ export async function PUT(request: NextRequest) {
       productId,
       {
         ...updateData,
+        potency: normalizedPotency,
+        quantityUnit: normalizedQuantityUnit,
         safetyInformation: normalizedSafetyInformation,
         specifications: normalizedSpecifications,
         productType: nextType,

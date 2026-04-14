@@ -20,7 +20,29 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     await connectDB();
     const { id } = await params;
     const body = await req.json();
-    const updated = await Product.findByIdAndUpdate(id, body, { new: true });
+    const normalizedPotency =
+      typeof body.potency === 'string' ? (body.potency.trim() || undefined) : body.potency;
+    const normalizedQuantityUnit =
+      typeof body.quantityUnit === 'string'
+        ? (body.quantityUnit.trim() || 'None')
+        : (body.quantityUnit || 'None');
+    const normalizedProductType =
+      typeof body.productType === 'string' ? (body.productType.trim() || undefined) : body.productType;
+    const normalizedApprovalStatus =
+      typeof body.approvalStatus === 'string'
+        ? (body.approvalStatus.trim().toLowerCase() || undefined)
+        : body.approvalStatus;
+    const updated = await Product.findByIdAndUpdate(
+      id,
+      {
+        ...body,
+        potency: normalizedPotency,
+        quantityUnit: normalizedQuantityUnit,
+        productType: normalizedProductType,
+        approvalStatus: normalizedApprovalStatus,
+      },
+      { new: true }
+    );
     if (!updated) return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     return NextResponse.json({ message: 'Product updated', product: updated });
   } catch (error) {

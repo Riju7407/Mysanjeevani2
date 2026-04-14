@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import HeroCarousel from '@/components/HeroCarousel';
@@ -403,19 +404,24 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col lg:flex-row gap-4 lg:h-56">
             {/* Left Image Section */}
-            <div className="w-full lg:w-[30%] h-44 sm:h-56 lg:h-auto rounded-2xl overflow-hidden shadow-lg bg-gray-100">
+            <Link
+              href="/signup"
+              className="w-full max-w-[320px] lg:max-w-none lg:w-56 aspect-square mx-auto lg:mx-0 rounded-2xl overflow-hidden shadow-lg bg-gray-100 block cursor-pointer"
+              aria-label="Go to signup page"
+            >
               <img
-                src="/h2.jpeg"
+                src="/lb.jpeg"
                 alt="Hero Left Banner"
                 style={{
                   width: '100%',
                   height: '100%',
-                  objectFit: 'cover',
+                  objectFit: 'contain',
                   objectPosition: 'center',
                   display: 'block',
+                  backgroundColor: '#f8fafc',
                 }}
               />
-            </div>
+            </Link>
 
             {/* Carousel Section */}
             <div className="w-full lg:w-[70%] rounded-2xl overflow-hidden shadow-lg bg-white min-h-[220px] sm:min-h-[280px] lg:min-h-0">

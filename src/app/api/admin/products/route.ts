@@ -47,6 +47,18 @@ export async function POST(request: NextRequest) {
   try {
     await connectDB();
     const body = await request.json();
+    const normalizedPotency =
+      typeof body.potency === 'string' ? (body.potency.trim() || undefined) : body.potency;
+    const normalizedQuantityUnit =
+      typeof body.quantityUnit === 'string'
+        ? (body.quantityUnit.trim() || 'None')
+        : (body.quantityUnit || 'None');
+    const normalizedProductType =
+      typeof body.productType === 'string' ? (body.productType.trim() || undefined) : body.productType;
+    const normalizedApprovalStatus =
+      typeof body.approvalStatus === 'string'
+        ? (body.approvalStatus.trim().toLowerCase() || undefined)
+        : body.approvalStatus;
     
     if (!body.name || !body.category || body.price === undefined) {
       return NextResponse.json(
@@ -57,9 +69,12 @@ export async function POST(request: NextRequest) {
 
     const newProduct = await Product.create({
       ...body,
+      potency: normalizedPotency,
+      quantityUnit: normalizedQuantityUnit,
+      productType: normalizedProductType,
+      approvalStatus: normalizedApprovalStatus || body.approvalStatus || 'approved',
       safetyInformation: body.safetyInformation || undefined,
       specifications: body.specifications || undefined,
-      approvalStatus: body.approvalStatus || 'approved',
       isActive: body.isActive !== undefined ? body.isActive : true,
       isPopular: body.isPopular !== undefined ? body.isPopular : false,
     });
@@ -87,7 +102,29 @@ export async function PUT(request: NextRequest) {
     }
 
     const { _id, ...update } = body;
-    const updated = await Product.findByIdAndUpdate(_id, update, { new: true });
+    const normalizedPotency =
+      typeof update.potency === 'string' ? (update.potency.trim() || undefined) : update.potency;
+    const normalizedQuantityUnit =
+      typeof update.quantityUnit === 'string'
+        ? (update.quantityUnit.trim() || 'None')
+        : (update.quantityUnit || 'None');
+    const normalizedProductType =
+      typeof update.productType === 'string' ? (update.productType.trim() || undefined) : update.productType;
+    const normalizedApprovalStatus =
+      typeof update.approvalStatus === 'string'
+        ? (update.approvalStatus.trim().toLowerCase() || undefined)
+        : update.approvalStatus;
+    const updated = await Product.findByIdAndUpdate(
+      _id,
+      {
+        ...update,
+        potency: normalizedPotency,
+        quantityUnit: normalizedQuantityUnit,
+        productType: normalizedProductType,
+        approvalStatus: normalizedApprovalStatus,
+      },
+      { new: true }
+    );
     if (!updated) {
       return NextResponse.json(
         { error: 'Product not found' },

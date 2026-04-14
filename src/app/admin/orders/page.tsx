@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -14,6 +13,22 @@ export default function AdminOrders() {
 
   useEffect(() => {
     fetchOrders();
+
+    const handleStorage = (event: StorageEvent) => {
+      if (!event.key || event.key === 'orders') {
+        fetchOrders();
+      }
+    };
+
+    const handleFocus = () => fetchOrders();
+
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   useEffect(() => {
@@ -22,6 +37,10 @@ export default function AdminOrders() {
 
   const getOrderId = (order: any): string => {
     return String(order?._id || order?.id || order?.orderId || '').trim();
+  };
+
+  const normalizeStatus = (status: string | undefined): string => {
+    return String(status || 'pending').toLowerCase();
   };
 
   const fetchOrders = async () => {
@@ -49,30 +68,27 @@ export default function AdminOrders() {
     }
 
     if (statusFilter !== 'all') {
-      filtered = filtered.filter((order) => order.status === statusFilter);
+      filtered = filtered.filter((order) => normalizeStatus(order.status) === statusFilter);
     }
 
     setFilteredOrders(filtered);
   };
 
-  const updateOrderStatus = (orderId: string, newStatus: string) => {
-    const updated = orders.map((order) =>
-      getOrderId(order) === orderId ? { ...order, status: newStatus } : order
-    );
-    localStorage.setItem('orders', JSON.stringify(updated));
-    setOrders(updated);
-  };
-
   const getStatusBadgeColor = (status: string) => {
-    switch (status) {
+    switch (normalizeStatus(status)) {
       case 'completed':
+      case 'delivered':
         return 'bg-emerald-100 text-emerald-800';
       case 'pending':
         return 'bg-orange-100 text-orange-800';
+      case 'confirmed':
+        return 'bg-blue-100 text-blue-800';
+      case 'processing':
+        return 'bg-sky-100 text-sky-800';
       case 'cancelled':
         return 'bg-red-100 text-red-800';
       case 'shipped':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-indigo-100 text-indigo-800';
       default:
         return 'bg-slate-100 text-slate-800';
     }
@@ -94,7 +110,7 @@ export default function AdminOrders() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-slate-900">Orders Management</h1>
-        <p className="text-slate-600 mt-2">View and manage all customer orders</p>
+        <p className="text-slate-600 mt-2">View all customer orders and vendor status updates</p>
       </div>
 
       {/* Stats */}
@@ -106,7 +122,7 @@ export default function AdminOrders() {
         <div className="bg-white rounded-lg shadow-md border border-slate-200 p-6">
           <p className="text-slate-600 text-sm font-medium">Completed</p>
           <p className="text-4xl font-bold text-emerald-600 mt-2">
-            {orders.filter((o) => o.status === 'completed').length}
+            {orders.filter((o) => ['completed', 'delivered'].includes(normalizeStatus(o.status))).length}
           </p>
         </div>
         <div className="bg-white rounded-lg shadow-md border border-slate-200 p-6">
@@ -140,8 +156,9 @@ export default function AdminOrders() {
           >
             <option value="all">All Orders</option>
             <option value="pending">Pending</option>
-            <option value="completed">Completed</option>
+            <option value="confirmed">Confirmed</option>
             <option value="shipped">Shipped</option>
+            <option value="delivered">Delivered</option>
             <option value="cancelled">Cancelled</option>
           </select>
         </div>
@@ -185,24 +202,19 @@ export default function AdminOrders() {
                       <div className="text-xs text-gray-500">{order.customerEmail || 'N/A'}</div>
                     </td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                      ₹{(order.total || 0).toFixed(2)}
+                      ₹{(Number(order.totalAmount ?? order.total ?? 0)).toFixed(2)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'N/A'}
                     </td>
                     <td className="px-6 py-4">
-                      <select
-                        value={order.status || 'pending'}
-                        onChange={(e) => updateOrderStatus(getOrderId(order), e.target.value)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer ${getStatusBadgeColor(
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(
                           order.status || 'pending'
                         )}`}
                       >
-                        <option value="pending">Pending</option>
-                        <option value="completed">Completed</option>
-                        <option value="shipped">Shipped</option>
-                        <option value="cancelled">Cancelled</option>
-                      </select>
+                        {normalizeStatus(order.status || 'pending')}
+                      </span>
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <button

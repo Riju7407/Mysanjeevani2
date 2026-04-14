@@ -125,6 +125,12 @@ export async function POST(request: NextRequest) {
       quantityUnit,
     } = body;
 
+    const normalizedPotency = typeof potency === 'string' ? (potency.trim() || undefined) : potency;
+    const normalizedQuantityUnit =
+      typeof quantityUnit === 'string' ? (quantityUnit.trim() || 'None') : (quantityUnit || 'None');
+    const normalizedProductType =
+      typeof productType === 'string' ? (productType.trim() || undefined) : productType;
+
     if (!name || !price || !category) {
       return NextResponse.json(
         { error: 'Missing required fields' },
@@ -153,10 +159,10 @@ export async function POST(request: NextRequest) {
       benefit,
       isActive: isActive !== undefined ? isActive : true,
       isPopular: isPopular !== undefined ? isPopular : false,
-      productType: productType || 'Generic Medicine',
-      potency,
+      productType: normalizedProductType || 'Generic Medicine',
+      potency: normalizedPotency,
       quantity,
-      quantityUnit,
+      quantityUnit: normalizedQuantityUnit,
     });
 
     return NextResponse.json(

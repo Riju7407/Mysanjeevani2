@@ -26,6 +26,10 @@ const productSchema = new mongoose.Schema(
     potency: {
       type: String,
       enum: POTENCY_OPTIONS,
+      set: (value: string | undefined) => {
+        const normalized = typeof value === 'string' ? value.trim() : value;
+        return normalized ? normalized : undefined;
+      },
     },
     quantity: {
       type: Number,
@@ -35,6 +39,10 @@ const productSchema = new mongoose.Schema(
       type: String,
       enum: QUANTITY_UNIT_OPTIONS,
       default: 'None',
+      set: (value: string | undefined) => {
+        const normalized = typeof value === 'string' ? value.trim() : value;
+        return normalized ? normalized : 'None';
+      },
     },
     diseaseCategory: {
       type: String,
@@ -45,6 +53,10 @@ const productSchema = new mongoose.Schema(
     productType: {
       type: String,
       enum: ['Generic Medicine', 'Ayurveda Medicine', 'Homeopathy', 'Lab Tests'],
+      set: (value: string | undefined) => {
+        const normalized = typeof value === 'string' ? value.trim() : value;
+        return normalized ? normalized : undefined;
+      },
     },
     mrp: {
       type: Number,
@@ -112,6 +124,10 @@ const productSchema = new mongoose.Schema(
       type: String,
       enum: ['pending', 'approved', 'rejected'],
       default: 'approved',
+      set: (value: string | undefined) => {
+        const normalized = typeof value === 'string' ? value.trim().toLowerCase() : value;
+        return normalized ? normalized : undefined;
+      },
     },
     
     // Featured/Popular by Category
