@@ -401,8 +401,8 @@ export default function HomePage() {
 
       {/* Hero Section */}
       <section className="w-full px-4 py-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col lg:flex-row gap-4 lg:h-56">
+        <div className="max-w-7xl mx-auto flex justify-center">
+          <div className="w-full max-w-6xl flex flex-col lg:flex-row justify-center items-center gap-4 lg:h-56">
             {/* Left Image Section */}
             <Link
               href="/signup"
@@ -424,7 +424,7 @@ export default function HomePage() {
             </Link>
 
             {/* Carousel Section */}
-            <div className="w-full lg:w-[70%] rounded-2xl overflow-hidden shadow-lg bg-white min-h-[220px] sm:min-h-[280px] lg:min-h-0">
+            <div className="w-full lg:flex-1 lg:max-w-4xl rounded-2xl overflow-hidden shadow-lg bg-white min-h-[220px] sm:min-h-[280px] lg:min-h-0">
               <HeroCarousel />
             </div>
           </div>
