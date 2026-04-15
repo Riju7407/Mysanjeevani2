@@ -38,6 +38,42 @@ export default function Header() {
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const router = useRouter();
 
+  const getRootDomain = (hostname: string) => {
+    const parts = hostname.split('.').filter(Boolean);
+    if (parts.length < 2) return '';
+    return `.${parts.slice(-2).join('.')}`;
+  };
+
+  const setTranslateCookies = (languageCode: string) => {
+    const cookieValue = `/en/${languageCode}`;
+    const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+    const baseAttrs = `path=/; SameSite=Lax${secure}`;
+
+    // Clear existing cookie variants first to avoid domain/path precedence issues.
+    document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; ${baseAttrs}`;
+
+    const hostname = window.location.hostname;
+    if (hostname && hostname !== 'localhost' && !/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+      document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; ${baseAttrs}; domain=${hostname}`;
+      const rootDomain = getRootDomain(hostname);
+      if (rootDomain) {
+        document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; ${baseAttrs}; domain=${rootDomain}`;
+      }
+    }
+
+    // Set cookie on current host.
+    document.cookie = `googtrans=${cookieValue}; ${baseAttrs}`;
+
+    // Set additional domain-scoped variants for deployed environments.
+    if (hostname && hostname !== 'localhost' && !/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+      document.cookie = `googtrans=${cookieValue}; ${baseAttrs}; domain=${hostname}`;
+      const rootDomain = getRootDomain(hostname);
+      if (rootDomain) {
+        document.cookie = `googtrans=${cookieValue}; ${baseAttrs}; domain=${rootDomain}`;
+      }
+    }
+  };
+
   useEffect(() => {
     // Get user data from localStorage
     const userStr = localStorage.getItem('user');
@@ -72,6 +108,7 @@ export default function Header() {
   useEffect(() => {
     const storedLanguage = localStorage.getItem('siteLanguage') || 'en';
     setSelectedLanguage(storedLanguage);
+    setTranslateCookies(storedLanguage);
 
     if (!document.getElementById('google-translate-script')) {
       window.googleTranslateElementInit = () => {
@@ -97,7 +134,7 @@ export default function Header() {
   const changeLanguage = (languageCode: string) => {
     setSelectedLanguage(languageCode);
     localStorage.setItem('siteLanguage', languageCode);
-    document.cookie = `googtrans=/auto/${languageCode}; path=/`;
+    setTranslateCookies(languageCode);
     setIsLanguageMenuOpen(false);
     window.location.reload();
   };
