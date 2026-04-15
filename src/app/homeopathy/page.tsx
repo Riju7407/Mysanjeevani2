@@ -11,6 +11,7 @@ interface HomeopathyProduct {
   name: string;
   brand?: string;
   category: string;
+  subcategory?: string;
   price: number;
   mrp?: number;
   discount?: number;
@@ -20,6 +21,13 @@ interface HomeopathyProduct {
   reviews?: number;
   description?: string;
   benefit?: string;
+  productType?: string;
+  potency?: string;
+  diseaseCategory?: string;
+  diseaseSubcategory?: string;
+  quantity?: number;
+  quantityUnit?: string;
+  healthConcerns?: string[];
   stock?: number;
 }
 
@@ -85,14 +93,28 @@ function HomeopathyContent() {
   const filteredProducts = useMemo(() => {
     let result = products.filter((product) => {
       const matchesCategory =
-        selectedCategory === 'All' || product.category === selectedCategory;
+        selectedCategory === 'All' ||
+        product.category === selectedCategory ||
+        product.subcategory === selectedCategory ||
+        product.brand === selectedCategory;
 
       const searchText = search.trim().toLowerCase();
+      const concatenatedHealthConcerns = Array.isArray(product.healthConcerns) ? product.healthConcerns.join(' ') : '';
       const matchesSearch =
         !searchText ||
         product.name.toLowerCase().includes(searchText) ||
         (product.brand || '').toLowerCase().includes(searchText) ||
-        (product.description || '').toLowerCase().includes(searchText);
+        (product.description || '').toLowerCase().includes(searchText) ||
+        (product.category || '').toLowerCase().includes(searchText) ||
+        (product.subcategory || '').toLowerCase().includes(searchText) ||
+        (product.benefit || '').toLowerCase().includes(searchText) ||
+        (product.productType || '').toLowerCase().includes(searchText) ||
+        (product.potency || '').toLowerCase().includes(searchText) ||
+        (product.diseaseCategory || '').toLowerCase().includes(searchText) ||
+        (product.diseaseSubcategory || '').toLowerCase().includes(searchText) ||
+        String(product.quantity || '').toLowerCase().includes(searchText) ||
+        (product.quantityUnit || '').toLowerCase().includes(searchText) ||
+        concatenatedHealthConcerns.toLowerCase().includes(searchText);
 
       return matchesCategory && matchesSearch;
     });

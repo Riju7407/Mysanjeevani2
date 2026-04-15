@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, useDeferredValue } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
@@ -99,6 +99,11 @@ function matchesFilterValue(field?: string, query?: string) {
   );
 }
 
+function fieldMatchesAny(fields: Array<string | undefined>, query?: string) {
+  if (!query) return true;
+  return fields.some((field) => matchesFilterValue(field, query));
+}
+
 const HEADER_CATEGORY_ALIASES: Record<string, string[]> = {
   medicines: ['generic medicine', 'medicines', 'branded', 'generic'],
   nutrition: ['sports nutrition', 'health food and drinks', 'vitamin and dietary supplements', 'organic products', 'green teas', 'digestives'],
@@ -151,6 +156,7 @@ function MedicinesContent() {
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
   const [sidebarCat, setSidebarCat] = useState('All');
   const [cart, setCart] = useState<Record<string, number>>({});
   const [seedStatus, setSeedStatus] = useState<string | null>(null);
@@ -244,29 +250,44 @@ function MedicinesContent() {
   };
 
   // ── Filter products for current tab + sidebar category ──────────────────
-  const tabCategories = TAB_CATEGORIES[activeTab];
-  const tabFiltered = products.filter((p) => {
-    const normalizedCategory = normalizeCategory(p.category);
-    const productType = (p.productType || '').trim();
-    const normalizedType = productType.toLowerCase();
-    const isLabTestType = normalizedType === 'lab tests' || normalizedType === 'lab test';
-    const isAyurvedaType = productType === 'Ayurveda Medicine' || normalizedCategory === 'Ayurveda' || AYUR_CATEGORIES.includes(normalizedCategory);
-    const isHomeopathyType = productType === 'Homeopathy' || normalizedCategory === 'Homeopathy' || HOMEO_CATEGORIES.includes(normalizedCategory);
+  const displayed = useMemo(() => {
+    const tabFiltered = products.filter((p) => {
+      const normalizedCategory = normalizeCategory(p.category);
+      const productType = (p.productType || '').trim();
+      const normalizedType = productType.toLowerCase();
+      const isLabTestType = normalizedType === 'lab tests' || normalizedType === 'lab test';
+      const isAyurvedaType = productType === 'Ayurveda Medicine' || normalizedCategory === 'Ayurveda' || AYUR_CATEGORIES.includes(normalizedCategory);
+      const isHomeopathyType = productType === 'Homeopathy' || normalizedCategory === 'Homeopathy' || HOMEO_CATEGORIES.includes(normalizedCategory);
 
-    if (activeTab === 'ayurveda') {
-      return isAyurvedaType;
-    }
+      if (activeTab === 'ayurveda') {
+        return isAyurvedaType;
+      }
 
-    if (activeTab === 'homeopathy') {
-      return isHomeopathyType;
-    }
+      if (activeTab === 'homeopathy') {
+        return isHomeopathyType;
+      }
 
-    // Medicines tab should include all non-lab products except Ayurveda/Homeopathy buckets.
-    return !isLabTestType && !isAyurvedaType && !isHomeopathyType;
-  });
+      // Medicines tab should include all non-lab products except Ayurveda/Homeopathy buckets.
+      return !isLabTestType && !isAyurvedaType && !isHomeopathyType;
+    });
 
-  const displayed = tabFiltered.filter((p) => {
-    const matchCat = sidebarCat === 'All' || p.category === sidebarCat || p.benefit === sidebarCat;
+    const trimmedSearch = deferredSearch.trim();
+
+    return tabFiltered.filter((p) => {
+      const matchCat =
+        sidebarCat === 'All' ||
+        fieldMatchesAny(
+          [
+            p.category,
+            p.subcategory,
+            p.diseaseCategory,
+            p.diseaseSubcategory,
+            p.benefit,
+            p.productType,
+            normalizeCategory(p.category),
+          ],
+          sidebarCat
+        );
 
     const urlCategoryMatch = !urlCategory || (() => {
       const categoryFields = [
@@ -298,37 +319,46 @@ function MedicinesContent() {
       );
     })();
 
-    const urlSubcategoryMatch = !urlSubcategory || [
-      p.category,
-      p.subcategory,
-      p.diseaseCategory,
-      p.diseaseSubcategory,
-      p.benefit,
-      p.productType,
-      p.name,
-      p.description,
-    ].some((field) => matchesFilterValue(field, urlSubcategory));
+      const urlSubcategoryMatch = !urlSubcategory || fieldMatchesAny(
+        [
+          p.category,
+          p.subcategory,
+          p.diseaseCategory,
+          p.diseaseSubcategory,
+          p.benefit,
+          p.productType,
+          p.name,
+          p.description,
+        ],
+        urlSubcategory
+      );
 
-    const searchText = search.trim().toLowerCase();
-    const quantityText = p.quantity !== undefined && p.quantity !== null ? String(p.quantity) : '';
-    const matchSearch =
-      !searchText ||
-      [
-        p.name,
-        p.brand,
-        p.category,
-        p.subcategory,
-        p.diseaseCategory,
-        p.diseaseSubcategory,
-        p.potency,
-        p.quantityUnit,
-        quantityText,
-        getQuantityLabel(p),
-      ]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(searchText));
-    return matchCat && urlCategoryMatch && urlSubcategoryMatch && matchSearch;
-  });
+      const quantityText = p.quantity !== undefined && p.quantity !== null ? String(p.quantity) : '';
+      const matchSearch =
+        !trimmedSearch ||
+        fieldMatchesAny(
+          [
+            p.name,
+            p.brand,
+            p.category,
+            p.subcategory,
+            p.diseaseCategory,
+            p.diseaseSubcategory,
+            p.potency,
+            p.quantityUnit,
+            quantityText,
+            getQuantityLabel(p),
+            p.benefit,
+            p.description,
+            p.productType,
+            (p.healthConcerns || []).join(' '),
+          ],
+          trimmedSearch
+        );
+
+      return matchCat && urlCategoryMatch && urlSubcategoryMatch && matchSearch;
+    });
+  }, [activeTab, deferredSearch, products, sidebarCat, urlCategory, urlSubcategory]);
 
   // Apply sorting
   const sortedDisplayed = useMemo(() => {

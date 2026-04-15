@@ -73,6 +73,26 @@ async function loadRazorpayScript() {
   });
 }
 
+function getNextAvailableCollectionDateTime() {
+  const now = new Date();
+  const currentHour = now.getHours();
+
+  // If it's late evening, default to tomorrow morning slot.
+  if (currentHour >= 18) {
+    const tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+    return {
+      collectionDate: tomorrow.toISOString().split('T')[0],
+      collectionTime: TIME_SLOTS[0],
+    };
+  }
+
+  return {
+    collectionDate: now.toISOString().split('T')[0],
+    collectionTime: TIME_SLOTS[0],
+  };
+}
+
 export default function LabTestDetailsPage() {
   const params = useParams();
   const router = useRouter();
@@ -136,10 +156,16 @@ export default function LabTestDetailsPage() {
       redirectToLogin();
       return;
     }
+
     if (!bookingForm.collectionDate || !bookingForm.collectionTime) {
-      alert('Please select date and time');
-      return;
+      const defaults = getNextAvailableCollectionDateTime();
+      setBookingForm((prev) => ({
+        ...prev,
+        collectionDate: prev.collectionDate || defaults.collectionDate,
+        collectionTime: prev.collectionTime || defaults.collectionTime,
+      }));
     }
+
     setIsOTPVerified(false);
     setShowBookingForm(true);
   };

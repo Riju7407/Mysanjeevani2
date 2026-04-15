@@ -34,6 +34,7 @@ export default function Header() {
   const [user, setUser] = useState<any>(null);
   const [cartCount, setCartCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchRedirecting, setIsSearchRedirecting] = useState(false);
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const router = useRouter();
@@ -150,13 +151,82 @@ export default function Header() {
     router.replace('/');
   };
 
-  const handleSearch = () => {
+  const getSearchSection = (product: any) => {
+    const productType = String(product?.productType || '').toLowerCase();
+    const category = String(product?.category || '').toLowerCase();
+    const subcategory = String(product?.subcategory || '').toLowerCase();
+
+    if (productType.includes('ayurveda') || category.includes('ayurveda') || subcategory.includes('ayurveda')) {
+      return 'ayurveda';
+    }
+
+    if (productType.includes('homeopathy') || category.includes('homeopathy') || subcategory.includes('homeopathy')) {
+      return 'homeopathy';
+    }
+
+    return 'medicines';
+  };
+
+  const getBestSearchRoute = (products: any[]) => {
+    const score = {
+      medicines: 0,
+      ayurveda: 0,
+      homeopathy: 0,
+    };
+
+    for (const product of products) {
+      const section = getSearchSection(product);
+      score[section] += 1;
+    }
+
+    const bestSection = Object.entries(score).sort((a, b) => b[1] - a[1])[0]?.[0] || 'medicines';
+    return bestSection;
+  };
+
+  const handleSearch = async () => {
     const q = searchQuery.trim();
     if (!q) {
       router.push('/medicines#products-section');
       return;
     }
-    router.push(`/medicines?search=${encodeURIComponent(q)}#products-section`);
+
+    setIsSearchRedirecting(true);
+    try {
+      const response = await fetch(`/api/products?search=${encodeURIComponent(q)}&limit=120`, {
+        cache: 'no-store',
+      });
+
+      if (!response.ok) {
+        router.push(`/medicines?search=${encodeURIComponent(q)}#products-section`);
+        return;
+      }
+
+      const data = await response.json();
+      const products = Array.isArray(data?.products) ? data.products : [];
+
+      if (products.length === 0) {
+        router.push(`/medicines?search=${encodeURIComponent(q)}#products-section`);
+        return;
+      }
+
+      const bestSection = getBestSearchRoute(products);
+
+      if (bestSection === 'ayurveda') {
+        router.push(`/ayurveda?search=${encodeURIComponent(q)}`);
+        return;
+      }
+
+      if (bestSection === 'homeopathy') {
+        router.push(`/homeopathy?search=${encodeURIComponent(q)}`);
+        return;
+      }
+
+      router.push(`/medicines?search=${encodeURIComponent(q)}#products-section`);
+    } catch {
+      router.push(`/medicines?search=${encodeURIComponent(q)}#products-section`);
+    } finally {
+      setIsSearchRedirecting(false);
+    }
   };
 
   return (
@@ -241,6 +311,7 @@ export default function Header() {
                 <button
                   type="button"
                   onClick={handleSearch}
+                  disabled={isSearchRedirecting}
                   className="absolute right-3 top-3 text-gray-400 hover:text-emerald-600"
                   aria-label="Search"
                 >
@@ -462,6 +533,7 @@ export default function Header() {
               <button
                 type="button"
                 onClick={handleSearch}
+                disabled={isSearchRedirecting}
                 className="absolute right-3 top-2.5 text-gray-400 hover:text-emerald-600"
                 aria-label="Search"
               >

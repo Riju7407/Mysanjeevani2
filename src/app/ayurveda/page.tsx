@@ -23,6 +23,7 @@ interface Product {
   name: string;
   brand?: string;
   category: string;
+  subcategory?: string;
   price: number;
   mrp?: number;
   icon?: string;
@@ -32,6 +33,12 @@ interface Product {
   description?: string;
   benefit?: string;
   productType?: string;
+  potency?: string;
+  diseaseCategory?: string;
+  diseaseSubcategory?: string;
+  quantity?: number;
+  quantityUnit?: string;
+  healthConcerns?: string[];
   isPopular?: boolean;
 }
 
@@ -119,14 +126,26 @@ function AyurvedaContent() {
       const matchCat =
         selectedCategory === 'All' ||
         equalsIgnoreCase(p.category, selectedCategory) ||
+        equalsIgnoreCase(p.subcategory, selectedCategory) ||
         equalsIgnoreCase(p.benefit, selectedCategory) ||
         equalsIgnoreCase(p.brand, selectedCategory);
-      const keyword = search.toLowerCase();
+      const keyword = search.toLowerCase().trim();
+      const concatenatedHealthConcerns = Array.isArray(p.healthConcerns) ? p.healthConcerns.join(' ') : '';
       const matchSearch =
         !keyword ||
         p.name.toLowerCase().includes(keyword) ||
         (p.brand || '').toLowerCase().includes(keyword) ||
-        (p.description || '').toLowerCase().includes(keyword);
+        (p.description || '').toLowerCase().includes(keyword) ||
+        (p.category || '').toLowerCase().includes(keyword) ||
+        (p.subcategory || '').toLowerCase().includes(keyword) ||
+        (p.benefit || '').toLowerCase().includes(keyword) ||
+        (p.productType || '').toLowerCase().includes(keyword) ||
+        (p.potency || '').toLowerCase().includes(keyword) ||
+        (p.diseaseCategory || '').toLowerCase().includes(keyword) ||
+        (p.diseaseSubcategory || '').toLowerCase().includes(keyword) ||
+        String(p.quantity || '').toLowerCase().includes(keyword) ||
+        (p.quantityUnit || '').toLowerCase().includes(keyword) ||
+        concatenatedHealthConcerns.toLowerCase().includes(keyword);
       return matchCat && matchSearch;
     });
 
