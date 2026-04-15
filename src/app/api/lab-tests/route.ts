@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Product } from '@/lib/models/Product';
+import { fetchPartnerCatalog } from '@/lib/labPartners';
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,12 +22,28 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    const tests = await Product.find(query)
+    const localTests = await Product.find(query)
       .limit(limit)
       .skip((page - 1) * limit)
       .sort({ createdAt: -1 });
 
-    const total = await Product.countDocuments(query);
+    const localTotal = await Product.countDocuments(query);
+    const partnerTests = await fetchPartnerCatalog({
+      category: category || undefined,
+      search: search || undefined,
+      page,
+      limit,
+    });
+
+    const tests = [...localTests, ...partnerTests]
+      .sort((a: any, b: any) => {
+        const left = new Date(a.createdAt || 0).getTime();
+        const right = new Date(b.createdAt || 0).getTime();
+        return right - left;
+      })
+      .slice(0, limit);
+
+    const total = localTotal + partnerTests.length;
 
     return NextResponse.json(
       {

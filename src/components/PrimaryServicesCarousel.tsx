@@ -19,7 +19,7 @@ const SERVICES: Service[] = [
   { icon: '👨‍⚕️', label: 'Doctor Consultation', desc: 'Video, audio & in-person consultations', href: '/doctor-consultation#products-section', bgGradient: 'from-purple-500 to-pink-500', image: '/Doctor-Consultation.png' },
   { icon: '🌿', label: 'Ayurveda', desc: '100% authentic ayurvedic products', href: '/ayurveda#products-section', bgGradient: 'from-amber-500 to-yellow-500', image: '/Ayurveda.png' },
   { icon: '🌸', label: 'Homeopathy', desc: 'FDA approved homeopathic remedies', href: '/homeopathy#products-section', bgGradient: 'from-rose-500 to-pink-500', image: '/Homeopathy.png' },
-  { icon: '🏥', label: 'Wellness', desc: 'Complete health and wellness programs', href: '/wellness#products-section', bgGradient: 'from-teal-500 to-cyan-500', image: '/Wellness.png' },
+  { icon: '🏥', label: 'Wellness', desc: 'Complete health and wellness programs', href: '/medicines?category=sexual%20wellness#products-section', bgGradient: 'from-teal-500 to-cyan-500', image: '/Wellness.png' },
 ];
 
 export default function PrimaryServicesCarousel() {

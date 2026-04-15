@@ -6,12 +6,36 @@ import { useRouter } from 'next/navigation';
 import { LogoImage } from './Logo';
 import CategoryNav from './CategoryNav';
 
+declare global {
+  interface Window {
+    google?: any;
+    googleTranslateElementInit?: () => void;
+  }
+}
+
+const LANGUAGE_OPTIONS = [
+  { code: 'en', label: 'English' },
+  { code: 'hi', label: 'Hindi' },
+  { code: 'bn', label: 'Bengali' },
+  { code: 'te', label: 'Telugu' },
+  { code: 'mr', label: 'Marathi' },
+  { code: 'ta', label: 'Tamil' },
+  { code: 'ur', label: 'Urdu' },
+  { code: 'gu', label: 'Gujarati' },
+  { code: 'kn', label: 'Kannada' },
+  { code: 'ml', label: 'Malayalam' },
+  { code: 'pa', label: 'Punjabi' },
+  { code: 'or', label: 'Odia' },
+] as const;
+
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [cartCount, setCartCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState('en');
   const router = useRouter();
 
   useEffect(() => {
@@ -45,6 +69,39 @@ export default function Header() {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
+  useEffect(() => {
+    const storedLanguage = localStorage.getItem('siteLanguage') || 'en';
+    setSelectedLanguage(storedLanguage);
+
+    if (!document.getElementById('google-translate-script')) {
+      window.googleTranslateElementInit = () => {
+        if (!window.google?.translate?.TranslateElement) return;
+        new window.google.translate.TranslateElement(
+          {
+            pageLanguage: 'en',
+            autoDisplay: false,
+            includedLanguages: LANGUAGE_OPTIONS.map((opt) => opt.code).join(','),
+          },
+          'google_translate_element'
+        );
+      };
+
+      const script = document.createElement('script');
+      script.id = 'google-translate-script';
+      script.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  }, []);
+
+  const changeLanguage = (languageCode: string) => {
+    setSelectedLanguage(languageCode);
+    localStorage.setItem('siteLanguage', languageCode);
+    document.cookie = `googtrans=/auto/${languageCode}; path=/`;
+    setIsLanguageMenuOpen(false);
+    window.location.reload();
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -76,6 +133,32 @@ export default function Header() {
             <span className="hidden sm:inline">India's Healthcare Platform</span>
           </div>
           <div className="hidden sm:flex items-center gap-4 shrink-0">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsLanguageMenuOpen((prev) => !prev)}
+                className="hover:text-emerald-100"
+                aria-label="Change website language"
+              >
+                Language
+              </button>
+              {isLanguageMenuOpen && (
+                <div className="absolute right-0 mt-2 w-44 rounded-lg bg-white text-gray-800 shadow-lg border border-gray-200 z-60 max-h-72 overflow-auto">
+                  {LANGUAGE_OPTIONS.map((option) => (
+                    <button
+                      key={option.code}
+                      type="button"
+                      onClick={() => changeLanguage(option.code)}
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-emerald-50 ${
+                        selectedLanguage === option.code ? 'bg-emerald-50 text-emerald-700 font-semibold' : ''
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <Link href="/help" className="hover:text-emerald-100">
               Help
             </Link>
@@ -85,6 +168,8 @@ export default function Header() {
           </div>
         </div>
       </div>
+
+      <div id="google_translate_element" className="hidden" />
 
       {/* Main Navigation */}
       <div className="bg-white">
@@ -359,6 +444,38 @@ export default function Header() {
       {isMenuOpen && (
         <div className="md:hidden bg-white border-t border-gray-100 p-4 space-y-2 max-h-[75vh] overflow-y-auto">
           <CategoryNav isMobile={true} />
+          <div className="border-t border-gray-100 pt-3"></div>
+          <div className="rounded-lg border border-gray-200 p-3">
+            <button
+              type="button"
+              onClick={() => setIsLanguageMenuOpen((prev) => !prev)}
+              className="w-full flex items-center justify-between text-sm font-semibold text-emerald-700"
+              aria-label="Change website language"
+            >
+              <span>
+                Language: {LANGUAGE_OPTIONS.find((option) => option.code === selectedLanguage)?.label || 'English'}
+              </span>
+              <span className="text-gray-500">{isLanguageMenuOpen ? '▲' : '▼'}</span>
+            </button>
+            {isLanguageMenuOpen && (
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {LANGUAGE_OPTIONS.map((option) => (
+                  <button
+                    key={`mobile-${option.code}`}
+                    type="button"
+                    onClick={() => changeLanguage(option.code)}
+                    className={`rounded-md border px-2 py-1.5 text-xs text-left ${
+                      selectedLanguage === option.code
+                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700 font-semibold'
+                        : 'border-gray-200 text-gray-700'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="border-t border-gray-100 pt-3"></div>
           {user ? (
             <>

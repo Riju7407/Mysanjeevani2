@@ -53,6 +53,18 @@ const userSchema = new mongoose.Schema(
       enum: ['medical-license', 'doctor-id', 'nmc-registration', 'other'],
       default: 'medical-license',
     },
+    aadharCardUrl: {
+      type: String,
+      default: '',
+    },
+    panCardUrl: {
+      type: String,
+      default: '',
+    },
+    registrationCertificateUrl: {
+      type: String,
+      default: '',
+    },
     isApproved: {
       type: Boolean,
       default: false, // Doctor can only login after approval

@@ -53,7 +53,10 @@ async function loadPayPalScript(clientId: string, currency: string) {
 
   return new Promise<boolean>((resolve) => {
     const script = document.createElement('script');
-    script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=${encodeURIComponent(currency)}&intent=capture`;
+    script.src =
+      `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}` +
+      `&currency=${encodeURIComponent(currency)}` +
+      '&intent=capture&components=buttons&disable-funding=venmo,paylater,credit,card';
     script.async = true;
     script.onload = () => resolve(true);
     script.onerror = () => resolve(false);

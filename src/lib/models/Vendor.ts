@@ -47,6 +47,27 @@ const vendorSchema = new mongoose.Schema({
   licenseNumber: String,
   licenseDocument: String,
   gstNumber: String,
+  medicineType: {
+    type: String,
+    enum: ['allopathic', 'homeopathy', 'ayurveda', 'mixed'],
+    default: 'allopathic',
+  },
+  aadharCardUrl: {
+    type: String,
+    default: '',
+  },
+  panCardUrl: {
+    type: String,
+    default: '',
+  },
+  gstCertificateUrl: {
+    type: String,
+    default: '',
+  },
+  drugLicenseUrl: {
+    type: String,
+    default: '',
+  },
 
   // Banking
   accountHolderName: String,

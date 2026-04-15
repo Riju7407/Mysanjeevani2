@@ -775,6 +775,14 @@ export default function VendorDashboard() {
               Logout
             </button>
           </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link
+              href="/vendor/dashboard/lab-bookings"
+              className="inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+            >
+              View Lab Booking History
+            </Link>
+          </div>
         </div>
 
         {vendorInfo.status !== 'verified' && (

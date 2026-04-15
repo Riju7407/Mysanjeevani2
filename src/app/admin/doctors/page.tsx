@@ -11,6 +11,9 @@ interface DoctorRequest {
   registrationNumber: string;
   identityDocumentUrl: string;
   identityDocumentType: string;
+  aadharCardUrl?: string;
+  panCardUrl?: string;
+  registrationCertificateUrl?: string;
   approvalStatus: string;
   createdAt: string;
 }
@@ -25,6 +28,21 @@ export default function AdminDoctors() {
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [approvalNote, setApprovalNote] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+
+  const renderDocumentLink = (url?: string, label?: string) => {
+    if (!url) return <span className="text-sm text-gray-500">Not uploaded</span>;
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800"
+      >
+        <span className="text-lg">📄</span>
+        <span>{label || 'View Document'}</span>
+      </a>
+    );
+  };
 
   useEffect(() => {
     fetchDoctors();
@@ -291,34 +309,18 @@ export default function AdminDoctors() {
 
                 {/* Document Preview */}
                 <div className="mt-4 pt-4 border-t border-gray-200">
-                  <p className="text-sm font-medium text-gray-700 mb-2">
-                    Identity Document:
-                  </p>
-                  {doctor.identityDocumentUrl ? (
-                    <a
-                      href={doctor.identityDocumentUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block"
-                    >
-                      {doctor.identityDocumentUrl.toLowerCase().includes('.pdf') ? (
-                        <div className="flex items-center gap-2 text-blue-600 hover:text-blue-800">
-                          <span className="text-2xl">📄</span>
-                          <span>View PDF Document</span>
-                        </div>
-                      ) : (
-                        <div className="w-32 h-32 bg-gray-100 rounded-lg overflow-hidden hover:shadow-lg transition">
-                          <img
-                            src={doctor.identityDocumentUrl}
-                            alt="Identity document"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
+                  <p className="text-sm font-medium text-gray-700 mb-2">Verification Documents:</p>
+                  <div className="space-y-2 text-sm">
+                    <p>Aadhar Card: {renderDocumentLink(doctor.aadharCardUrl, 'View Aadhar Card')}</p>
+                    <p>PAN Card: {renderDocumentLink(doctor.panCardUrl, 'View PAN Card')}</p>
+                    <p>
+                      Registration Certificate:{' '}
+                      {renderDocumentLink(
+                        doctor.registrationCertificateUrl || doctor.identityDocumentUrl,
+                        'View Registration Certificate'
                       )}
-                    </a>
-                  ) : (
-                    <p className="text-sm text-gray-500">No document uploaded</p>
-                  )}
+                    </p>
+                  </div>
                 </div>
               </div>
             ))

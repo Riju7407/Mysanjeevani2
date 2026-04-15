@@ -14,6 +14,8 @@ interface Order {
   items?: any[];
   totalAmount?: number;
   paymentMethod?: string;
+  paymentStatus?: string;
+  razorpayPaymentId?: string;
   status?: string;
   createdAt?: string;
 }
@@ -22,6 +24,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [user, setUser] = useState<any>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -85,6 +88,80 @@ export default function OrdersPage() {
 
   const getOrderId = (order: Order): string => {
     return String(order?._id || order?.id || order?.orderId || '').trim();
+  };
+
+  const canCancelOrder = (order: Order) => {
+    const status = String(order?.status || '').toLowerCase();
+    return !['cancelled', 'delivered', 'shipped'].includes(status);
+  };
+
+  const cancelOrder = async (order: Order) => {
+    const resolvedOrderId = getOrderId(order);
+    if (!resolvedOrderId) return;
+    if (!canCancelOrder(order)) {
+      alert('This order cannot be cancelled now.');
+      return;
+    }
+
+    const confirmed = confirm('Cancel this order? If paid online, refund will be initiated to the original payment account.');
+    if (!confirmed) return;
+
+    try {
+      setCancellingOrderId(resolvedOrderId);
+
+      let refundId = '';
+      const isRazorpay = String(order.paymentMethod || '').toLowerCase().includes('razorpay');
+      const isPaid = String(order.paymentStatus || '').toLowerCase() === 'completed';
+      const amount = Number(order.totalAmount || 0);
+
+      if (isRazorpay && isPaid && order.razorpayPaymentId && amount > 0) {
+        const refundRes = await fetch('/api/payments/razorpay/refund', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            paymentId: order.razorpayPaymentId,
+            amount,
+            reason: 'order_cancelled_by_user',
+          }),
+        });
+        const refundData = await refundRes.json();
+        if (!refundRes.ok || !refundData?.success) {
+          throw new Error(refundData?.error || 'Refund initiation failed');
+        }
+        refundId = String(refundData?.refund?.id || '');
+      }
+
+      const allOrders: any[] = JSON.parse(localStorage.getItem('orders') || '[]');
+      const updatedOrders = allOrders.map((o) => {
+        const currentId = String(o?._id || o?.id || o?.orderId || '').trim();
+        if (currentId !== resolvedOrderId) return o;
+
+        return {
+          ...o,
+          status: 'cancelled',
+          paymentStatus:
+            isRazorpay && isPaid && order.razorpayPaymentId
+              ? 'refunded'
+              : String(o?.paymentStatus || 'pending'),
+          refundId: refundId || o?.refundId || '',
+          cancelledAt: new Date().toISOString(),
+        };
+      });
+
+      localStorage.setItem('orders', JSON.stringify(updatedOrders));
+      const userOrders = updatedOrders.filter((o: any) => o.userId === user?.id);
+      setOrders(userOrders.reverse());
+
+      alert(
+        refundId
+          ? `Order cancelled. Refund initiated to original payment account. Refund ID: ${refundId}`
+          : 'Order cancelled successfully.'
+      );
+    } catch (error: any) {
+      alert(error?.message || 'Failed to cancel order. Please contact support.');
+    } finally {
+      setCancellingOrderId(null);
+    }
   };
 
   if (!user) {
@@ -230,6 +307,15 @@ export default function OrdersPage() {
                         >
                           💬 Contact Support
                         </button>
+                        {canCancelOrder(order) && (
+                          <button
+                            onClick={() => cancelOrder(order)}
+                            disabled={cancellingOrderId === safeOrderId}
+                            className="flex-1 px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 font-medium transition disabled:opacity-50"
+                          >
+                            {cancellingOrderId === safeOrderId ? 'Cancelling...' : 'Cancel & Refund'}
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}

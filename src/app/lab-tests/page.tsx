@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
@@ -37,8 +37,9 @@ interface Booking {
   collectionDate: string;
   collectionTime: string;
   status: string;
+  paymentStatus?: string;
   createdAt: string;
-  provider?: 'local' | 'thyrocare';
+  provider?: 'local' | 'thyrocare' | 'healthians';
   providerOrderId?: string;
   providerStatus?: string;
   reportUrl?: string;
@@ -120,6 +121,11 @@ function getProviderTimelineStep(status?: string) {
   return 0;
 }
 
+function formatProviderName(provider?: string) {
+  if (!provider) return 'Partner';
+  return provider.charAt(0).toUpperCase() + provider.slice(1);
+}
+
 async function loadRazorpayScript() {
   if (window.Razorpay) return true;
 
@@ -135,6 +141,7 @@ async function loadRazorpayScript() {
 
 export default function LabTestsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<'tests' | 'bookings'>('tests');
   const [tests, setTests] = useState<LabTest[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -160,6 +167,7 @@ export default function LabTestsPage() {
   const [seeding, setSeeding] = useState(false);
   const [syncingBookings, setSyncingBookings] = useState(false);
   const [syncingBookingId, setSyncingBookingId] = useState<string | null>(null);
+  const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
 
   const redirectToLogin = () => {
     const returnTo = `${window.location.pathname}${window.location.search}`;
@@ -182,8 +190,16 @@ export default function LabTestsPage() {
   const fetchBookings = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
+      const userRaw = localStorage.getItem('user');
+      const user = userRaw ? JSON.parse(userRaw) : null;
+      const userId = String(user?.id || user?._id || '').trim();
       if (!token) return;
-      const res = await fetch('/api/lab-test-bookings', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch('/api/lab-test-bookings', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(userId ? { 'x-user-id': userId } : {}),
+        },
+      });
       const data = await res.json();
       setBookings(data.bookings || []);
     } catch {}
@@ -199,7 +215,30 @@ export default function LabTestsPage() {
   };
 
   useEffect(() => { fetchTests(); }, [fetchTests]);
+
+  useEffect(() => {
+    const tabParam = String(searchParams.get('tab') || '').trim().toLowerCase();
+    if (tabParam === 'bookings') {
+      setActiveTab('bookings');
+    }
+  }, [searchParams]);
+
   useEffect(() => { if (activeTab === 'bookings') fetchBookings(); }, [activeTab, fetchBookings]);
+
+  useEffect(() => {
+    const currentTabParam = String(searchParams.get('tab') || '').trim().toLowerCase();
+    const targetTabParam = activeTab === 'bookings' ? 'bookings' : '';
+    if (currentTabParam === targetTabParam) return;
+
+    const q = new URLSearchParams(Array.from(searchParams.entries()));
+    if (activeTab === 'bookings') {
+      q.set('tab', 'bookings');
+    } else {
+      q.delete('tab');
+    }
+    const query = q.toString();
+    router.replace(query ? `/lab-tests?${query}` : '/lab-tests');
+  }, [activeTab, router, searchParams]);
 
   const openBooking = (test: LabTest) => {
     const token = localStorage.getItem('token');
@@ -228,12 +267,18 @@ export default function LabTestsPage() {
   const syncProviderStatuses = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
+      const userRaw = localStorage.getItem('user');
+      const user = userRaw ? JSON.parse(userRaw) : null;
+      const userId = String(user?.id || user?._id || '').trim();
       if (!token) return;
 
       setSyncingBookings(true);
       const res = await fetch('/api/lab-test-bookings/sync', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(userId ? { 'x-user-id': userId } : {}),
+        },
       });
 
       if (!res.ok) {
@@ -252,12 +297,18 @@ export default function LabTestsPage() {
   const syncSingleBooking = useCallback(async (bookingId: string) => {
     try {
       const token = localStorage.getItem('token');
+      const userRaw = localStorage.getItem('user');
+      const user = userRaw ? JSON.parse(userRaw) : null;
+      const userId = String(user?.id || user?._id || '').trim();
       if (!token) return;
 
       setSyncingBookingId(bookingId);
       const res = await fetch(`/api/lab-test-bookings/${bookingId}/sync`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(userId ? { 'x-user-id': userId } : {}),
+        },
       });
 
       if (!res.ok) {
@@ -273,6 +324,53 @@ export default function LabTestsPage() {
     }
   }, [fetchBookings]);
 
+  const cancelBooking = useCallback(async (booking: Booking) => {
+    if (booking.status === 'cancelled') {
+      alert('This booking is already cancelled.');
+      return;
+    }
+
+    if (booking.status === 'completed') {
+      alert('Completed bookings cannot be cancelled.');
+      return;
+    }
+
+    const ok = confirm('Cancel this booking? If paid online, refund will be initiated to your original payment account.');
+    if (!ok) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const userRaw = localStorage.getItem('user');
+      const user = userRaw ? JSON.parse(userRaw) : null;
+      const userId = String(user?.id || user?._id || '').trim();
+      if (!token) {
+        alert('Please login first.');
+        return;
+      }
+
+      setCancellingBookingId(booking._id);
+      const res = await fetch(`/api/lab-test-bookings/${booking._id}/cancel`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(userId ? { 'x-user-id': userId } : {}),
+        },
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to cancel booking');
+      }
+
+      await fetchBookings();
+      alert(data?.message || 'Booking cancelled successfully');
+    } catch (error: any) {
+      alert(error?.message || 'Failed to cancel booking');
+    } finally {
+      setCancellingBookingId(null);
+    }
+  }, [fetchBookings]);
+
   const submitBooking = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -282,10 +380,10 @@ export default function LabTestsPage() {
       if (!bookingForm.collectionDate || !bookingForm.collectionTime) { alert('Please select collection date and time.'); return; }
       if (bookingForm.collectionType === 'home' && !bookingForm.address) { alert('Please enter your address for home collection.'); return; }
 
-      const isThyrocareTest = bookingForm.testId.startsWith('thyrocare_');
-      if (isThyrocareTest) {
+      const isPartnerTest = bookingForm.testId.startsWith('thyrocare_') || bookingForm.testId.startsWith('healthians_');
+      if (isPartnerTest) {
         if (!/^\d{6}$/.test(bookingForm.patientPincode.trim())) {
-          alert('Please enter a valid 6-digit pincode for Thyrocare booking.');
+          alert('Please enter a valid 6-digit pincode for partner lab booking.');
           return;
         }
 
@@ -347,9 +445,14 @@ export default function LabTestsPage() {
         },
         theme: { color: '#059669' },
         handler: async (paymentResponse: any) => {
+          const userId = String(user?.id || user?._id || '').trim();
           const res = await fetch('/api/lab-test-bookings', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+              ...(userId ? { 'x-user-id': userId } : {}),
+            },
             body: JSON.stringify({
               ...bookingForm,
               patientPincode: bookingForm.patientPincode || undefined,
@@ -468,6 +571,31 @@ export default function LabTestsPage() {
 
       {/* Main Content */}
       <div id="products-section" className="flex-1 max-w-7xl mx-auto px-4 py-10 w-full">
+        <div className="mb-6">
+          <div className="inline-flex rounded-xl border border-emerald-200 bg-white p-1 shadow-sm">
+            <button
+              onClick={() => setActiveTab('tests')}
+              className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${
+                activeTab === 'tests'
+                  ? 'bg-emerald-600 text-white'
+                  : 'text-emerald-700 hover:bg-emerald-50'
+              }`}
+            >
+              Lab Tests
+            </button>
+            <button
+              onClick={() => setActiveTab('bookings')}
+              className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${
+                activeTab === 'bookings'
+                  ? 'bg-emerald-600 text-white'
+                  : 'text-emerald-700 hover:bg-emerald-50'
+              }`}
+            >
+              My Booking History
+            </button>
+          </div>
+        </div>
+
         {activeTab === 'tests' && (
           <>
             {/* Results Header */}
@@ -527,7 +655,7 @@ export default function LabTestsPage() {
                     <article
                       key={test._id}
                       className="group w-full max-w-56 mx-auto bg-white/95 border border-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition duration-300 cursor-pointer flex flex-col"
-                      onClick={() => router.push(`/medicines/${test._id}`)}
+                      onClick={() => router.push(`/lab-tests/${test._id}`)}
                     >
                       {/* Image Container */}
                       <div className="relative h-40 bg-linear-to-br from-white to-slate-50 flex items-center justify-center overflow-hidden">
@@ -657,10 +785,10 @@ export default function LabTestsPage() {
                         <p className="text-sm text-gray-500">
                           {b.collectionType === 'home' ? '🏠 Home Collection' : '🏥 Centre Visit'} · ₹{b.testPrice}
                         </p>
-                        {b.provider === 'thyrocare' && (
+                        {b.provider && b.provider !== 'local' && (
                           <>
                             <p className="text-xs text-gray-500 mt-1">
-                              Provider: Thyrocare{b.providerOrderId ? ` • Order ID: ${b.providerOrderId}` : ''}
+                              Provider: {formatProviderName(b.provider)}{b.providerOrderId ? ` • Order ID: ${b.providerOrderId}` : ''}
                             </p>
                             <p className="text-xs text-emerald-700 mt-0.5">
                               Provider Status: {b.providerStatus || 'Pending sync'}
@@ -722,6 +850,17 @@ export default function LabTestsPage() {
                         {b.status}
                       </span>
                     </div>
+                    {b.status !== 'cancelled' && b.status !== 'completed' && (
+                      <div className="mt-3">
+                        <button
+                          onClick={() => cancelBooking(b)}
+                          disabled={cancellingBookingId === b._id}
+                          className="text-xs font-semibold bg-red-50 text-red-700 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-100 disabled:opacity-50"
+                        >
+                          {cancellingBookingId === b._id ? 'Cancelling...' : 'Cancel & Refund'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -809,7 +948,7 @@ export default function LabTestsPage() {
                     </div>
                   )}
 
-                  {bookingForm.testId.startsWith('thyrocare_') && (
+                  {(bookingForm.testId.startsWith('thyrocare_') || bookingForm.testId.startsWith('healthians_')) && (
                     <>
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-1">Pincode <span className="text-red-500">*</span></label>

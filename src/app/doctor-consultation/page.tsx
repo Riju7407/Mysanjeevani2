@@ -86,6 +86,8 @@ interface Consultation {
   patientsAhead: number;
   status: string;
   fees: number;
+  paymentStatus?: string;
+  razorpayPaymentId?: string;
   symptoms: string;
   notes: string;
 }
@@ -150,6 +152,7 @@ export default function DoctorConsultationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [activeCall, setActiveCall] = useState<Consultation | null>(null);
+  const [cancellingConsultationId, setCancellingConsultationId] = useState<string | null>(null);
   const [showOTPModal, setShowOTPModal] = useState(false);
   const [isOTPVerified, setIsOTPVerified] = useState(false);
 
@@ -375,15 +378,27 @@ export default function DoctorConsultationPage() {
   };
 
   const cancelConsultation = async (id: string) => {
-    if (!confirm('Cancel this consultation?')) return;
+    if (!confirm('Cancel this consultation? If paid online, refund will be initiated to your original payment account.')) return;
     try {
-      await fetch(`/api/consultations/${id}`, {
+      setCancellingConsultationId(id);
+      const res = await fetch(`/api/consultations/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'cancelled' }),
       });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to cancel consultation');
+      }
+
       fetchConsultations();
-    } catch {}
+      alert(data?.message || 'Consultation cancelled successfully');
+    } catch (error: any) {
+      alert(error?.message || 'Failed to cancel consultation');
+    } finally {
+      setCancellingConsultationId(null);
+    }
   };
 
   const canJoinLiveCall = (consultation: Consultation) => {
@@ -809,9 +824,10 @@ export default function DoctorConsultationPage() {
 
                           <button
                             onClick={() => cancelConsultation(c._id)}
+                            disabled={cancellingConsultationId === c._id}
                             className="text-red-500 hover:text-red-700 text-sm border border-red-200 px-4 py-1.5 rounded-lg hover:bg-red-50 transition"
                           >
-                            Cancel Consultation
+                            {cancellingConsultationId === c._id ? 'Cancelling...' : 'Cancel & Refund'}
                           </button>
                         </div>
                       </div>

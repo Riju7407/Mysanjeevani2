@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Vendor } from '@/lib/models/Vendor';
+import { Product } from '@/lib/models/Product';
 
 // GET pending vendors
 export async function GET(request: NextRequest) {
@@ -128,10 +129,24 @@ export async function PUT(request: NextRequest) {
       { new: true }
     ).select('-password');
 
+    if (!updatedVendor) {
+      return NextResponse.json(
+        { error: 'Vendor not found' },
+        { status: 404 }
+      );
+    }
+
+    let deletedProductsCount = 0;
+    if (action === 'suspend') {
+      const deleteResult = await Product.deleteMany({ vendorId: updatedVendor._id });
+      deletedProductsCount = deleteResult.deletedCount || 0;
+    }
+
     return NextResponse.json(
       {
         message: `Vendor ${action === 'suspend' ? 'suspended' : 'reactivated'} successfully`,
         vendor: updatedVendor,
+        deletedProductsCount,
       },
       { status: 200 }
     );

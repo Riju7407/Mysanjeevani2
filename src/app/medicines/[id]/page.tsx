@@ -146,6 +146,13 @@ export default function MedicineDetailsPage() {
   const router = useRouter();
   const productId = params?.id;
 
+  useEffect(() => {
+    if (!productId) return;
+    if (productId.startsWith('thyrocare_') || productId.startsWith('healthians_')) {
+      router.replace(`/lab-tests/${productId}`);
+    }
+  }, [productId, router]);
+
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -172,6 +179,7 @@ export default function MedicineDetailsPage() {
   useEffect(() => {
     const fetchProduct = async () => {
       if (!productId) return;
+      if (productId.startsWith('thyrocare_') || productId.startsWith('healthians_')) return;
       setLoading(true);
       setError('');
 
@@ -368,6 +376,17 @@ export default function MedicineDetailsPage() {
     }),
     [quantityProducts]
   );
+  const currentPotencyLabel = useMemo(
+    () => (hasValidPotency(product?.potency) ? (product?.potency || '').trim() : ''),
+    [product?.potency]
+  );
+  const currentQuantityLabel = useMemo(() => {
+    if (!product) return '';
+    const hasQuantity = hasValidQuantityValue(product.quantity);
+    const hasUnit = !isUnitNone(product.quantityUnit);
+    if (!hasQuantity && !hasUnit) return '';
+    return getQuantityLabel(product);
+  }, [product]);
 
   const redirectToLogin = () => {
     const returnTo = `${window.location.pathname}${window.location.search}`;
@@ -619,7 +638,7 @@ export default function MedicineDetailsPage() {
                   </h1>
 
                   {/* Potency Selector */}
-                  {selectablePotencyProducts.length > 1 && (
+                  {selectablePotencyProducts.length > 1 ? (
                     <div className="mb-6">
                       <p className="text-sm font-semibold text-slate-700 mb-2">Select Potency</p>
                       <div className="flex flex-wrap gap-2">
@@ -646,10 +665,17 @@ export default function MedicineDetailsPage() {
                         })}
                       </div>
                     </div>
-                  )}
+                  ) : currentPotencyLabel ? (
+                    <div className="mb-6">
+                      <p className="text-sm font-semibold text-slate-700 mb-2">Potency</p>
+                      <span className="inline-flex px-3 py-1.5 rounded-full text-xs font-semibold border bg-slate-50 text-slate-700 border-slate-300">
+                        {currentPotencyLabel}
+                      </span>
+                    </div>
+                  ) : null}
 
                   {/* Quantity Selector */}
-                  {selectableQuantityProducts.length > 1 && (
+                  {selectableQuantityProducts.length > 1 ? (
                     <div className="mb-6">
                       <p className="text-sm font-semibold text-slate-700 mb-2">Select Quantity</p>
                       <div className="flex flex-wrap gap-2">
@@ -676,7 +702,14 @@ export default function MedicineDetailsPage() {
                         })}
                       </div>
                     </div>
-                  )}
+                  ) : currentQuantityLabel ? (
+                    <div className="mb-6">
+                      <p className="text-sm font-semibold text-slate-700 mb-2">Quantity</p>
+                      <span className="inline-flex px-3 py-1.5 rounded-full text-xs font-semibold border bg-slate-50 text-slate-700 border-slate-300">
+                        {currentQuantityLabel}
+                      </span>
+                    </div>
+                  ) : null}
 
                   {/* Rating */}
                   <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-200">

@@ -156,9 +156,9 @@ export default function LabTestDetailsPage() {
       return;
     }
 
-    if (bookingForm.testId.startsWith('thyrocare_')) {
+    if (bookingForm.testId.startsWith('thyrocare_') || bookingForm.testId.startsWith('healthians_')) {
       if (!/^\d{6}$/.test(bookingForm.patientPincode.trim())) {
-        alert('Please enter a valid 6-digit pincode for Thyrocare booking.');
+        alert('Please enter a valid 6-digit pincode for partner lab booking.');
         return;
       }
 
@@ -232,11 +232,15 @@ export default function LabTestDetailsPage() {
           max_count: 3,
         },
         handler: async (paymentResponse: any) => {
+          const storedUserRaw = localStorage.getItem('user');
+          const storedUser = storedUserRaw ? JSON.parse(storedUserRaw) : null;
+          const userId = String(storedUser?.id || storedUser?._id || '').trim();
           const res = await fetch('/api/lab-test-bookings', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${token}`,
+              ...(userId ? { 'x-user-id': userId } : {}),
             },
             body: JSON.stringify({
               ...bookingForm,
@@ -619,7 +623,7 @@ export default function LabTestDetailsPage() {
                     </div>
                   )}
 
-                  {bookingForm.testId.startsWith('thyrocare_') && (
+                  {(bookingForm.testId.startsWith('thyrocare_') || bookingForm.testId.startsWith('healthians_')) && (
                     <>
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-1">

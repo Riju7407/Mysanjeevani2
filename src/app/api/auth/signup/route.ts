@@ -52,9 +52,15 @@ export async function POST(request: NextRequest) {
       role,
       businessType,
       businessAddress,
+      vendorMedicineType,
+      vendorAadharCardUrl,
+      vendorPanCardUrl,
+      vendorGstCertificateUrl,
+      vendorDrugLicenseUrl,
       registrationNumber,
-      identityDocumentUrl,
-      identityDocumentType,
+      doctorAadharCardUrl,
+      doctorPanCardUrl,
+      doctorRegistrationCertificateUrl,
       phoneVerificationToken,
     } = body;
 
@@ -99,6 +105,24 @@ export async function POST(request: NextRequest) {
     await connectDB();
 
     if (requestedRole === 'vendor') {
+      const normalizedVendorMedicineType = String(vendorMedicineType || 'allopathic').trim().toLowerCase();
+      const requiresDrugLicense = normalizedVendorMedicineType !== 'ayurveda';
+
+      if (!vendorAadharCardUrl || !String(vendorAadharCardUrl).trim()) {
+        return NextResponse.json({ error: 'Aadhar card is mandatory for vendor signup' }, { status: 400 });
+      }
+
+      if (!vendorPanCardUrl || !String(vendorPanCardUrl).trim()) {
+        return NextResponse.json({ error: 'PAN card is mandatory for vendor signup' }, { status: 400 });
+      }
+
+      if (requiresDrugLicense && (!vendorDrugLicenseUrl || !String(vendorDrugLicenseUrl).trim())) {
+        return NextResponse.json(
+          { error: 'Drug license is mandatory for allopathic and homeopathy vendors' },
+          { status: 400 }
+        );
+      }
+
       const existingVendor = await Vendor.findOne({ email: normalizedEmail });
       if (existingVendor) {
         return NextResponse.json({ error: 'Vendor already exists with this email' }, { status: 409 });
@@ -112,7 +136,14 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         phone: normalizedPhone,
         businessType: businessType || 'other',
+        medicineType: ['allopathic', 'homeopathy', 'ayurveda', 'mixed'].includes(normalizedVendorMedicineType)
+          ? normalizedVendorMedicineType
+          : 'allopathic',
         address: businessAddress || { street: normalizedFullAddress },
+        aadharCardUrl: String(vendorAadharCardUrl || '').trim(),
+        panCardUrl: String(vendorPanCardUrl || '').trim(),
+        gstCertificateUrl: String(vendorGstCertificateUrl || '').trim(),
+        drugLicenseUrl: String(vendorDrugLicenseUrl || '').trim(),
         status: 'pending',
       });
 
@@ -126,6 +157,7 @@ export async function POST(request: NextRequest) {
             email: newVendor.email,
             phone: newVendor.phone,
             businessType: newVendor.businessType,
+            medicineType: newVendor.medicineType,
             status: newVendor.status,
           },
         },
@@ -141,9 +173,23 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      if (!identityDocumentUrl || !identityDocumentUrl.trim()) {
+      if (!doctorAadharCardUrl || !String(doctorAadharCardUrl).trim()) {
         return NextResponse.json(
-          { error: 'Identity document is required for doctor registration' },
+          { error: 'Aadhar card is required for doctor registration' },
+          { status: 400 }
+        );
+      }
+
+      if (!doctorPanCardUrl || !String(doctorPanCardUrl).trim()) {
+        return NextResponse.json(
+          { error: 'PAN card is required for doctor registration' },
+          { status: 400 }
+        );
+      }
+
+      if (!doctorRegistrationCertificateUrl || !String(doctorRegistrationCertificateUrl).trim()) {
+        return NextResponse.json(
+          { error: 'Registration certificate is required for doctor registration' },
           { status: 400 }
         );
       }
@@ -174,8 +220,11 @@ export async function POST(request: NextRequest) {
         role: 'doctor',
         isVerified: false,
         registrationNumber,
-        identityDocument: identityDocumentUrl,
-        identityDocumentType: identityDocumentType || 'medical-license',
+        identityDocument: doctorRegistrationCertificateUrl,
+        identityDocumentType: 'medical-license',
+        aadharCardUrl: String(doctorAadharCardUrl || '').trim(),
+        panCardUrl: String(doctorPanCardUrl || '').trim(),
+        registrationCertificateUrl: String(doctorRegistrationCertificateUrl || '').trim(),
         isApproved: false,
       });
 
@@ -185,8 +234,11 @@ export async function POST(request: NextRequest) {
         email: normalizedEmail,
         phone: normalizedPhone,
         registrationNumber,
-        identityDocumentUrl,
-        identityDocumentType: identityDocumentType || 'medical-license',
+        identityDocumentUrl: doctorRegistrationCertificateUrl,
+        identityDocumentType: 'medical-license',
+        aadharCardUrl: String(doctorAadharCardUrl || '').trim(),
+        panCardUrl: String(doctorPanCardUrl || '').trim(),
+        registrationCertificateUrl: String(doctorRegistrationCertificateUrl || '').trim(),
         isApproved: false,
         approvalStatus: 'pending',
       });

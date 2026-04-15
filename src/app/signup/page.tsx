@@ -15,15 +15,31 @@ export default function SignupPage() {
     fullAddress: '',
     role: 'user',
     businessType: 'pharmacy',
+    vendorMedicineType: 'allopathic',
     password: '',
     confirmPassword: '',
     // Doctor specific
     registrationNumber: '',
-    identityDocumentType: 'medical-license',
   });
 
-  const [identityDocument, setIdentityDocument] = useState<File | null>(null);
-  const [identityDocumentPreview, setIdentityDocumentPreview] = useState('');
+  type DocumentKey =
+    | 'vendorAadhar'
+    | 'vendorPan'
+    | 'vendorGst'
+    | 'vendorDrugLicense'
+    | 'doctorAadhar'
+    | 'doctorPan'
+    | 'doctorRegistrationCertificate';
+
+  const [documents, setDocuments] = useState<Record<DocumentKey, File | null>>({
+    vendorAadhar: null,
+    vendorPan: null,
+    vendorGst: null,
+    vendorDrugLicense: null,
+    doctorAadhar: null,
+    doctorPan: null,
+    doctorRegistrationCertificate: null,
+  });
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
@@ -164,29 +180,23 @@ export default function SignupPage() {
     }
   };
 
-  const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setIdentityDocument(file);
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setIdentityDocumentPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+  const handleDocumentChange = (key: DocumentKey, file: File | null) => {
+    setDocuments((prev) => ({ ...prev, [key]: file }));
   };
 
-  const uploadDocumentToCloudinary = async (): Promise<string | null> => {
-    if (!identityDocument) {
-      setError('Identity document is required for doctor registration');
+  const uploadDocumentToCloudinary = async (
+    file: File | null,
+    errorMessage: string
+  ): Promise<string | null> => {
+    if (!file) {
+      setError(errorMessage);
       return null;
     }
 
     setUploadingDocument(true);
     try {
       const formDataToSend = new FormData();
-      formDataToSend.append('file', identityDocument);
+      formDataToSend.append('file', file);
 
       const response = await fetch('/api/doctor/upload-document', {
         method: 'POST',
@@ -264,14 +274,39 @@ export default function SignupPage() {
       return;
     }
 
+    // Vendor specific validation
+    if (formData.role === 'vendor') {
+      if (!documents.vendorAadhar) {
+        setError('Aadhar card is mandatory for vendor registration');
+        return;
+      }
+      if (!documents.vendorPan) {
+        setError('PAN card is mandatory for vendor registration');
+        return;
+      }
+      const requiresDrugLicense = formData.vendorMedicineType !== 'ayurveda';
+      if (requiresDrugLicense && !documents.vendorDrugLicense) {
+        setError('Drug license is mandatory for allopathic and homeopathy vendors');
+        return;
+      }
+    }
+
     // Doctor specific validation
     if (formData.role === 'doctor') {
       if (!formData.registrationNumber.trim()) {
         setError('Registration number is required for doctor registration');
         return;
       }
-      if (!identityDocument) {
-        setError('Identity document is required for doctor registration');
+      if (!documents.doctorAadhar) {
+        setError('Aadhar card is mandatory for doctor registration');
+        return;
+      }
+      if (!documents.doctorPan) {
+        setError('PAN card is mandatory for doctor registration');
+        return;
+      }
+      if (!documents.doctorRegistrationCertificate) {
+        setError('Registration certificate is mandatory for doctor registration');
         return;
       }
     }
@@ -279,11 +314,79 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      // Upload document first if doctor
-      let documentUrl: string | undefined;
+      // Upload documents before signup payload submission
+      let vendorAadharCardUrl: string | undefined;
+      let vendorPanCardUrl: string | undefined;
+      let vendorGstCertificateUrl: string | undefined;
+      let vendorDrugLicenseUrl: string | undefined;
+      let doctorAadharCardUrl: string | undefined;
+      let doctorPanCardUrl: string | undefined;
+      let doctorRegistrationCertificateUrl: string | undefined;
+
+      if (formData.role === 'vendor') {
+        vendorAadharCardUrl = (await uploadDocumentToCloudinary(
+          documents.vendorAadhar,
+          'Aadhar card is mandatory for vendor registration'
+        )) || undefined;
+        if (!vendorAadharCardUrl) {
+          setLoading(false);
+          return;
+        }
+
+        vendorPanCardUrl = (await uploadDocumentToCloudinary(
+          documents.vendorPan,
+          'PAN card is mandatory for vendor registration'
+        )) || undefined;
+        if (!vendorPanCardUrl) {
+          setLoading(false);
+          return;
+        }
+
+        if (documents.vendorGst) {
+          vendorGstCertificateUrl =
+            (await uploadDocumentToCloudinary(documents.vendorGst, 'Failed to upload GST certificate')) ||
+            undefined;
+        }
+
+        const requiresDrugLicense = formData.vendorMedicineType !== 'ayurveda';
+        if (requiresDrugLicense || documents.vendorDrugLicense) {
+          vendorDrugLicenseUrl =
+            (await uploadDocumentToCloudinary(
+              documents.vendorDrugLicense,
+              'Drug license is mandatory for allopathic and homeopathy vendors'
+            )) || undefined;
+
+          if (requiresDrugLicense && !vendorDrugLicenseUrl) {
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
       if (formData.role === 'doctor') {
-        documentUrl = (await uploadDocumentToCloudinary()) || undefined;
-        if (!documentUrl) {
+        doctorAadharCardUrl = (await uploadDocumentToCloudinary(
+          documents.doctorAadhar,
+          'Aadhar card is mandatory for doctor registration'
+        )) || undefined;
+        if (!doctorAadharCardUrl) {
+          setLoading(false);
+          return;
+        }
+
+        doctorPanCardUrl = (await uploadDocumentToCloudinary(
+          documents.doctorPan,
+          'PAN card is mandatory for doctor registration'
+        )) || undefined;
+        if (!doctorPanCardUrl) {
+          setLoading(false);
+          return;
+        }
+
+        doctorRegistrationCertificateUrl = (await uploadDocumentToCloudinary(
+          documents.doctorRegistrationCertificate,
+          'Registration certificate is mandatory for doctor registration'
+        )) || undefined;
+        if (!doctorRegistrationCertificateUrl) {
           setLoading(false);
           return;
         }
@@ -299,12 +402,19 @@ export default function SignupPage() {
           fullAddress: formData.fullAddress,
           role: formData.role,
           businessType: formData.role === 'vendor' ? formData.businessType : undefined,
+          vendorMedicineType: formData.role === 'vendor' ? formData.vendorMedicineType : undefined,
+          vendorAadharCardUrl: formData.role === 'vendor' ? vendorAadharCardUrl : undefined,
+          vendorPanCardUrl: formData.role === 'vendor' ? vendorPanCardUrl : undefined,
+          vendorGstCertificateUrl: formData.role === 'vendor' ? vendorGstCertificateUrl : undefined,
+          vendorDrugLicenseUrl: formData.role === 'vendor' ? vendorDrugLicenseUrl : undefined,
           password: formData.password,
           phoneVerificationToken,
           // Doctor specific
           registrationNumber: formData.role === 'doctor' ? formData.registrationNumber : undefined,
-          identityDocumentUrl: formData.role === 'doctor' ? documentUrl : undefined,
-          identityDocumentType: formData.role === 'doctor' ? formData.identityDocumentType : undefined,
+          doctorAadharCardUrl: formData.role === 'doctor' ? doctorAadharCardUrl : undefined,
+          doctorPanCardUrl: formData.role === 'doctor' ? doctorPanCardUrl : undefined,
+          doctorRegistrationCertificateUrl:
+            formData.role === 'doctor' ? doctorRegistrationCertificateUrl : undefined,
         }),
       });
 
@@ -400,28 +510,105 @@ export default function SignupPage() {
               </div>
 
               {formData.role === 'vendor' && (
-                <div>
-                  <label
-                    htmlFor="businessType"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Business Type
-                  </label>
-                  <select
-                    id="businessType"
-                    name="businessType"
-                    value={formData.businessType}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
-                  >
-                    <option value="pharmacy">Pharmacy</option>
-                    <option value="clinic">Clinic</option>
-                    <option value="hospital">Hospital</option>
-                    <option value="lab">Lab</option>
-                    <option value="supplier">Supplier</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
+                <>
+                  <div>
+                    <label
+                      htmlFor="businessType"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      Business Type
+                    </label>
+                    <select
+                      id="businessType"
+                      name="businessType"
+                      value={formData.businessType}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
+                    >
+                      <option value="pharmacy">Pharmacy</option>
+                      <option value="clinic">Clinic</option>
+                      <option value="hospital">Hospital</option>
+                      <option value="lab">Lab</option>
+                      <option value="supplier">Supplier</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="vendorMedicineType"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      Product Type
+                    </label>
+                    <select
+                      id="vendorMedicineType"
+                      name="vendorMedicineType"
+                      value={formData.vendorMedicineType}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
+                    >
+                      <option value="allopathic">Allopathic Medicine</option>
+                      <option value="homeopathy">Homeopathy Medicine</option>
+                      <option value="ayurveda">Ayurveda Products</option>
+                      <option value="mixed">Mixed (Allopathic/Homeopathy/Ayurveda)</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Drug license is mandatory for allopathic/homeopathy, optional for ayurveda-only vendors.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Aadhar Card *
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={(e) => handleDocumentChange('vendorAadhar', e.target.files?.[0] || null)}
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      PAN Card *
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={(e) => handleDocumentChange('vendorPan', e.target.files?.[0] || null)}
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      GST Certificate (Optional)
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={(e) => handleDocumentChange('vendorGst', e.target.files?.[0] || null)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Drug License {formData.vendorMedicineType === 'ayurveda' ? '(Optional)' : '*'}
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={(e) => handleDocumentChange('vendorDrugLicense', e.target.files?.[0] || null)}
+                      required={formData.vendorMedicineType !== 'ayurveda'}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
+                    />
+                  </div>
+                </>
               )}
 
               {/* Doctor specific fields */}
@@ -451,61 +638,55 @@ export default function SignupPage() {
 
                   <div>
                     <label
-                      htmlFor="identityDocumentType"
+                      htmlFor="doctorAadhar"
                       className="block text-sm font-medium text-gray-700 mb-2"
                     >
-                      Document Type *
+                      Aadhar Card *
                     </label>
-                    <select
-                      id="identityDocumentType"
-                      name="identityDocumentType"
-                      value={formData.identityDocumentType}
-                      onChange={handleChange}
+                    <input
+                      type="file"
+                      id="doctorAadhar"
+                      accept="image/*,.pdf"
+                      onChange={(e) => handleDocumentChange('doctorAadhar', e.target.files?.[0] || null)}
+                      required
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
-                    >
-                      <option value="medical-license">Medical License</option>
-                      <option value="doctor-id">Doctor ID</option>
-                      <option value="nmc-registration">NMC Registration</option>
-                      <option value="other">Other (Provide details)</option>
-                    </select>
+                    />
                   </div>
 
                   <div>
                     <label
-                      htmlFor="identityDocument"
+                      htmlFor="doctorPan"
                       className="block text-sm font-medium text-gray-700 mb-2"
                     >
-                      Upload Identity Document *
+                      PAN Card *
                     </label>
                     <input
                       type="file"
-                      id="identityDocument"
+                      id="doctorPan"
                       accept="image/*,.pdf"
-                      onChange={handleDocumentChange}
+                      onChange={(e) => handleDocumentChange('doctorPan', e.target.files?.[0] || null)}
                       required
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
                     />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Upload medical license, doctor ID, or NMC registration (Image or PDF)
-                    </p>
-                    {identityDocumentPreview && (
-                      <div className="mt-3">
-                        <p className="text-xs font-medium text-gray-700 mb-2">Preview:</p>
-                        <div className="w-full h-40 bg-gray-100 rounded-lg overflow-hidden">
-                          {identityDocumentPreview.includes('data:image') ? (
-                            <img
-                              src={identityDocumentPreview}
-                              alt="Document preview"
-                              className="w-full h-full object-contain"
-                            />
-                          ) : (
-                            <div className="flex items-center justify-center h-full text-gray-500">
-                              PDF Document Selected
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="doctorRegistrationCertificate"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      Registration Certificate *
+                    </label>
+                    <input
+                      type="file"
+                      id="doctorRegistrationCertificate"
+                      accept="image/*,.pdf"
+                      onChange={(e) =>
+                        handleDocumentChange('doctorRegistrationCertificate', e.target.files?.[0] || null)
+                      }
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition"
+                    />
                   </div>
                 </>
               )}

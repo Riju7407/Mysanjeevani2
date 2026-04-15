@@ -73,6 +73,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      return NextResponse.json(
+        {
+          message: 'No reviews available for this product',
+          reviews: [],
+          total: 0,
+          averageRating: 0,
+          page,
+          limit,
+          hasMore: false,
+        },
+        { status: 200 }
+      );
+    }
+
     const total = await Review.countDocuments({ productId });
     const reviews = await Review.find({ productId })
       .sort({ createdAt: -1 })
@@ -121,6 +136,13 @@ export async function POST(request: NextRequest) {
     if (!userId || !productId || !rating || !comment) {
       return NextResponse.json(
         { error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      return NextResponse.json(
+        { error: 'Reviews are not supported for this product type yet' },
         { status: 400 }
       );
     }
