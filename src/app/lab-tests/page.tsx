@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Suspense, useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -139,7 +139,7 @@ async function loadRazorpayScript() {
   });
 }
 
-export default function LabTestsPage() {
+function LabTestsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<'tests' | 'bookings'>('tests');
@@ -1027,6 +1027,14 @@ export default function LabTestsPage() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function LabTestsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-white" />}>
+      <LabTestsPageContent />
+    </Suspense>
   );
 }
 
