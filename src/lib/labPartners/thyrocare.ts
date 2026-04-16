@@ -4,6 +4,8 @@ import type {
   LabPartnerAdapter,
   PartnerBookingInput,
   PartnerCreateOrderResult,
+  PartnerPincodeServiceability,
+  PartnerSlot,
   PartnerStatusResult,
 } from './types';
 
@@ -27,9 +29,27 @@ type ThyrocareOrderDetails = {
   patients?: Array<{ id?: string; isReportAvailable?: boolean }>;
 };
 
+type ThyrocarePincodesResponse = {
+  serviceTypes?: Array<{
+    type?: string;
+    pincodes?: number[];
+  }>;
+};
+
+type ThyrocareSlotsResponse = {
+  timeZone?: string;
+  appointmentDate?: string;
+  slots?: Array<{
+    id?: string | number;
+    startTime?: string;
+    endTime?: string;
+  }>;
+};
+
 const DEFAULT_BASE_URL = 'https://api-sandbox.thyrocare.com';
 
 let cachedToken: { token: string; expiresAt: number } | null = null;
+let cachedPincodes: { expiresAt: number; data: ThyrocarePincodesResponse } | null = null;
 
 function readConfig() {
   const username = process.env.THYROCARE_USERNAME || '';
@@ -57,6 +77,15 @@ function formatIndiaPhone(phone?: string) {
 
 function parseTimeStart(collectionTime?: string) {
   const text = String(collectionTime || '').trim();
+  const twentyFourHourMatch = text.match(/^(\d{1,2}):(\d{2})$/);
+  if (twentyFourHourMatch) {
+    const hour = Number(twentyFourHourMatch[1]);
+    const minute = Number(twentyFourHourMatch[2]);
+    if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
+      return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    }
+  }
+
   const match = text.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
   if (!match) return '09:00';
 
@@ -68,6 +97,23 @@ function parseTimeStart(collectionTime?: string) {
   if (meridian === 'AM' && hour === 12) hour = 0;
 
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+function formatSlotLabel(startTime: string, endTime: string) {
+  const to12Hour = (value: string) => {
+    const parts = value.split(':');
+    if (parts.length !== 2) return value;
+
+    const hour = Number(parts[0]);
+    const minute = Number(parts[1]);
+    if (!Number.isFinite(hour) || !Number.isFinite(minute)) return value;
+
+    const meridian = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${String(minute).padStart(2, '0')} ${meridian}`;
+  };
+
+  return `${to12Hour(startTime)} - ${to12Hour(endTime)}`;
 }
 
 function toCategory(item: ThyrocareCatalogItem) {
@@ -114,12 +160,29 @@ function toPartnerTest(item: ThyrocareCatalogItem): ExternalLabTest | null {
 }
 
 async function parseJsonOrThrow(res: Response) {
-  const body = await res.json().catch(() => ({}));
+  const rawText = await res.text().catch(() => '');
+  let body: any = {};
+  if (rawText) {
+    try {
+      body = JSON.parse(rawText);
+    } catch {
+      body = {};
+    }
+  }
   if (!res.ok) {
-    const message = (body as any)?.errors?.[0]?.message || (body as any)?.message || `Thyrocare request failed (${res.status})`;
+    const message =
+      (body as any)?.errors?.[0]?.message ||
+      (body as any)?.message ||
+      rawText ||
+      `Thyrocare request failed (${res.status})`;
     throw new Error(message);
   }
   return body as any;
+}
+
+function normalizePartnerGender(gender?: 'MALE' | 'FEMALE' | 'OTHER') {
+  if (gender === 'MALE' || gender === 'FEMALE') return gender;
+  return 'MALE';
 }
 
 async function getToken(forceRefresh = false) {
@@ -215,6 +278,142 @@ async function fetchReportUrl(orderId: string, leadId: string) {
   }
 }
 
+async function getPincodeData() {
+  if (cachedPincodes && cachedPincodes.expiresAt > Date.now()) {
+    return cachedPincodes.data;
+  }
+
+  const data = (await callThyrocare('/partners/v1/serviceability/pincodes')) as ThyrocarePincodesResponse;
+  cachedPincodes = {
+    data,
+    // The docs recommend caching this response for 24h.
+    expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+  };
+
+  return data;
+}
+
+function normalizePincode(value: string) {
+  return String(value || '').replace(/\D/g, '').slice(0, 6);
+}
+
+function extractServiceability(data: ThyrocarePincodesResponse, pincode: string): PartnerPincodeServiceability {
+  const cleanPincode = normalizePincode(pincode);
+  const serviceTypes = Array.isArray(data.serviceTypes) ? data.serviceTypes : [];
+
+  const matchingTypes = serviceTypes
+    .filter((entry) => Array.isArray(entry.pincodes) && entry.pincodes.some((code) => String(code) === cleanPincode))
+    .map((entry) => String(entry.type || '').trim())
+    .filter(Boolean);
+
+  return {
+    pincode: cleanPincode,
+    isServiceable: matchingTypes.length > 0,
+    serviceTypes: matchingTypes,
+  };
+}
+
+async function searchSlotsForBooking(input: {
+  testId: string;
+  testName: string;
+  appointmentDate: string;
+  pincode: string;
+  patientName?: string;
+  patientAge?: number;
+  patientGender?: 'MALE' | 'FEMALE' | 'OTHER';
+}) {
+  const { providerTestId, providerType } = parseThyrocareTestId(input.testId);
+  const cleanPincode = normalizePincode(input.pincode);
+  const appointmentDate = String(input.appointmentDate || '').slice(0, 10);
+  const patientName = input.patientName || 'Patient';
+  const patientGender = normalizePartnerGender(input.patientGender);
+  const patientAge = input.patientAge ?? 30;
+
+  const requestBodies = [
+    {
+      appointmentDate,
+      pincode: Number(cleanPincode),
+      patients: [
+        {
+          name: patientName,
+          gender: patientGender,
+          age: patientAge,
+          ageType: 'YEAR',
+          items: [
+            {
+              id: providerTestId,
+              type: providerType,
+              name: input.testName || providerTestId,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      appointmentDate,
+      pincode: cleanPincode,
+      patients: [
+        {
+          name: patientName,
+          gender: patientGender,
+          age: patientAge,
+          ageType: 'YEARS',
+          items: [
+            {
+              id: providerTestId,
+              type: providerType,
+              name: input.testName || providerTestId,
+            },
+          ],
+        },
+      ],
+    },
+  ];
+
+  let data: ThyrocareSlotsResponse | null = null;
+  let lastError: unknown = null;
+
+  for (const payload of requestBodies) {
+    try {
+      data = (await callThyrocare('/partners/v1/slots/search', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      })) as ThyrocareSlotsResponse;
+      break;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (!data) {
+    throw (lastError instanceof Error
+      ? lastError
+      : new Error('Unable to fetch Thyrocare slots'));
+  }
+
+  const slots: PartnerSlot[] = (Array.isArray(data.slots) ? data.slots : [])
+    .map((slot) => {
+      const id = String(slot.id ?? '').trim();
+      const startTime = String(slot.startTime || '').trim();
+      const endTime = String(slot.endTime || '').trim();
+      if (!id || !startTime || !endTime) return null;
+
+      return {
+        id,
+        startTime,
+        endTime,
+        label: formatSlotLabel(startTime, endTime),
+      };
+    })
+    .filter((slot): slot is PartnerSlot => Boolean(slot));
+
+  return {
+    timeZone: data.timeZone,
+    appointmentDate: data.appointmentDate,
+    slots,
+  };
+}
+
 export const thyrocareAdapter: LabPartnerAdapter = {
   provider: 'thyrocare',
 
@@ -257,7 +456,38 @@ export const thyrocareAdapter: LabPartnerAdapter = {
 
     const { providerTestId, providerType } = parseThyrocareTestId(input.testId);
     const collectionDate = input.collectionDate || new Date().toISOString().slice(0, 10);
-    const pincode = Number(String(input.patientPincode || '').replace(/\D/g, '').slice(0, 6) || '110001');
+    const normalizedPincode = normalizePincode(input.patientPincode || '');
+    const pincode = Number(normalizedPincode || '110001');
+
+    if (normalizedPincode) {
+      const serviceability = extractServiceability(await getPincodeData(), normalizedPincode);
+      if (!serviceability.isServiceable) {
+        throw new Error(`Thyrocare service is not available for pincode ${normalizedPincode}`);
+      }
+    }
+
+    if (normalizedPincode) {
+      const slotSearch = await searchSlotsForBooking({
+        testId: input.testId,
+        testName: input.testName,
+        appointmentDate: collectionDate,
+        pincode: normalizedPincode,
+        patientName: input.user.fullName,
+        patientAge: input.patientAge,
+        patientGender: input.patientGender,
+      });
+
+      if (!slotSearch.slots.length) {
+        throw new Error('No Thyrocare collection slots are available for the selected date and pincode');
+      }
+
+      const selectedTime = parseTimeStart(input.collectionTime);
+      const selectedSlot = slotSearch.slots.find((slot) => slot.startTime === selectedTime);
+
+      if (!selectedSlot) {
+        throw new Error('Selected collection slot is not available with Thyrocare. Please choose an available slot.');
+      }
+    }
 
     const payload = {
       address: {
@@ -387,6 +617,69 @@ export const thyrocareAdapter: LabPartnerAdapter = {
       reportUrl,
       providerLeadId: resolvedLeadId || undefined,
       raw: details,
+    };
+  },
+
+  async checkPincodeServiceability(pincode: string): Promise<PartnerPincodeServiceability> {
+    if (!this.isConfigured()) {
+      throw new Error('Thyrocare is not configured');
+    }
+
+    const cleanPincode = normalizePincode(pincode);
+    if (cleanPincode.length !== 6) {
+      throw new Error('Please provide a valid 6-digit pincode');
+    }
+
+    const data = await getPincodeData();
+    return extractServiceability(data, cleanPincode);
+  },
+
+  async searchSlots(input): Promise<{ timeZone?: string; appointmentDate?: string; slots: PartnerSlot[] }> {
+    if (!this.isConfigured()) {
+      throw new Error('Thyrocare is not configured');
+    }
+
+    const cleanPincode = normalizePincode(input.pincode);
+    if (cleanPincode.length !== 6) {
+      throw new Error('Please provide a valid 6-digit pincode');
+    }
+
+    const serviceability = extractServiceability(await getPincodeData(), cleanPincode);
+    if (!serviceability.isServiceable) {
+      return {
+        timeZone: '+5:30 Asia/Kolkata',
+        appointmentDate: input.appointmentDate,
+        slots: [],
+      };
+    }
+
+    return searchSlotsForBooking({
+      testId: input.testId,
+      testName: input.testName,
+      appointmentDate: input.appointmentDate,
+      pincode: cleanPincode,
+      patientName: input.patientName,
+      patientAge: input.patientAge,
+      patientGender: input.patientGender,
+    });
+  },
+
+  async cancelOrder(orderId: string, reason?: { reasonKey?: string; reasonText?: string }) {
+    if (!this.isConfigured()) {
+      throw new Error('Thyrocare is not configured');
+    }
+
+    const data = await callThyrocare(`/partners/v1/orders/${encodeURIComponent(orderId)}/cancel`, {
+      method: 'DELETE',
+      body: JSON.stringify({
+        reasonKey: reason?.reasonKey || 'OTHER',
+        reasonText: reason?.reasonText || 'Cancelled by MySanjeevni user',
+      }),
+    });
+
+    return {
+      message: String(data.message || 'Order cancelled successfully'),
+      raw: data,
     };
   },
 };

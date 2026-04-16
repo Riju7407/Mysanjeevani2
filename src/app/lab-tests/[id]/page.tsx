@@ -43,7 +43,14 @@ interface BookingForm {
   notes: string;
 }
 
-const TIME_SLOTS = [
+interface PartnerSlot {
+  id: string;
+  startTime: string;
+  endTime: string;
+  label: string;
+}
+
+const FALLBACK_TIME_SLOTS = [
   '7:00 AM – 9:00 AM',
   '9:00 AM – 11:00 AM',
   '11:00 AM – 1:00 PM',
@@ -83,13 +90,13 @@ function getNextAvailableCollectionDateTime() {
     tomorrow.setDate(now.getDate() + 1);
     return {
       collectionDate: tomorrow.toISOString().split('T')[0],
-      collectionTime: TIME_SLOTS[0],
+      collectionTime: FALLBACK_TIME_SLOTS[0],
     };
   }
 
   return {
     collectionDate: now.toISOString().split('T')[0],
-    collectionTime: TIME_SLOTS[0],
+    collectionTime: FALLBACK_TIME_SLOTS[0],
   };
 }
 
@@ -119,6 +126,23 @@ export default function LabTestDetailsPage() {
     patientGender: 'MALE',
     notes: '',
   });
+  const [availableSlots, setAvailableSlots] = useState<PartnerSlot[]>([]);
+  const [slotLoading, setSlotLoading] = useState(false);
+  const [slotError, setSlotError] = useState('');
+  const [isServiceabilityChecking, setIsServiceabilityChecking] = useState(false);
+  const [isPincodeServiceable, setIsPincodeServiceable] = useState<boolean | null>(null);
+
+  const hasDateEndedForBooking = (dateValue: string) => {
+    if (!dateValue) return false;
+    const endOfSelectedDay = new Date(`${dateValue}T23:59:59`);
+    if (Number.isNaN(endOfSelectedDay.getTime())) return false;
+    return new Date() > endOfSelectedDay;
+  };
+
+  const isThyrocareTest = bookingForm.testId.startsWith('thyrocare_');
+  const isPartnerTest =
+    bookingForm.testId.startsWith('thyrocare_') ||
+    bookingForm.testId.startsWith('healthians_');
 
   useEffect(() => {
     fetchTestDetails();
@@ -146,6 +170,181 @@ export default function LabTestDetailsPage() {
     }
   };
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const run = async () => {
+      if (!isThyrocareTest) {
+        setIsPincodeServiceable(null);
+        setSlotError('');
+        setAvailableSlots([]);
+        setSlotLoading(false);
+        return;
+      }
+
+      const pincode = bookingForm.patientPincode.trim();
+      const appointmentDate = bookingForm.collectionDate;
+      const normalizedTestId = bookingForm.testId.trim();
+      const normalizedTestName = bookingForm.testName.trim();
+      const age = Number(bookingForm.patientAge);
+      const hasValidAge = Number.isInteger(age) && age >= 0 && age <= 120;
+
+      if (!normalizedTestId || !normalizedTestName) {
+        setAvailableSlots([]);
+        setSlotError('');
+        return;
+      }
+
+      if (!appointmentDate) {
+        setAvailableSlots([]);
+        setSlotError('Please select collection date first.');
+        setBookingForm((prev) => ({ ...prev, collectionTime: '' }));
+        return;
+      }
+
+      if (hasDateEndedForBooking(appointmentDate)) {
+        setAvailableSlots([]);
+        setSlotError('Selected collection date has ended (after 11:59 PM). Please choose next date.');
+        setBookingForm((prev) => ({ ...prev, collectionTime: '' }));
+        return;
+      }
+
+      if (!bookingForm.patientAge.trim()) {
+        setAvailableSlots([]);
+        setSlotError('Please enter patient age to view available collection times.');
+        setBookingForm((prev) => ({ ...prev, collectionTime: '' }));
+        return;
+      }
+
+      if (!bookingForm.patientGender) {
+        setAvailableSlots([]);
+        setSlotError('Please select patient gender to view available collection times.');
+        setBookingForm((prev) => ({ ...prev, collectionTime: '' }));
+        return;
+      }
+
+      if (!/^\d{6}$/.test(pincode)) {
+        setIsPincodeServiceable(null);
+        setAvailableSlots([]);
+        setSlotError('Please enter a valid 6-digit pincode to view collection time slots.');
+        setBookingForm((prev) => ({ ...prev, collectionTime: '' }));
+        return;
+      }
+
+      setIsServiceabilityChecking(true);
+      try {
+        const serviceabilityRes = await fetch(
+          `/api/lab-partners/serviceability?testId=${encodeURIComponent(
+            normalizedTestId
+          )}&pincode=${encodeURIComponent(pincode)}`
+        );
+        const serviceabilityData = await serviceabilityRes.json();
+
+        if (!serviceabilityRes.ok) {
+          throw new Error(
+            serviceabilityData.error || 'Failed to check pincode serviceability'
+          );
+        }
+
+        if (!isMounted) return;
+
+        const serviceable = Boolean(serviceabilityData.isServiceable);
+        setIsPincodeServiceable(serviceable);
+
+        if (!serviceable) {
+          setAvailableSlots([]);
+          setSlotError('Thyrocare home collection is not available for this pincode.');
+          setBookingForm((prev) => ({ ...prev, collectionTime: '' }));
+          return;
+        }
+      } catch (err) {
+        if (!isMounted) return;
+        setIsPincodeServiceable(false);
+        setAvailableSlots([]);
+        setSlotError(
+          err instanceof Error ? err.message : 'Unable to validate pincode right now.'
+        );
+        return;
+      } finally {
+        if (isMounted) setIsServiceabilityChecking(false);
+      }
+
+      if (!hasValidAge) {
+        setAvailableSlots([]);
+        setSlotError('Please enter a valid age between 0 and 120 to view collection time slots.');
+        setBookingForm((prev) => ({ ...prev, collectionTime: '' }));
+        return;
+      }
+
+      setSlotLoading(true);
+      try {
+        const slotRes = await fetch('/api/lab-partners/slots', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            testId: normalizedTestId,
+            testName: normalizedTestName,
+            appointmentDate,
+            pincode,
+            patientName: user?.fullName || 'Patient',
+            patientAge: age,
+            patientGender: bookingForm.patientGender,
+          }),
+        });
+
+        const slotData = await slotRes.json();
+        if (!slotRes.ok) {
+          throw new Error(slotData.error || 'Failed to fetch Thyrocare slots');
+        }
+
+        if (!isMounted) return;
+
+        const slots: PartnerSlot[] = Array.isArray(slotData.slots)
+          ? slotData.slots
+          : [];
+
+        setAvailableSlots(slots);
+        if (!slots.length) {
+          setSlotError('No Thyrocare slots are available for the selected date.');
+          setBookingForm((prev) => ({ ...prev, collectionTime: '' }));
+        } else {
+          setSlotError('');
+          setBookingForm((prev) => {
+            if (prev.collectionTime && slots.some((slot) => slot.startTime === prev.collectionTime)) {
+              return prev;
+            }
+
+            return {
+              ...prev,
+              collectionTime: slots[0].startTime,
+            };
+          });
+        }
+      } catch (err) {
+        if (!isMounted) return;
+        setAvailableSlots([]);
+        setSlotError(err instanceof Error ? err.message : 'Unable to fetch Thyrocare slots right now.');
+      } finally {
+        if (isMounted) setSlotLoading(false);
+      }
+    };
+
+    void run();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [
+    bookingForm.testId,
+    bookingForm.testName,
+    bookingForm.patientPincode,
+    bookingForm.collectionDate,
+    bookingForm.patientAge,
+    bookingForm.patientGender,
+    isThyrocareTest,
+    user?.fullName,
+  ]);
+
   const redirectToLogin = () => {
     const returnTo = `/lab-tests/${testId}`;
     router.push(`/login?redirect=${encodeURIComponent(returnTo)}`);
@@ -157,12 +356,15 @@ export default function LabTestDetailsPage() {
       return;
     }
 
-    if (!bookingForm.collectionDate || !bookingForm.collectionTime) {
+    if (!bookingForm.collectionDate || (!isThyrocareTest && !bookingForm.collectionTime)) {
       const defaults = getNextAvailableCollectionDateTime();
       setBookingForm((prev) => ({
         ...prev,
         collectionDate: prev.collectionDate || defaults.collectionDate,
-        collectionTime: prev.collectionTime || defaults.collectionTime,
+        collectionTime:
+          isThyrocareTest
+            ? ''
+            : (prev.collectionTime || defaults.collectionTime),
       }));
     }
 
@@ -182,9 +384,29 @@ export default function LabTestDetailsPage() {
       return;
     }
 
-    if (bookingForm.testId.startsWith('thyrocare_') || bookingForm.testId.startsWith('healthians_')) {
+    if (isPartnerTest) {
+      if (!bookingForm.collectionDate) {
+        alert('Please select collection date first.');
+        return;
+      }
+
+      if (hasDateEndedForBooking(bookingForm.collectionDate)) {
+        alert('Selected collection date has ended (after 11:59 PM). Please choose next date.');
+        return;
+      }
+
       if (!/^\d{6}$/.test(bookingForm.patientPincode.trim())) {
-        alert('Please enter a valid 6-digit pincode for partner lab booking.');
+        alert('Please enter a valid 6-digit pincode to view and book collection time.');
+        return;
+      }
+
+      if (!bookingForm.patientAge.trim()) {
+        alert('Please enter patient age to view and book collection time.');
+        return;
+      }
+
+      if (!bookingForm.patientGender) {
+        alert('Please select patient gender to view and book collection time.');
         return;
       }
 
@@ -192,6 +414,23 @@ export default function LabTestDetailsPage() {
       if (!Number.isInteger(age) || age < 0 || age > 120) {
         alert('Please enter a valid age between 0 and 120.');
         return;
+      }
+
+      if (isThyrocareTest) {
+        if (isPincodeServiceable === false) {
+          alert('Thyrocare service is not available for this pincode.');
+          return;
+        }
+
+        if (!bookingForm.collectionTime) {
+          alert('Please enter pincode, age and gender, then select an available Thyrocare collection time.');
+          return;
+        }
+
+        if (!availableSlots.some((slot) => slot.startTime === bookingForm.collectionTime)) {
+          alert('Selected slot is not available anymore. Please choose a fresh Thyrocare slot.');
+          return;
+        }
       }
     }
 
@@ -212,7 +451,7 @@ export default function LabTestDetailsPage() {
           amount: bookingForm.testPrice,
           currency: 'INR',
           description: `Lab Test: ${bookingForm.testName}`,
-          receipt: `lab_test_${bookingForm.testId}_${Date.now()}`,
+          receipt: `lab_${Date.now()}`,
         }),
       });
 
@@ -237,7 +476,7 @@ export default function LabTestDetailsPage() {
       }
 
       const razorpay = new (window.Razorpay as any)({
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        key: orderData.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         order_id: orderData.order.id,
         amount: orderData.order.amount,
         currency: 'INR',
@@ -322,6 +561,13 @@ export default function LabTestDetailsPage() {
   };
 
   const todayStr = new Date().toISOString().split('T')[0];
+  const slotOptions = isThyrocareTest
+    ? availableSlots.map((slot) => ({ value: slot.startTime, label: slot.label }))
+    : FALLBACK_TIME_SLOTS.map((slot) => ({ value: slot, label: slot }));
+  const hasSelectedThyrocareSlot =
+    !isThyrocareTest ||
+    (Boolean(bookingForm.collectionTime) &&
+      availableSlots.some((slot) => slot.startTime === bookingForm.collectionTime));
   const discountPercent = test && test.mrp && test.mrp > test.price ? Math.round(((test.mrp - test.price) / test.mrp) * 100) : 0;
 
   if (loading) {
@@ -620,12 +866,23 @@ export default function LabTestDetailsPage() {
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                     >
                       <option value="">Select time slot</option>
-                      {TIME_SLOTS.map((slot) => (
-                        <option key={slot} value={slot}>
-                          {slot}
+                      {slotOptions.map((slot) => (
+                        <option key={slot.value} value={slot.value}>
+                          {slot.label}
                         </option>
                       ))}
                     </select>
+                    {isThyrocareTest && slotLoading && (
+                      <p className="mt-1 text-xs text-emerald-700">Checking Thyrocare slot availability...</p>
+                    )}
+                    {isThyrocareTest && !slotLoading && slotError && (
+                      <p className="mt-1 text-xs text-red-600">{slotError}</p>
+                    )}
+                    {isThyrocareTest && (
+                      <p className="mt-1 text-xs text-amber-700">
+                        After giving pincode, then choose Collection Time.
+                      </p>
+                    )}
                   </div>
 
                   {/* Address */}
@@ -649,7 +906,7 @@ export default function LabTestDetailsPage() {
                     </div>
                   )}
 
-                  {(bookingForm.testId.startsWith('thyrocare_') || bookingForm.testId.startsWith('healthians_')) && (
+                  {isPartnerTest && (
                     <>
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -669,6 +926,15 @@ export default function LabTestDetailsPage() {
                           }
                           className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                         />
+                        {isThyrocareTest && isServiceabilityChecking && (
+                          <p className="mt-1 text-xs text-emerald-700">Checking pincode serviceability...</p>
+                        )}
+                        {isThyrocareTest && !isServiceabilityChecking && isPincodeServiceable === true && (
+                          <p className="mt-1 text-xs text-green-700">Pincode is serviceable by Thyrocare.</p>
+                        )}
+                        {isThyrocareTest && !isServiceabilityChecking && isPincodeServiceable === false && (
+                          <p className="mt-1 text-xs text-red-600">Pincode is not serviceable by Thyrocare.</p>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
@@ -743,7 +1009,7 @@ export default function LabTestDetailsPage() {
                     </button>
                     <button
                       onClick={handleBooking}
-                      disabled={!bookingForm.collectionDate || !bookingForm.collectionTime}
+                      disabled={!bookingForm.collectionDate || !bookingForm.collectionTime || !hasSelectedThyrocareSlot || slotLoading}
                       className="flex-1 bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-emerald-700 transition disabled:opacity-50"
                     >
                       {isOTPVerified ? 'Confirm Booking' : 'Verify OTP & Book'}

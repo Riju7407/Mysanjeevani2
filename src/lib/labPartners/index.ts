@@ -1,8 +1,25 @@
 import { healthiansAdapter } from './healthians';
 import { thyrocareAdapter } from './thyrocare';
-import type { ExternalLabTest, LabPartnerAdapter, LabProvider, PartnerBookingInput, PartnerCreateOrderResult, PartnerStatusResult } from './types';
+import type {
+  ExternalLabTest,
+  LabPartnerAdapter,
+  LabProvider,
+  PartnerBookingInput,
+  PartnerCreateOrderResult,
+  PartnerPincodeServiceability,
+  PartnerSlot,
+  PartnerStatusResult,
+} from './types';
 
-export type { ExternalLabTest, LabProvider, PartnerBookingInput, PartnerCreateOrderResult, PartnerStatusResult };
+export type {
+  ExternalLabTest,
+  LabProvider,
+  PartnerBookingInput,
+  PartnerCreateOrderResult,
+  PartnerPincodeServiceability,
+  PartnerSlot,
+  PartnerStatusResult,
+};
 
 const adapters: LabPartnerAdapter[] = [thyrocareAdapter, healthiansAdapter];
 
@@ -53,4 +70,49 @@ export async function fetchPartnerOrderStatus(provider: Exclude<LabProvider, 'lo
     throw new Error(`Unsupported provider: ${provider}`);
   }
   return adapter.getOrderStatus(orderId, leadId);
+}
+
+export async function fetchPartnerPincodeServiceability(
+  provider: Exclude<LabProvider, 'local'>,
+  pincode: string
+): Promise<PartnerPincodeServiceability> {
+  const adapter = getAdapter(provider);
+  if (!adapter || !adapter.checkPincodeServiceability) {
+    throw new Error(`Pincode serviceability is not supported for provider: ${provider}`);
+  }
+
+  return adapter.checkPincodeServiceability(pincode);
+}
+
+export async function fetchPartnerSlots(
+  provider: Exclude<LabProvider, 'local'>,
+  input: {
+    testId: string;
+    testName: string;
+    appointmentDate: string;
+    pincode: string;
+    patientName?: string;
+    patientAge?: number;
+    patientGender?: 'MALE' | 'FEMALE' | 'OTHER';
+  }
+): Promise<{ timeZone?: string; appointmentDate?: string; slots: PartnerSlot[] }> {
+  const adapter = getAdapter(provider);
+  if (!adapter || !adapter.searchSlots) {
+    throw new Error(`Slot search is not supported for provider: ${provider}`);
+  }
+
+  return adapter.searchSlots(input);
+}
+
+export async function cancelPartnerOrder(
+  provider: Exclude<LabProvider, 'local'>,
+  orderId: string,
+  reason?: { reasonKey?: string; reasonText?: string }
+) {
+  const adapter = getAdapter(provider);
+  if (!adapter || !adapter.cancelOrder) {
+    throw new Error(`Order cancellation is not supported for provider: ${provider}`);
+  }
+
+  return adapter.cancelOrder(orderId, reason);
 }

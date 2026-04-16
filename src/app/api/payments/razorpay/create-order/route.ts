@@ -112,6 +112,12 @@ function getClient() {
   });
 }
 
+function normalizeReceiptId(receipt?: string) {
+  const base = String(receipt || '').trim() || `receipt_${Date.now()}`;
+  const safe = base.replace(/[^a-zA-Z0-9_-]/g, '_');
+  return safe.slice(0, 40);
+}
+
 export async function POST(request: NextRequest) {
   try {
     const {
@@ -146,7 +152,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const receiptId = receipt || `receipt_${Date.now()}`;
+    const receiptId = normalizeReceiptId(receipt);
     let order: any;
     let methods = null;
 
@@ -182,10 +188,11 @@ export async function POST(request: NextRequest) {
         });
       } catch (razorpayError: any) {
         console.error('❌ Razorpay API Error:', razorpayError?.message);
-        
-        // If merchant account has issues, fallback to mock order
-        if (razorpayError?.statusCode === 400 || razorpayError?.message?.includes('merchant')) {
-          console.warn('⚠️ Merchant account issue detected, switching to mock order');
+
+        // In production flow, never fake a Razorpay order ID.
+        // Fallback/mock mode is only honored when explicitly enabled.
+        if (fallbackMode) {
+          console.warn('⚠️ Fallback mode enabled, generating mock order after Razorpay error');
           order = generateMockOrder(amountInPaise, currency, receiptId);
         } else {
           throw razorpayError;
@@ -222,6 +229,11 @@ export async function POST(request: NextRequest) {
       helpText = 'Invalid Razorpay credentials. Admin: Verify API keys in dashboard.';
     }
 
+    const statusCode =
+      error?.statusCode === 400 || error?.statusCode === 401
+        ? error.statusCode
+        : 500;
+
     return NextResponse.json(
       {
         error: userError,
@@ -232,7 +244,7 @@ export async function POST(request: NextRequest) {
           key_id: keyId ? '***configured***' : 'MISSING',
         }
       },
-      { status: 500 }
+      { status: statusCode }
     );
   }
 }

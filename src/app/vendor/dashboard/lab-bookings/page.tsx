@@ -165,7 +165,7 @@ export default function VendorLabBookingsPage() {
                   <div>
                     <h3 className="font-bold text-slate-900">{b.testName}</h3>
                     <p className="text-sm text-slate-600 mt-1">{b.userId?.fullName || 'Unknown'} • {b.userId?.phone || b.userId?.email || 'No contact'}</p>
-                    <p className="text-xs text-slate-500 mt-1">Date: {b.collectionDate ? new Date(b.collectionDate).toLocaleDateString('en-IN') : '-'} | Time: {b.collectionTime || '-'}</p>
+                    <p className="text-xs text-slate-500 mt-1">Date: {b.collectionDate ? new Date(b.collectionDate).toLocaleDateString('en-IN') : '-'} | Time: {b.collectionTime || 'To be assigned'}</p>
                     <p className="text-xs text-slate-500 mt-1">Collection: {b.collectionType || '-'} | Amount: ₹{b.testPrice || 0}</p>
                   </div>
 

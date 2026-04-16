@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
+import Razorpay from 'razorpay';
 import { connectDB } from '@/lib/db';
 import { LabTestBooking } from '@/lib/models/LabTestBooking';
 import { User } from '@/lib/models/User';
@@ -7,6 +8,7 @@ import { createPartnerOrder, detectProviderFromTestId } from '@/lib/labPartners'
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'MySanjeevni-secret-key-2024';
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 
 function getUserId(req: Request): string | null {
@@ -98,29 +100,67 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
 
-      const partnerOrder = await createPartnerOrder(provider, {
-        testId: String(testId),
-        testName: String(testName),
-        testPrice: Number(testPrice || 0),
-        collectionDate: String(collectionDate),
-        collectionTime: collectionTime ? String(collectionTime) : undefined,
-        address: address ? String(address) : undefined,
-        patientPincode: patientPincode ? String(patientPincode) : undefined,
-        patientAge: Number.isFinite(Number(patientAge)) ? Number(patientAge) : undefined,
-        patientGender: patientGender || 'MALE',
-        notes: notes ? String(notes) : undefined,
-        user: {
-          id: String(userId),
-          fullName: String(user.fullName || ''),
-          email: String(user.email || ''),
-          phone: String(user.phone || ''),
-        },
-      });
+      try {
+        const partnerOrder = await createPartnerOrder(provider, {
+          testId: String(testId),
+          testName: String(testName),
+          testPrice: Number(testPrice || 0),
+          collectionDate: String(collectionDate),
+          collectionTime: collectionTime ? String(collectionTime) : undefined,
+          address: address ? String(address) : undefined,
+          patientPincode: patientPincode ? String(patientPincode) : undefined,
+          patientAge: Number.isFinite(Number(patientAge)) ? Number(patientAge) : undefined,
+          patientGender: patientGender || 'MALE',
+          notes: notes ? String(notes) : undefined,
+          user: {
+            id: String(userId),
+            fullName: String(user.fullName || ''),
+            email: String(user.email || ''),
+            phone: String(user.phone || ''),
+          },
+        });
 
-      providerOrderId = partnerOrder.providerOrderId;
-      providerStatus = partnerOrder.providerStatus || '';
-      providerLeadId = partnerOrder.providerLeadId || '';
-      providerPayload = partnerOrder.raw || null;
+        providerOrderId = partnerOrder.providerOrderId;
+        providerStatus = partnerOrder.providerStatus || '';
+        providerLeadId = partnerOrder.providerLeadId || '';
+        providerPayload = partnerOrder.raw || null;
+      } catch (partnerError) {
+        console.error('Partner order creation failed after payment:', partnerError);
+
+        if (RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET && razorpayPaymentId) {
+          try {
+            const razorpay = new Razorpay({
+              key_id: RAZORPAY_KEY_ID,
+              key_secret: RAZORPAY_KEY_SECRET,
+            });
+
+            const amountPaise = Math.max(0, Math.round(Number(testPrice || 0) * 100));
+            if (amountPaise > 0) {
+              await razorpay.payments.refund(String(razorpayPaymentId), {
+                amount: amountPaise,
+                speed: 'normal',
+                notes: {
+                  reason: 'partner_order_creation_failed',
+                  provider,
+                  testId: String(testId || ''),
+                },
+              });
+            }
+          } catch (refundError) {
+            console.error('Auto-refund failed after partner order failure:', refundError);
+          }
+        }
+
+        return NextResponse.json(
+          {
+            error:
+              partnerError instanceof Error
+                ? partnerError.message
+                : 'Partner booking failed after payment. Refund has been initiated where possible.',
+          },
+          { status: 422 }
+        );
+      }
     }
 
     const booking = await LabTestBooking.create({

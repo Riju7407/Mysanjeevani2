@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import Razorpay from 'razorpay';
 import { connectDB } from '@/lib/db';
 import { LabTestBooking } from '@/lib/models/LabTestBooking';
+import { cancelPartnerOrder } from '@/lib/labPartners';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'MySanjeevni-secret-key-2024';
 const keyId = process.env.RAZORPAY_KEY_ID;
@@ -54,6 +55,19 @@ export async function POST(
       return NextResponse.json({ error: 'Completed booking cannot be cancelled' }, { status: 400 });
     }
 
+    let partnerCancellation: { message?: string; raw?: unknown } | null = null;
+    if (booking.provider && booking.provider !== 'local' && booking.providerOrderId) {
+      try {
+        partnerCancellation = await cancelPartnerOrder(booking.provider, booking.providerOrderId, {
+          reasonKey: 'OTHER',
+          reasonText: 'Cancelled by MySanjeevni user',
+        });
+        booking.providerStatus = 'CANCELLED';
+      } catch (error) {
+        console.error('Provider cancellation failed:', error);
+      }
+    }
+
     let refund: { id: string; status: string } | null = null;
 
     if (booking.paymentStatus === 'completed' && booking.razorpayPaymentId) {
@@ -87,6 +101,7 @@ export async function POST(
         : 'Booking cancelled successfully',
       booking,
       refund,
+      providerCancellation: partnerCancellation,
     });
   } catch (error) {
     console.error('Cancel lab booking error:', error);

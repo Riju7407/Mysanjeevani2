@@ -51,6 +51,19 @@ export interface PartnerStatusResult {
   raw?: unknown;
 }
 
+export interface PartnerSlot {
+  id: string;
+  startTime: string;
+  endTime: string;
+  label: string;
+}
+
+export interface PartnerPincodeServiceability {
+  pincode: string;
+  isServiceable: boolean;
+  serviceTypes: string[];
+}
+
 export interface LabPartnerAdapter {
   readonly provider: Exclude<LabProvider, 'local'>;
   isConfigured(): boolean;
@@ -62,4 +75,15 @@ export interface LabPartnerAdapter {
   }): Promise<ExternalLabTest[]>;
   createOrder(input: PartnerBookingInput): Promise<PartnerCreateOrderResult>;
   getOrderStatus(orderId: string, leadId?: string): Promise<PartnerStatusResult>;
+  checkPincodeServiceability?(pincode: string): Promise<PartnerPincodeServiceability>;
+  searchSlots?(input: {
+    testId: string;
+    testName: string;
+    appointmentDate: string;
+    pincode: string;
+    patientName?: string;
+    patientAge?: number;
+    patientGender?: 'MALE' | 'FEMALE' | 'OTHER';
+  }): Promise<{ timeZone?: string; appointmentDate?: string; slots: PartnerSlot[] }>;
+  cancelOrder?(orderId: string, reason?: { reasonKey?: string; reasonText?: string }): Promise<{ message?: string; raw?: unknown }>;
 }

@@ -247,6 +247,11 @@ function LabTestsPageContent() {
       return;
     }
 
+    if (String(test._id).startsWith('thyrocare_')) {
+      router.push(`/lab-tests/${encodeURIComponent(test._id)}`);
+      return;
+    }
+
     setBookingForm({
       testId: test._id,
       testName: test.name,
@@ -780,7 +785,7 @@ function LabTestsPageContent() {
                       <div>
                         <h3 className="font-bold text-gray-900">{b.testName}</h3>
                         <p className="text-sm text-gray-500 mt-0.5">
-                          📅 {new Date(b.collectionDate).toLocaleDateString('en-IN', { dateStyle: 'medium' })} · ⏰ {b.collectionTime}
+                          📅 {new Date(b.collectionDate).toLocaleDateString('en-IN', { dateStyle: 'medium' })} · ⏰ {b.collectionTime || 'To be assigned'}
                         </p>
                         <p className="text-sm text-gray-500">
                           {b.collectionType === 'home' ? '🏠 Home Collection' : '🏥 Centre Visit'} · ₹{b.testPrice}

@@ -148,7 +148,7 @@ export default function AdminLabBookingsPage() {
                     {b.userId?.fullName || 'Unknown User'} • {b.userId?.email || 'No email'}
                   </p>
                   <p className="text-xs text-slate-500 mt-1">
-                    Date: {b.collectionDate ? new Date(b.collectionDate).toLocaleDateString('en-IN') : '-'} | Time: {b.collectionTime || '-'} | Type: {b.collectionType || '-'}
+                    Date: {b.collectionDate ? new Date(b.collectionDate).toLocaleDateString('en-IN') : '-'} | Time: {b.collectionTime || 'To be assigned'} | Type: {b.collectionType || '-'}
                   </p>
                   <p className="text-xs text-slate-500 mt-1">
                     Provider: {b.provider || 'local'} {b.providerOrderId ? `• Order ID: ${b.providerOrderId}` : ''}

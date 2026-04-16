@@ -175,6 +175,8 @@ export default function MedicineDetailsPage() {
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [potencyProducts, setPotencyProducts] = useState<Product[]>([]);
   const [quantityProducts, setQuantityProducts] = useState<Product[]>([]);
+  const [isImageZoomed, setIsImageZoomed] = useState(false);
+  const [imageZoomPosition, setImageZoomPosition] = useState({ x: 50, y: 50 });
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -368,6 +370,39 @@ export default function MedicineDetailsPage() {
     () => potencyProducts.filter((item) => hasValidPotency(item.potency)),
     [potencyProducts]
   );
+  const potencyProductByLabel = useMemo(() => {
+    const map = new Map<string, Product>();
+
+    selectablePotencyProducts.forEach((item) => {
+      const label = (item.potency || '').trim();
+      if (!label) return;
+      map.set(label, item);
+    });
+
+    if (product && hasValidPotency(product.potency)) {
+      map.set((product.potency || '').trim(), product);
+    }
+
+    return map;
+  }, [selectablePotencyProducts, product]);
+  const allPotencyLabels = useMemo(() => {
+    const labels = [...POTENCY_OPTIONS];
+
+    // Preserve any custom potency labels created by admin that are not in defaults.
+    potencyProductByLabel.forEach((_item, label) => {
+      if (!labels.includes(label)) labels.push(label);
+    });
+
+    return labels;
+  }, [potencyProductByLabel]);
+  const currentPotencyLabel = useMemo(
+    () => (hasValidPotency(product?.potency) ? (product?.potency || '').trim() : ''),
+    [product?.potency]
+  );
+  const shouldShowPotencySelector = useMemo(() => {
+    if (allPotencyLabels.length > 0 && selectablePotencyProducts.length > 0) return true;
+    return Boolean(currentPotencyLabel);
+  }, [allPotencyLabels.length, selectablePotencyProducts.length, currentPotencyLabel]);
   const selectableQuantityProducts = useMemo(
     () => quantityProducts.filter((item) => {
       const hasQuantity = hasValidQuantityValue(item.quantity);
@@ -375,10 +410,6 @@ export default function MedicineDetailsPage() {
       return hasQuantity || hasUnit;
     }),
     [quantityProducts]
-  );
-  const currentPotencyLabel = useMemo(
-    () => (hasValidPotency(product?.potency) ? (product?.potency || '').trim() : ''),
-    [product?.potency]
   );
   const currentQuantityLabel = useMemo(() => {
     if (!product) return '';
@@ -431,6 +462,17 @@ export default function MedicineDetailsPage() {
 
     addToCart();
     router.push('/cart');
+  };
+
+  const handleImageMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * 100;
+    const y = ((event.clientY - rect.top) / rect.height) * 100;
+
+    setImageZoomPosition({
+      x: Math.max(0, Math.min(100, x)),
+      y: Math.max(0, Math.min(100, y)),
+    });
   };
 
   const submitReview = async () => {
@@ -597,13 +639,32 @@ export default function MedicineDetailsPage() {
               <div className="grid grid-cols-1 md:grid-cols-5 gap-8 mb-12">
                 {/* Product Image */}
                 <div className="md:col-span-2">
-                  <div className="bg-gray-50 rounded-lg p-8 flex items-center justify-center min-h-96 border border-gray-200 sticky top-24">
+                  <div
+                    className="bg-gray-50 rounded-lg p-8 flex items-center justify-center min-h-96 border border-gray-200 sticky top-24 overflow-hidden"
+                    onMouseEnter={() => setIsImageZoomed(true)}
+                    onMouseLeave={() => {
+                      setIsImageZoomed(false);
+                      setImageZoomPosition({ x: 50, y: 50 });
+                    }}
+                    onMouseMove={handleImageMouseMove}
+                  >
                     {product.image ? (
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="max-h-80 w-full object-contain"
-                      />
+                      <>
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="max-h-80 w-full object-contain"
+                          style={{
+                            transform: isImageZoomed ? 'scale(1.9)' : 'scale(1)',
+                            transformOrigin: `${imageZoomPosition.x}% ${imageZoomPosition.y}%`,
+                            transition: isImageZoomed ? 'transform 120ms ease-out' : 'transform 200ms ease-out',
+                            willChange: 'transform',
+                          }}
+                        />
+                        <span className="absolute bottom-3 right-3 text-[11px] font-semibold text-slate-600 bg-white/90 border border-slate-200 px-2 py-1 rounded">
+                          Hover to zoom
+                        </span>
+                      </>
                     ) : (
                       <div className="text-6xl">{product.icon || '💊'}</div>
                     )}
@@ -638,39 +699,41 @@ export default function MedicineDetailsPage() {
                   </h1>
 
                   {/* Potency Selector */}
-                  {selectablePotencyProducts.length > 1 ? (
+                  {shouldShowPotencySelector ? (
                     <div className="mb-6">
                       <p className="text-sm font-semibold text-slate-700 mb-2">Select Potency</p>
                       <div className="flex flex-wrap gap-2">
-                        {selectablePotencyProducts.map((potencyProduct) => {
-                          const isActive = potencyProduct._id === product._id;
+                        {allPotencyLabels.map((potencyLabel) => {
+                          const potencyProduct = potencyProductByLabel.get(potencyLabel);
+                          const isAvailable = Boolean(potencyProduct);
+                          const isActive = currentPotencyLabel === potencyLabel;
+
                           return (
                             <button
-                              key={potencyProduct._id}
+                              key={potencyLabel}
                               type="button"
                               onClick={() => {
-                                if (!isActive) {
+                                if (isAvailable && potencyProduct && !isActive) {
                                   router.push(`/medicines/${potencyProduct._id}`);
                                 }
                               }}
                               className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
                                 isActive
                                   ? 'bg-emerald-600 text-white border-emerald-600'
-                                  : 'bg-white text-slate-700 border-slate-300 hover:border-emerald-500 hover:text-emerald-700'
+                                  : isAvailable
+                                    ? 'bg-white text-slate-700 border-slate-300 hover:border-emerald-500 hover:text-emerald-700'
+                                    : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
                               }`}
+                              disabled={!isAvailable}
                             >
-                              {(potencyProduct.potency || '').trim()}
+                              {potencyLabel}
                             </button>
                           );
                         })}
                       </div>
-                    </div>
-                  ) : currentPotencyLabel ? (
-                    <div className="mb-6">
-                      <p className="text-sm font-semibold text-slate-700 mb-2">Potency</p>
-                      <span className="inline-flex px-3 py-1.5 rounded-full text-xs font-semibold border bg-slate-50 text-slate-700 border-slate-300">
-                        {currentPotencyLabel}
-                      </span>
+                      <p className="text-xs text-slate-500 mt-2">
+                        Available potencies are clickable. The selected potency is highlighted.
+                      </p>
                     </div>
                   ) : null}
 
