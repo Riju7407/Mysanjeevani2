@@ -9,6 +9,8 @@ export async function GET(request: NextRequest) {
 
     const category = request.nextUrl.searchParams.get('category');
     const search = request.nextUrl.searchParams.get('search');
+    const genderParam = String(request.nextUrl.searchParams.get('gender') || '').toUpperCase();
+    const gender = genderParam === 'FEMALE' ? 'FEMALE' : genderParam === 'MALE' ? 'MALE' : undefined;
     const page = parseInt(request.nextUrl.searchParams.get('page') || '1');
     const limit = parseInt(request.nextUrl.searchParams.get('limit') || '20');
 
@@ -33,6 +35,7 @@ export async function GET(request: NextRequest) {
       search: search || undefined,
       page,
       limit,
+      gender,
     });
 
     const tests = [...localTests, ...partnerTests]

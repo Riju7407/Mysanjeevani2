@@ -12,16 +12,35 @@ import type {
 type ThyrocareCatalogItem = {
   id?: string;
   name?: string;
+  aliases?: string[];
   type?: string;
+  noOfTestsIncluded?: number;
   testsIncluded?: Array<{ name?: string }>;
+  categories?: string[];
+  beneficiaries?: {
+    min?: string;
+    multiple?: string;
+    max?: string;
+    canAddPostOrder?: boolean | null;
+  };
   rate?: {
+    currency?: string;
     listingPrice?: string;
     sellingPrice?: string;
+    discountPercentage?: string;
+    notationalIncentive?: string;
   };
   flags?: {
     isFastingRequired?: boolean;
     isHomeCollectible?: boolean;
+    isPostpaid?: boolean;
   };
+};
+
+type ThyrocareCatalogResponse = {
+  isLastPage?: boolean;
+  nextPage?: number | null;
+  skuList?: ThyrocareCatalogItem[];
 };
 
 type ThyrocareOrderDetails = {
@@ -136,25 +155,50 @@ function toPartnerTest(item: ThyrocareCatalogItem): ExternalLabTest | null {
   const mrp = Number(item.rate?.listingPrice || 0);
   const price = Number(item.rate?.sellingPrice || mrp || 0);
   const type = String(item.type || 'SSKU');
+  const testsIncludedList = (Array.isArray(item.testsIncluded) ? item.testsIncluded : [])
+    .map((test) => String(test?.name || '').trim())
+    .filter(Boolean);
+  const noOfTestsIncluded = Number(item.noOfTestsIncluded || testsIncludedList.length || 0);
+  const fastingRequired = item.flags?.isFastingRequired ?? false;
+  const homeCollectionAvailable = item.flags?.isHomeCollectible !== false;
+
+  const descriptionParts = [
+    'Partner test by Thyrocare',
+    noOfTestsIncluded > 0 ? `Includes ${noOfTestsIncluded} test${noOfTestsIncluded === 1 ? '' : 's'}` : '',
+    fastingRequired ? 'Fasting may be required' : '',
+  ].filter(Boolean);
 
   return {
     _id: `thyrocare_${encodeURIComponent(id)}_${encodeURIComponent(type)}`,
     name,
-    description: `Partner test by Thyrocare${item.flags?.isFastingRequired ? ' • Fasting may be required' : ''}`,
+    description: descriptionParts.join(' • '),
     price: Number.isFinite(price) ? price : 0,
     mrp: Number.isFinite(mrp) ? mrp : undefined,
     category: toCategory(item),
     icon: '🧪',
     rating: 4.6,
     reviews: 0,
+    homeCollectionAvailable,
+    centerCollectionAvailable: true,
+    sampleType: 'As per test requirements',
+    reportTime: '24-48 hours',
+    fasting: fastingRequired,
+    fastingHours: fastingRequired ? 8 : 0,
+    testsIncluded: testsIncludedList,
     productType: 'Lab Tests',
     isActive: true,
     provider: 'thyrocare',
     providerMeta: {
       providerTestId: id,
       providerType: type,
-      isHomeCollectible: item.flags?.isHomeCollectible ?? true,
-      fastingRequired: item.flags?.isFastingRequired ?? false,
+      aliases: item.aliases || [],
+      categories: item.categories || [],
+      noOfTestsIncluded,
+      beneficiaries: item.beneficiaries || null,
+      rate: item.rate || null,
+      isHomeCollectible: homeCollectionAvailable,
+      fastingRequired,
+      isPostpaid: item.flags?.isPostpaid ?? false,
     },
   };
 }
@@ -425,18 +469,38 @@ export const thyrocareAdapter: LabPartnerAdapter = {
   async fetchCatalog(params) {
     if (!this.isConfigured()) return [];
 
-    const page = Math.max(1, params?.page || 1);
-    const pageSize = Math.max(10, Math.min(100, params?.limit || 30));
+    const pageSize = Math.max(10, Math.min(100, params?.limit || 100));
+    const requestedGender = String(params?.gender || '').trim().toUpperCase();
+    const configuredGender = String(process.env.THYROCARE_CATALOG_GENDER || 'MALE').trim().toUpperCase();
+    const effectiveGender = requestedGender || configuredGender;
+    const gender = effectiveGender === 'FEMALE' ? 'FEMALE' : 'MALE';
+    const maxPages = Number(process.env.THYROCARE_CATALOG_MAX_PAGES || 25);
 
-    const query = new URLSearchParams({
-      page: String(page),
-      pageSize: String(pageSize),
-      minPrice: '0',
-      maxPrice: '100000',
-    });
+    let page = 1;
+    const skuList: ThyrocareCatalogItem[] = [];
 
-    const data = await callThyrocare(`/partners/v1/catalog/products?${query.toString()}`);
-    const skuList: ThyrocareCatalogItem[] = Array.isArray(data.skuList) ? data.skuList : [];
+    while (page <= maxPages) {
+      const query = new URLSearchParams({
+        minPrice: '0',
+        maxPrice: '100000',
+        gender,
+        page: String(page),
+        pageSize: String(pageSize),
+      });
+
+      const data = (await callThyrocare(`/partners/v1/catalog/products?${query.toString()}`)) as ThyrocareCatalogResponse;
+      const pageItems = Array.isArray(data.skuList) ? data.skuList : [];
+      skuList.push(...pageItems);
+
+      if (data.isLastPage || !data.nextPage || pageItems.length === 0) {
+        break;
+      }
+
+      page = Number(data.nextPage);
+      if (!Number.isFinite(page) || page < 1) {
+        break;
+      }
+    }
 
     const all = skuList.map(toPartnerTest).filter((t): t is ExternalLabTest => Boolean(t));
     const category = String(params?.category || '').trim().toLowerCase();

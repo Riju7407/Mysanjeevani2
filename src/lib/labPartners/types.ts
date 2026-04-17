@@ -11,6 +11,13 @@ export interface ExternalLabTest {
   icon?: string;
   rating?: number;
   reviews?: number;
+  homeCollectionAvailable?: boolean;
+  centerCollectionAvailable?: boolean;
+  sampleType?: string;
+  reportTime?: string;
+  fasting?: boolean;
+  fastingHours?: number;
+  testsIncluded?: string | string[];
   productType: 'Lab Tests';
   isActive: boolean;
   provider: Exclude<LabProvider, 'local'>;
@@ -72,6 +79,7 @@ export interface LabPartnerAdapter {
     search?: string;
     page?: number;
     limit?: number;
+    gender?: 'MALE' | 'FEMALE';
   }): Promise<ExternalLabTest[]>;
   createOrder(input: PartnerBookingInput): Promise<PartnerCreateOrderResult>;
   getOrderStatus(orderId: string, leadId?: string): Promise<PartnerStatusResult>;

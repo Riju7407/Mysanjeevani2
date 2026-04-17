@@ -38,6 +38,7 @@ export async function fetchPartnerCatalog(params?: {
   search?: string;
   page?: number;
   limit?: number;
+  gender?: 'MALE' | 'FEMALE';
 }) {
   const results: ExternalLabTest[] = [];
 

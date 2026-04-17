@@ -43,7 +43,7 @@ const POTENCY_OPTIONS = ['1000 CH', '3 CH', '10M CH', '200 CH', '30 CH', '12 CH'
 const QUANTITY_UNIT_OPTIONS = ['None', 'BAGS (Bag)', 'BOTTLES (Btl)', 'BOX (Box)', 'BUNDLES (Bdl)', 'CANS (Can)', 'CAPSULES (CAPS)', 'CARTONS (Ctn)', 'DOZENS (Dzn)', 'GRAMMES (Gm)', 'KILOGRAMS (Kg)', 'LITRE (Ltr)', 'METERS (Mtr)', 'MILILITRE (MI)', 'NUMBERS (Nos)', 'PACKS (Pac)', 'PAIRS (Prs)', 'PIECES (Pcs)', 'QUINTAL (Qtl)', 'ROLLS (Rol)', 'SACHET (SACH)', 'SQUARE FEET (Sqf)', 'SQUARE METERS (Sqm)', 'TABLETS (Tbs)'];
 
 const HOMEOPATHY_SUBCATEGORY_MAP = {
-  Medicines: ['SBL', 'Dr. Reckeweg (Germany)', 'Willmar Schwabe (Germany)', 'Adel Pekana (Germany)', 'Willmar Schwabe India', 'BJain', 'R S Bhargava', 'Baksons', 'REPL', 'New Life'],
+  Medicines: ['SBL', 'Dr. Reckeweg (Germany)', 'Willmar Schwabe (Germany)', 'Adel Pekana (Germany)', 'Willmar Schwabe India', 'BJain', 'R S Bhargava', 'Baksons', 'REPL', 'New Life', 'Special Tablets', 'Cream & Ointment', 'Special Liquid/Drops'],
   Cosmetics: ['Hair Care', 'Skin Care', 'Oral Care'],
   Dilutions: ['3X', '6X', '3 CH', '6 CH', '12 CH', '30 CH', '200 CH', '1000 CH', '10M CH', '50M CH', 'CM CH'],
   'Mother Tinctures': ['SBL', 'Dr. Reckeweg (Germany)', 'Willmar Schwabe India', 'BJain'],
@@ -58,7 +58,7 @@ type HomeopathyCategory = keyof typeof HOMEOPATHY_SUBCATEGORY_MAP;
 
 const AYURVEDA_SUBCATEGORY_MAP = {
   Medicines: ['Himalaya', 'Organic India', 'Baidyanath', 'Dabur', 'Zandu', 'Charak', 'Aimil'],
-  'Single Remedies': ['Ras & Sindoor', 'Bhasm & Pishti', 'Vati & Gutika & Guggulu', 'Asava Arishta & Kadha', 'Loha & Mandur', 'Churan & Powder & Avleha & Pak', 'Tailam & Ghrita'],
+  'Single Remedies': ['Ras & Sindoor', 'Bhasm & Pishti', 'Vati & Gutika & Guggulu', 'Asava Arishta & Kadha', 'Loha & Mandur', 'Churan & Powder & Avleha & Pak', 'Tailam & Ghrita', 'Gold Items', 'Special Tablets & Capsules', 'Syrups & Tonics'],
   'Herbal Food & Juices': ['Chyawanprash', 'Honey', 'Digestives', 'Herbal & Vegetable Juice'],
 } as const;
 type AyurvedaCategory = keyof typeof AYURVEDA_SUBCATEGORY_MAP;

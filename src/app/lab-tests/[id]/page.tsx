@@ -25,7 +25,7 @@ interface LabTest {
   reportTime?: string;
   fasting?: boolean;
   fastingHours?: number;
-  testsIncluded?: string;
+  testsIncluded?: string | string[];
   createdAt?: string;
 }
 
@@ -569,6 +569,12 @@ export default function LabTestDetailsPage() {
     (Boolean(bookingForm.collectionTime) &&
       availableSlots.some((slot) => slot.startTime === bookingForm.collectionTime));
   const discountPercent = test && test.mrp && test.mrp > test.price ? Math.round(((test.mrp - test.price) / test.mrp) * 100) : 0;
+  const testsIncludedList = Array.isArray(test?.testsIncluded)
+    ? test.testsIncluded.filter((item) => String(item || '').trim().length > 0)
+    : String(test?.testsIncluded || '')
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
 
   if (loading) {
     return (
@@ -736,10 +742,16 @@ export default function LabTestDetailsPage() {
               </div>
 
               {/* Tests Included */}
-              {test.testsIncluded && (
+              {testsIncludedList.length > 0 && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                   <h4 className="font-bold text-amber-900 mb-2">Tests Included</h4>
-                  <p className="text-amber-800 text-sm">{test.testsIncluded}</p>
+                  <div className="max-h-56 overflow-auto">
+                    <ul className="list-disc list-inside text-amber-800 text-sm space-y-1">
+                      {testsIncludedList.map((includedTest) => (
+                        <li key={includedTest}>{includedTest}</li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
               )}
             </div>

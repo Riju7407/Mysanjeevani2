@@ -75,6 +75,11 @@ const SORT_OPTIONS = [
   { value: 'rating', label: 'Highest Rated' },
 ];
 
+const GENDER_OPTIONS = [
+  { value: 'MALE', label: 'Male Catalog' },
+  { value: 'FEMALE', label: 'Female Catalog' },
+];
+
 const TIME_SLOTS = ['7:00 AM – 9:00 AM', '9:00 AM – 11:00 AM', '11:00 AM – 1:00 PM', '2:00 PM – 4:00 PM', '4:00 PM – 6:00 PM'];
 
 const STATUS_COLORS: Record<string, string> = {
@@ -148,6 +153,7 @@ function LabTestsPageContent() {
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('all');
   const [search, setSearch] = useState('');
+  const [gender, setGender] = useState<'MALE' | 'FEMALE'>('MALE');
   const [sortOrder, setSortOrder] = useState('featured');
   const [bookingModal, setBookingModal] = useState<LabTest | null>(null);
   const [bookingForm, setBookingForm] = useState<BookingForm>({
@@ -180,12 +186,13 @@ function LabTestsPageContent() {
       const q = new URLSearchParams();
       if (category !== 'all') q.set('category', category);
       if (search) q.set('search', search);
+      q.set('gender', gender);
       const res = await fetch(`/api/lab-tests?${q}`);
       const data = await res.json();
       setTests(data.tests || []);
     } catch {}
     finally { setLoading(false); }
-  }, [category, search]);
+  }, [category, search, gender]);
 
   const fetchBookings = useCallback(async () => {
     try {
@@ -539,18 +546,35 @@ function LabTestsPageContent() {
               </div>
             </div>
 
-            {/* Sort Dropdown */}
-            <select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value)}
-              className="border-2 border-emerald-200 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 transition text-sm font-medium text-gray-700"
-            >
-              {SORT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center gap-3">
+              {/* Thyrocare Gender Filter */}
+              <select
+                value={gender}
+                onChange={(e) => setGender(e.target.value as 'MALE' | 'FEMALE')}
+                className="border-2 border-emerald-200 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 transition text-sm font-medium text-gray-700"
+                aria-label="Filter Thyrocare catalog by gender"
+                title="Thyrocare catalog gender"
+              >
+                {GENDER_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+
+              {/* Sort Dropdown */}
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                className="border-2 border-emerald-200 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 transition text-sm font-medium text-gray-700"
+              >
+                {SORT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
