@@ -98,7 +98,7 @@ const productSchema = new mongoose.Schema(
     image: String, // legacy single image
     images: {
       type: [String],
-      validate: [arr => !arr || arr.length <= 4, 'Maximum 4 images allowed'],
+      validate: [(arr: any) => Array.isArray(arr) && arr.length <= 4, 'Maximum 4 images allowed'],
       default: [],
     },
 

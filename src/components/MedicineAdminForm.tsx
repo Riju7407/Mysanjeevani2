@@ -402,9 +402,9 @@ export default function MedicineAdminForm({
           <div className="flex gap-3 pt-4">
             <button
               type="submit"
-              disabled={loading || uploading || (!imageUrl && !medicineId)}
+              disabled={loading || uploading || (!images.length && !medicineId)}
               className={`flex-1 py-2 px-4 rounded-lg font-semibold text-white transition ${
-                loading || uploading || (!imageUrl && !medicineId)
+                loading || uploading || (!images.length && !medicineId)
                   ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
               }`}

@@ -31,6 +31,7 @@ interface Medicine {
   rating?: number;
   reviews?: number;
   requiresPrescription?: boolean;
+  images?: string[];
   isActive: boolean;
   isPopular?: boolean;
   isPopularGeneric?: boolean;
@@ -535,7 +536,7 @@ export default function AdminMedicines() {
     const isFitness = productType === 'Fitness';
     const isUnani = productType === 'Unani';
     setProdForm({ name: m.name, brand: m.brand || '', category: m.category, subcategory: isHomeopathy ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : isAyurveda ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : isNutrition ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : isPersonalCare ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : isBabyCare ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : isFitness ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : isUnani ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : '', potency: m.potency || '', quantity: m.quantity !== undefined ? String(m.quantity) : '', quantityUnit: m.quantityUnit || 'None', diseaseCategory: (m as any).diseaseCategory || '', diseaseSubcategory: (m as any).diseaseSubcategory || '', price: String(m.price), mrp: String(m.mrp || ''), stock: String(m.stock), description: m.description || '', safetyInformation: (m as any).safetyInformation || '', specifications: (m as any).specifications || '', benefit: m.benefit || '', requiresPrescription: m.requiresPrescription || false, image: m.image || '', isPopular: m.isPopular || false, productType, isPopularGeneric: (m as any).isPopularGeneric || false, isPopularAyurveda: (m as any).isPopularAyurveda || false, isPopularHomeopathy: (m as any).isPopularHomeopathy || false, isPopularLabTests: (m as any).isPopularLabTests || false });
-    setImageUrl(m.image || '');
+    setImages(m.images || []);
     setShowProdForm(true);
   };
   const saveProd = async () => {
@@ -549,34 +550,28 @@ export default function AdminMedicines() {
     if (prodForm.productType === 'Unani' && !prodForm.subcategory) { alert('Please select an unani subcategory.'); return; }
     setMedSaving(true);
     try {
-      // If editing and image changed, delete old image from Cloudinary
-      if (editMed && editMed.image && imageUrl !== editMed.image) {
-        const oldPublicId = extractPublicIdFromUrl(editMed.image);
-        if (oldPublicId) {
-          await fetch('/api/medicines/delete-image', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ publicId: oldPublicId }),
-          });
+      // Delete old images from Cloudinary if images array changed (editing)
+      if (editMed && editMed.images && editMed.images.length > 0) {
+        const oldImageUrls = editMed.images;
+        const newImageUrls = images;
+        const imagesToDelete = oldImageUrls.filter(url => !newImageUrls.includes(url));
+        
+        for (const imageUrl of imagesToDelete) {
+          const publicId = extractPublicIdFromUrl(imageUrl);
+          if (publicId) {
+            await fetch('/api/medicines/delete-image', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ publicId }),
+            }).catch(() => {});
+          }
         }
       }
       
-      // If editing and image removed (cleared), delete from Cloudinary
-      if (editMed && editMed.image && !imageUrl) {
-        const oldPublicId = extractPublicIdFromUrl(editMed.image);
-        if (oldPublicId) {
-          await fetch('/api/medicines/delete-image', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ publicId: oldPublicId }),
-          });
-        }
-      }
-      
-      const payload = { name: prodForm.name, brand: prodForm.brand, category: prodForm.category, subcategory: (prodForm.productType === 'Homeopathy' || prodForm.productType === 'Ayurveda Medicine' || prodForm.productType === 'Nutrition' || prodForm.productType === 'Personal Care' || prodForm.productType === 'Baby Care' || prodForm.productType === 'Fitness' || prodForm.productType === 'Unani') ? (prodForm.subcategory || undefined) : undefined, potency: prodForm.potency || undefined, quantity: prodForm.quantity ? Number(prodForm.quantity) : undefined, quantityUnit: prodForm.quantityUnit || 'None', diseaseCategory: prodForm.diseaseCategory || undefined, diseaseSubcategory: prodForm.diseaseSubcategory || undefined, productType: prodForm.productType || 'Generic Medicine', price: Number(prodForm.price), mrp: prodForm.mrp ? Number(prodForm.mrp) : undefined, stock: Number(prodForm.stock) || 0, description: prodForm.description, safetyInformation: prodForm.safetyInformation || undefined, specifications: prodForm.specifications || undefined, benefit: prodForm.benefit || undefined, requiresPrescription: prodForm.requiresPrescription, image: imageUrl || undefined, isActive: true, isPopular: prodForm.isPopular || false, isPopularGeneric: prodForm.isPopularGeneric || false, isPopularAyurveda: prodForm.isPopularAyurveda || false, isPopularHomeopathy: prodForm.isPopularHomeopathy || false, isPopularLabTests: prodForm.isPopularLabTests || false };
+      const payload = { name: prodForm.name, brand: prodForm.brand, category: prodForm.category, subcategory: (prodForm.productType === 'Homeopathy' || prodForm.productType === 'Ayurveda Medicine' || prodForm.productType === 'Nutrition' || prodForm.productType === 'Personal Care' || prodForm.productType === 'Baby Care' || prodForm.productType === 'Fitness' || prodForm.productType === 'Unani') ? (prodForm.subcategory || undefined) : undefined, potency: prodForm.potency || undefined, quantity: prodForm.quantity ? Number(prodForm.quantity) : undefined, quantityUnit: prodForm.quantityUnit || 'None', diseaseCategory: prodForm.diseaseCategory || undefined, diseaseSubcategory: prodForm.diseaseSubcategory || undefined, productType: prodForm.productType || 'Generic Medicine', price: Number(prodForm.price), mrp: prodForm.mrp ? Number(prodForm.mrp) : undefined, stock: Number(prodForm.stock) || 0, description: prodForm.description, safetyInformation: prodForm.safetyInformation || undefined, specifications: prodForm.specifications || undefined, benefit: prodForm.benefit || undefined, requiresPrescription: prodForm.requiresPrescription, images: images, image: images.length > 0 ? images[0] : undefined, isActive: true, isPopular: prodForm.isPopular || false, isPopularGeneric: prodForm.isPopularGeneric || false, isPopularAyurveda: prodForm.isPopularAyurveda || false, isPopularHomeopathy: prodForm.isPopularHomeopathy || false, isPopularLabTests: prodForm.isPopularLabTests || false };
       if (editMed) await fetch(`/api/admin/products/${editMed._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       else await fetch('/api/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      setShowProdForm(false); setEditMed(null); setImageUrl(''); await fetchProducts();
+      setShowProdForm(false); setEditMed(null); setImages([]); await fetchProducts();
     } catch {}
     setMedSaving(false);
   };
@@ -928,7 +923,7 @@ export default function AdminMedicines() {
                         const file = files[i];
                         const result = await uploadImage(file);
                         if (result?.success && result.imageUrl) {
-                          setImages(prev => [...prev, result.imageUrl].slice(0, 4));
+                          setImages((prev: string[]) => [...prev, result.imageUrl as string].slice(0, 4));
                         } else {
                           alert('Failed to upload one or more images.');
                         }
@@ -1058,7 +1053,7 @@ export default function AdminMedicines() {
                 </div>
                 <div className="flex gap-3">
                   <button onClick={saveProd} disabled={medSaving || imageUploading} className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white px-6 py-2 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all disabled:opacity-60">{medSaving ? 'Saving...' : editMed ? 'Update Product' : 'Add Product'}</button>
-                  <button onClick={() => { setShowProdForm(false); setEditMed(null); setImageUrl(''); }} className="border border-slate-300 text-slate-700 px-6 py-2 rounded-lg hover:bg-slate-50 font-medium transition-colors">Cancel</button>
+                  <button onClick={() => { setShowProdForm(false); setEditMed(null); setImages([]); }} className="border border-slate-300 text-slate-700 px-6 py-2 rounded-lg hover:bg-slate-50 font-medium transition-colors">Cancel</button>
                 </div>
               </div>
             )}
