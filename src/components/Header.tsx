@@ -28,6 +28,68 @@ const LANGUAGE_OPTIONS = [
   { code: 'or', label: 'Odia' },
 ] as const;
 
+const SEARCH_SECTION_PRIORITY = ['medicines', 'ayurveda', 'homeopathy', 'nutrition', 'personal-care', 'fitness', 'sexual-wellness', 'baby-care', 'unani', 'disease'] as const;
+
+// Product type to URL category mapping
+const PRODUCT_TYPE_TO_ROUTE: Record<string, string> = {
+  'Generic Medicine': 'medicines',
+  'Ayurveda Medicine': 'ayurveda',
+  'Ayurveda': 'ayurveda',
+  'Homeopathy': 'homeopathy',
+  'Lab Tests': 'lab-tests',
+  'Nutrition': 'nutrition',
+  'Personal Care': 'personal-care',
+  'Fitness': 'fitness',
+  'Sexual Wellness': 'sexual-wellness',
+  'Baby Care': 'baby-care',
+  'Unani': 'unani',
+  'Disease': 'disease',
+};
+
+const AYURVEDA_QUERY_HINTS = [
+  'ayurveda', 'ayurvedic', 'himalaya', 'organic india', 'baidyanath', 'dabur', 'zandu', 'charak', 'aimil',
+  'chyawanprash', 'kadha', 'asava', 'arishta', 'guggulu', 'bhasm', 'pishti',
+  'jamun', 'neem', 'karela', 'amrit', 'vaidhyam',
+];
+
+const HOMEOPATHY_QUERY_HINTS = [
+  'homeopathy', 'homeopathic', 'sbl', 'reckeweg', 'schwabe', 'bjain', 'baksons', 'repl', 'adel',
+  'mother tincture', 'biochemic', 'bach flower', '30 ch', '200 ch', '1000 ch', '6x', '3x',
+];
+
+const NUTRITION_QUERY_HINTS = [
+  'nutrition', 'protein', 'vitamin', 'supplement', 'powder', 'shake', 'bar', 'whey', 'bcaa', 'creatine',
+  'multivitamin', 'omega', 'calcium', 'iron', 'zinc', 'biotin', 'collagen',
+];
+
+const PERSONAL_CARE_QUERY_HINTS = [
+  'personal care', 'skincare', 'shampoo', 'conditioner', 'soap', 'toothpaste', 'deodorant', 'lotion',
+  'cream', 'face wash', 'moisturizer', 'sunscreen', 'lip balm', 'hair oil', 'body wash',
+];
+
+const FITNESS_QUERY_HINTS = [
+  'fitness', 'gym', 'equipment', 'resistance', 'yoga', 'dumbbell', 'barbell', 'treadmill', 'mat',
+  'tracker', 'band', 'ball', 'roller', 'kettlebell', 'exercise',
+];
+
+const SEXUAL_WELLNESS_QUERY_HINTS = [
+  'sexual wellness', 'intimate', 'wellness product', 'performance', 'enhancement', 'lubrication',
+];
+
+const BABY_CARE_QUERY_HINTS = [
+  'baby care', 'baby', 'infant', 'newborn', 'diaper', 'wipes', 'formula', 'bottle', 'shampoo',
+  'lotion', 'teether', 'powder', 'toys', 'gear', 'stroller',
+];
+
+const UNANI_QUERY_HINTS = [
+  'unani', 'unani medicine', 'hamdard', 'jaborandi', 'roghan', 'ubtan', 'ruh',
+];
+
+const LAB_TESTS_QUERY_HINTS = [
+  'lab tests', 'test', 'blood test', 'thyroid', 'glucose', 'covid', 'diabetes', 'checkup',
+  'profile', 'diagnostic', 'report',
+];
+
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -152,35 +214,191 @@ export default function Header() {
   };
 
   const getSearchSection = (product: any) => {
-    const productType = String(product?.productType || '').toLowerCase();
-    const category = String(product?.category || '').toLowerCase();
-    const subcategory = String(product?.subcategory || '').toLowerCase();
+    const normalize = (value: unknown) =>
+      String(value || '')
+        .toLowerCase()
+        .replace(/&/g, ' and ')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim()
+        .replace(/\s+/g, ' ');
 
-    if (productType.includes('ayurveda') || category.includes('ayurveda') || subcategory.includes('ayurveda')) {
-      return 'ayurveda';
+    const productType = normalize(product?.productType);
+    const category = normalize(product?.category);
+    const subcategory = normalize(product?.subcategory);
+    const brand = normalize(product?.brand);
+    const name = normalize(product?.name);
+
+    // Check for precise productType match first
+    const rawProductType = String(product?.productType || '').trim();
+    const route = PRODUCT_TYPE_TO_ROUTE[rawProductType];
+    if (route && route !== 'medicines') {
+      return route;
     }
 
-    if (productType.includes('homeopathy') || category.includes('homeopathy') || subcategory.includes('homeopathy')) {
-      return 'homeopathy';
-    }
+    const ayurvedaHints = new Set([
+      'ayurveda', 'ayurvedic', 'himalaya', 'organic india', 'baidyanath', 'dabur', 'zandu', 'charak', 'aimil',
+      'ras sindoor', 'bhasm pishti', 'vati gutika guggulu', 'asava arishta kadha', 'loha mandur',
+      'churan powder avaleha pak', 'tailam ghrita', 'chyawanprash', 'honey', 'digestives', 'herbal vegetable juice',
+      'jamun', 'neem', 'karela', 'amrit', 'vaidhyam',
+    ]);
 
+    const homeopathyHints = new Set([
+      'homeopathy', 'homeopathic', 'sbl', 'dr reckeweg', 'willmar schwabe', 'schwabe india', 'adel pekana', 'bjain',
+      'r s bhargava', 'baksons', 'repl', 'new life', 'mother tinctures', 'biochemic', 'triturations',
+      'bio combination', 'bach flower', 'homeopathy kits', 'milleimal lm potency',
+      '3x', '6x', '3 ch', '6 ch', '12 ch', '30 ch', '200 ch', '1000 ch', '10m ch', '50m ch', 'cm ch',
+    ]);
+
+    const nutritionHints = new Set(NUTRITION_QUERY_HINTS);
+    const personalCareHints = new Set(PERSONAL_CARE_QUERY_HINTS);
+    const fitnessHints = new Set(FITNESS_QUERY_HINTS);
+    const sexualWellnessHints = new Set(SEXUAL_WELLNESS_QUERY_HINTS);
+    const babyCareHints = new Set(BABY_CARE_QUERY_HINTS);
+    const unaniHints = new Set(UNANI_QUERY_HINTS);
+    const labTestsHints = new Set(LAB_TESTS_QUERY_HINTS);
+
+    const fields = [productType, category, subcategory, brand, name];
+
+    // Check for specific category signals
+    const hasNutritionSignal = fields.some((field) => field.includes('nutrition')) ||
+      fields.some((field) => Array.from(nutritionHints).some((hint) => field.includes(hint)));
+    
+    const hasPersonalCareSignal = fields.some((field) => field.includes('personal care')) ||
+      fields.some((field) => Array.from(personalCareHints).some((hint) => field.includes(hint)));
+    
+    const hasFitnessSignal = fields.some((field) => field.includes('fitness')) ||
+      fields.some((field) => Array.from(fitnessHints).some((hint) => field.includes(hint)));
+    
+    const hasSexualWellnessSignal = fields.some((field) => field.includes('sexual wellness') || field.includes('intimate')) ||
+      fields.some((field) => Array.from(sexualWellnessHints).some((hint) => field.includes(hint)));
+    
+    const hasBabyCareSignal = fields.some((field) => field.includes('baby care')) ||
+      fields.some((field) => Array.from(babyCareHints).some((hint) => field.includes(hint)));
+    
+    const hasUnaniSignal = fields.some((field) => field.includes('unani')) ||
+      fields.some((field) => Array.from(unaniHints).some((hint) => field.includes(hint)));
+    
+    const hasLabTestsSignal = fields.some((field) => field.includes('lab tests') || field.includes('lab test')) ||
+      fields.some((field) => Array.from(labTestsHints).some((hint) => field.includes(hint)));
+
+    const hasHomeopathySignal =
+      fields.some((field) => field.includes('homeopathy') || field.includes('homeopathic')) ||
+      fields.some((field) => Array.from(homeopathyHints).some((hint) => field.includes(hint)));
+
+    const hasAyurvedaSignal =
+      fields.some((field) => field.includes('ayurveda') || field.includes('ayurvedic')) ||
+      fields.some((field) => Array.from(ayurvedaHints).some((hint) => field.includes(hint)));
+
+    if (hasUnaniSignal && !hasAyurvedaSignal && !hasHomeopathySignal) return 'unani';
+    if (hasBabyCareSignal && !hasPersonalCareSignal) return 'baby-care';
+    if (hasSexualWellnessSignal && !hasPersonalCareSignal) return 'sexual-wellness';
+    if (hasFitnessSignal && !hasNutritionSignal) return 'fitness';
+    if (hasPersonalCareSignal && !hasNutritionSignal) return 'personal-care';
+    if (hasNutritionSignal && !hasPersonalCareSignal) return 'nutrition';
+    if (hasLabTestsSignal) return 'lab-tests';
+    if (hasHomeopathySignal) return 'homeopathy';
+    if (hasAyurvedaSignal) return 'ayurveda';
     return 'medicines';
   };
 
-  const getBestSearchRoute = (products: any[]) => {
-    const score = {
-      medicines: 0,
-      ayurveda: 0,
-      homeopathy: 0,
-    };
+  const getSearchPriorityForQuery = (query: string) => {
+    const normalizedQuery = query
+      .toLowerCase()
+      .replace(/&/g, ' and ')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim()
+      .replace(/\s+/g, ' ');
 
-    for (const product of products) {
-      const section = getSearchSection(product);
-      score[section] += 1;
+    const isNutritionIntent = NUTRITION_QUERY_HINTS.some((hint) => normalizedQuery.includes(hint));
+    const isPersonalCareIntent = PERSONAL_CARE_QUERY_HINTS.some((hint) => normalizedQuery.includes(hint));
+    const isFitnessIntent = FITNESS_QUERY_HINTS.some((hint) => normalizedQuery.includes(hint));
+    const isSexualWellnessIntent = SEXUAL_WELLNESS_QUERY_HINTS.some((hint) => normalizedQuery.includes(hint));
+    const isBabyCareIntent = BABY_CARE_QUERY_HINTS.some((hint) => normalizedQuery.includes(hint));
+    const isUnaniIntent = UNANI_QUERY_HINTS.some((hint) => normalizedQuery.includes(hint));
+    const isLabTestsIntent = LAB_TESTS_QUERY_HINTS.some((hint) => normalizedQuery.includes(hint));
+    const isAyurvedaIntent = AYURVEDA_QUERY_HINTS.some((hint) => normalizedQuery.includes(hint));
+    const isHomeopathyIntent = HOMEOPATHY_QUERY_HINTS.some((hint) => normalizedQuery.includes(hint));
+
+    // Build priority array based on detected intents
+    const priority: (typeof SEARCH_SECTION_PRIORITY)[number][] = [];
+
+    if (isUnaniIntent && !isAyurvedaIntent && !isHomeopathyIntent) {
+      return ['unani', 'medicines', 'ayurveda', 'homeopathy', 'nutrition', 'personal-care', 'fitness', 'sexual-wellness', 'baby-care', 'lab-tests'] as const;
     }
 
-    const bestSection = Object.entries(score).sort((a, b) => b[1] - a[1])[0]?.[0] || 'medicines';
-    return bestSection;
+    if (isBabyCareIntent && !isPersonalCareIntent) {
+      return ['baby-care', 'personal-care', 'nutrition', 'medicines', 'ayurveda', 'homeopathy', 'fitness', 'sexual-wellness', 'unani', 'lab-tests'] as const;
+    }
+
+    if (isSexualWellnessIntent && !isPersonalCareIntent) {
+      return ['sexual-wellness', 'personal-care', 'nutrition', 'medicines', 'ayurveda', 'homeopathy', 'fitness', 'baby-care', 'unani', 'lab-tests'] as const;
+    }
+
+    if (isFitnessIntent && !isNutritionIntent) {
+      return ['fitness', 'nutrition', 'personal-care', 'medicines', 'ayurveda', 'homeopathy', 'sexual-wellness', 'baby-care', 'unani', 'lab-tests'] as const;
+    }
+
+    if (isPersonalCareIntent && !isNutritionIntent) {
+      return ['personal-care', 'nutrition', 'baby-care', 'medicines', 'ayurveda', 'homeopathy', 'fitness', 'sexual-wellness', 'unani', 'lab-tests'] as const;
+    }
+
+    if (isNutritionIntent && !isPersonalCareIntent) {
+      return ['nutrition', 'fitness', 'personal-care', 'medicines', 'ayurveda', 'homeopathy', 'sexual-wellness', 'baby-care', 'unani', 'lab-tests'] as const;
+    }
+
+    if (isLabTestsIntent) {
+      return ['lab-tests', 'medicines', 'ayurveda', 'homeopathy', 'nutrition', 'personal-care', 'fitness', 'sexual-wellness', 'baby-care', 'unani'] as const;
+    }
+
+    if (isAyurvedaIntent && !isHomeopathyIntent) {
+      return ['ayurveda', 'medicines', 'homeopathy', 'nutrition', 'personal-care', 'fitness', 'sexual-wellness', 'baby-care', 'unani', 'lab-tests'] as const;
+    }
+
+    if (isHomeopathyIntent && !isAyurvedaIntent) {
+      return ['homeopathy', 'medicines', 'ayurveda', 'nutrition', 'personal-care', 'fitness', 'sexual-wellness', 'baby-care', 'unani', 'lab-tests'] as const;
+    }
+
+    if (isAyurvedaIntent && isHomeopathyIntent) {
+      return ['ayurveda', 'homeopathy', 'medicines', 'nutrition', 'personal-care', 'fitness', 'sexual-wellness', 'baby-care', 'unani', 'lab-tests'] as const;
+    }
+
+    return SEARCH_SECTION_PRIORITY;
+  };
+
+  const getRouteForSection = (section: string, query: string) => {
+    const encodedQuery = encodeURIComponent(query);
+    switch (section) {
+      case 'ayurveda':
+        return `/ayurveda?search=${encodedQuery}`;
+      case 'homeopathy':
+        return `/homeopathy?search=${encodedQuery}`;
+      case 'lab-tests':
+        return `/medicines?category=lab%20tests&search=${encodedQuery}#products-section`;
+      case 'nutrition':
+        return `/medicines?category=nutrition&search=${encodedQuery}#products-section`;
+      case 'personal-care':
+        return `/medicines?category=personal%20care&search=${encodedQuery}#products-section`;
+      case 'fitness':
+        return `/medicines?category=fitness&search=${encodedQuery}#products-section`;
+      case 'sexual-wellness':
+        return `/medicines?category=sexual%20wellness&search=${encodedQuery}#products-section`;
+      case 'baby-care':
+        return `/medicines?category=baby%20care&search=${encodedQuery}#products-section`;
+      case 'unani':
+        return `/medicines?category=unani&search=${encodedQuery}#products-section`;
+      case 'disease':
+        return `/medicines?category=disease&search=${encodedQuery}#products-section`;
+      default:
+        return `/medicines?search=${encodedQuery}#products-section`;
+    }
+  };
+
+  const initializeSectionScores = () => {
+    const scores: Record<string, number> = {};
+    for (const section of SEARCH_SECTION_PRIORITY) {
+      scores[section] = 0;
+    }
+    return scores;
   };
 
   const handleSearch = async () => {
@@ -192,32 +410,132 @@ export default function Header() {
 
     setIsSearchRedirecting(true);
     try {
-      const response = await fetch(`/api/products?search=${encodeURIComponent(q)}&limit=120`, {
-        cache: 'no-store',
-      });
+      const allResponse = await fetch('/api/products?limit=800', { cache: 'no-store' });
 
-      if (!response.ok) {
+      if (!allResponse.ok) {
         router.push(`/medicines?search=${encodeURIComponent(q)}#products-section`);
         return;
       }
 
-      const data = await response.json();
-      const products = Array.isArray(data?.products) ? data.products : [];
+      const allData = await allResponse.json();
+      const allProducts = Array.isArray(allData?.products) ? allData.products : [];
+
+      const normalizedQuery = q
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      const matchesSearchQuery = (product: any) => {
+        const asText = (value: unknown) =>
+          String(value || '')
+            .toLowerCase()
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        const textFields = [
+          product?.name,
+          product?.description,
+          product?.category,
+          product?.subcategory,
+          product?.brand,
+          product?.benefit,
+          product?.productType,
+          product?.potency,
+          product?.quantityUnit,
+          product?.diseaseCategory,
+          product?.diseaseSubcategory,
+          product?.quantity,
+        ];
+
+        const healthConcerns = Array.isArray(product?.healthConcerns)
+          ? product.healthConcerns.join(' ')
+          : '';
+
+        return [
+          ...textFields,
+          healthConcerns,
+        ].some((field) => asText(field).includes(normalizedQuery));
+      };
+
+      const products = allProducts.filter(matchesSearchQuery);
 
       if (products.length === 0) {
         router.push(`/medicines?search=${encodeURIComponent(q)}#products-section`);
         return;
       }
 
-      const bestSection = getBestSearchRoute(products);
+      const sectionCounts = initializeSectionScores();
+      const nameMatchScores = initializeSectionScores();
 
-      if (bestSection === 'ayurveda') {
-        router.push(`/ayurveda?search=${encodeURIComponent(q)}`);
+      for (const product of products) {
+        const section = getSearchSection(product);
+        sectionCounts[section] = (sectionCounts[section] || 0) + 1;
+
+        const productName = String(product?.name || '')
+          .toLowerCase()
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        if (normalizedQuery) {
+          if (productName === normalizedQuery) {
+            nameMatchScores[section] = (nameMatchScores[section] || 0) + 5;
+          } else if (productName.startsWith(normalizedQuery)) {
+            nameMatchScores[section] = (nameMatchScores[section] || 0) + 3;
+          } else if (productName.includes(normalizedQuery)) {
+            nameMatchScores[section] = (nameMatchScores[section] || 0) + 1;
+          }
+        }
+      }
+
+      const sectionPriority = getSearchPriorityForQuery(q);
+
+      // Check for name matches in priority order
+      const sectionNameMatches: Record<string, boolean> = {};
+      for (const section of sectionPriority) {
+        const sectionProducts = products.filter((product: any) => getSearchSection(product) === section);
+        sectionNameMatches[section] = sectionProducts.some((product: any) => {
+          const productName = String(product?.name || '').toLowerCase().replace(/\s+/g, ' ').trim();
+          return normalizedQuery && (productName === normalizedQuery || productName.startsWith(normalizedQuery) || productName.includes(normalizedQuery));
+        });
+      }
+
+      // Find which sections have name matches
+      const sectionsWithNameMatches = sectionPriority.filter((section) => sectionNameMatches[section]);
+
+      // If only one section has name matches, route there
+      if (sectionsWithNameMatches.length === 1) {
+        const matchedSection = sectionsWithNameMatches[0];
+        router.push(getRouteForSection(matchedSection, q));
         return;
       }
 
-      if (bestSection === 'homeopathy') {
-        router.push(`/homeopathy?search=${encodeURIComponent(q)}`);
+      // If multiple sections have name matches, use priority
+      if (sectionsWithNameMatches.length > 1) {
+        router.push(getRouteForSection(sectionsWithNameMatches[0], q));
+        return;
+      }
+
+      // Product name match gets first priority for routing using weighted score.
+      const bestNameMatchedSection = sectionPriority.reduce<string | null>((best, section) => {
+        if (best === null) {
+          return nameMatchScores[section] > 0 ? section : null;
+        }
+        if (nameMatchScores[section] > nameMatchScores[best]) {
+          return section;
+        }
+        return best;
+      }, null);
+
+      if (bestNameMatchedSection) {
+        router.push(getRouteForSection(bestNameMatchedSection, q));
+        return;
+      }
+
+      // Fall back to first section with products
+      const firstMatchedSection = sectionPriority.find((section) => sectionCounts[section] > 0);
+
+      if (firstMatchedSection) {
+        router.push(getRouteForSection(firstMatchedSection, q));
         return;
       }
 
@@ -306,7 +624,7 @@ export default function Header() {
                     }
                   }}
                   placeholder="Search for medicines, health conditions, products..."
-                  className="w-full px-4 py-3 rounded-lg bg-gray-100 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                  className="w-full px-4 py-3 rounded-lg bg-gray-100 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm text-gray-900 placeholder:text-gray-700"
                 />
                 <button
                   type="button"
@@ -476,7 +794,7 @@ export default function Header() {
                           className="block px-4 py-2 text-emerald-600 hover:bg-emerald-50 font-semibold"
                           onClick={() => setIsUserMenuOpen(false)}
                         >
-                          🏪 Become a Vendor
+                          🤝 Become a Vendor
                         </Link>
                       </>
                     )}
@@ -528,7 +846,7 @@ export default function Header() {
                   }
                 }}
                 placeholder="Search medicines and products..."
-                className="w-full px-4 py-2.5 rounded-lg bg-gray-100 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                className="w-full px-4 py-2.5 rounded-lg bg-gray-100 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm text-gray-900 placeholder:text-gray-700"
               />
               <button
                 type="button"
@@ -607,7 +925,7 @@ export default function Header() {
                 SignUp
               </Link>
               <Link href="/vendor/register" className="block w-full text-center bg-emerald-100 text-emerald-700 py-2 rounded-lg font-semibold hover:bg-emerald-200">
-                Become a Vendor
+                🤝 Become a Vendor
               </Link>
             </>
           )}

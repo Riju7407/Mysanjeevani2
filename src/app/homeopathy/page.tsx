@@ -214,7 +214,7 @@ function HomeopathyContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-rose-50 to-white flex flex-col">
+    <div className="min-h-screen bg-linear-to-b from-pink-50 via-rose-50 to-white flex flex-col">
       <Header />
 
       {/* Hero */}
@@ -234,7 +234,7 @@ function HomeopathyContent() {
                   placeholder="🔍 Search homeopathy remedies, brands, benefits..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full border-2 border-pink-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent transition text-sm"
+                  className="w-full border-2 border-pink-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent transition text-sm placeholder:text-gray-700"
                 />
               </div>
             </div>
@@ -261,7 +261,7 @@ function HomeopathyContent() {
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`whitespace-nowrap px-4 py-2 rounded-full font-medium text-sm transition-all flex-shrink-0 ${
+                className={`whitespace-nowrap px-4 py-2 rounded-full font-medium text-sm transition-all shrink-0 ${
                   selectedCategory === cat
                     ? 'bg-pink-500 text-white shadow-md'
                     : 'bg-gray-100 text-gray-700 hover:bg-pink-100'
@@ -297,7 +297,7 @@ function HomeopathyContent() {
                 key={i}
                 className="bg-white rounded-2xl border border-pink-100 p-4 shadow-sm animate-pulse"
               >
-                <div className="h-40 bg-gradient-to-br from-pink-100 to-rose-100 rounded-xl mb-4" />
+                <div className="h-40 bg-linear-to-br from-pink-100 to-rose-100 rounded-xl mb-4" />
                 <div className="h-4 bg-gray-200 rounded mb-3 w-3/4" />
                 <div className="h-3 bg-gray-200 rounded mb-2 w-full" />
                 <div className="h-3 bg-gray-200 rounded mb-4 w-1/2" />

@@ -39,6 +39,12 @@ interface Product {
   approvalStatus?: 'pending' | 'approved' | 'rejected';
 }
 
+interface DynamicCategoryConfig {
+  vendorCategoryMap?: Record<string, string[]>;
+  subcategoryMapByType?: Record<string, Record<string, string[]>>;
+  diseaseSubcategoryMap?: Record<string, string[]>;
+}
+
 const POTENCY_OPTIONS = ['1000 CH', '3 CH', '10M CH', '200 CH', '30 CH', '12 CH', '6 CH', 'CM CH', '50M CH'];
 const QUANTITY_UNIT_OPTIONS = ['None', 'BAGS (Bag)', 'BOTTLES (Btl)', 'BOX (Box)', 'BUNDLES (Bdl)', 'CANS (Can)', 'CAPSULES (CAPS)', 'CARTONS (Ctn)', 'DOZENS (Dzn)', 'GRAMMES (Gm)', 'KILOGRAMS (Kg)', 'LITRE (Ltr)', 'METERS (Mtr)', 'MILILITRE (MI)', 'NUMBERS (Nos)', 'PACKS (Pac)', 'PAIRS (Prs)', 'PIECES (Pcs)', 'QUINTAL (Qtl)', 'ROLLS (Rol)', 'SACHET (SACH)', 'SQUARE FEET (Sqf)', 'SQUARE METERS (Sqm)', 'TABLETS (Tbs)'];
 
@@ -238,48 +244,6 @@ function getDefaultCategoryForType(productType: VendorProductType): string {
   return VENDOR_CATEGORY_MAP[productType][0];
 }
 
-function getDefaultSubcategoryForHomeopathyCategory(category: string): string {
-  const key = category as HomeopathyCategory;
-  const options = HOMEOPATHY_SUBCATEGORY_MAP[key] || [];
-  return options[0] || '';
-}
-
-function getDefaultSubcategoryForAyurvedaCategory(category: string): string {
-  const key = category as AyurvedaCategory;
-  const options = AYURVEDA_SUBCATEGORY_MAP[key] || [];
-  return options[0] || '';
-}
-
-function getDefaultSubcategoryForNutritionCategory(category: string): string {
-  const key = category as NutritionCategory;
-  const options = NUTRITION_SUBCATEGORY_MAP[key] || [];
-  return options[0] || '';
-}
-
-function getDefaultSubcategoryForPersonalCareCategory(category: string): string {
-  const key = category as PersonalCareCategory;
-  const options = PERSONAL_CARE_SUBCATEGORY_MAP[key] || [];
-  return options[0] || '';
-}
-
-function getDefaultSubcategoryForBabyCareCategory(category: string): string {
-  const key = category as BabyCareCategory;
-  const options = BABY_CARE_SUBCATEGORY_MAP[key] || [];
-  return options[0] || '';
-}
-
-function getDefaultSubcategoryForFitnessCategory(category: string): string {
-  const key = category as FitnessCategory;
-  const options = FITNESS_SUBCATEGORY_MAP[key] || [];
-  return options[0] || '';
-}
-
-function getDefaultSubcategoryForUnaniCategory(category: string): string {
-  const key = category as UnaniCategory;
-  const options = UNANI_SUBCATEGORY_MAP[key] || [];
-  return options[0] || '';
-}
-
 function inferProductTypeFromCategory(category: string): VendorProductType {
   const normalized = (category || '').trim().toLowerCase();
   if (normalized === 'generic' || normalized === 'branded') return 'Generic Medicine';
@@ -293,29 +257,6 @@ function inferProductTypeFromCategory(category: string): VendorProductType {
     }
   }
   return 'Generic Medicine';
-}
-
-function normalizeCategoryForType(productType: VendorProductType, category: string): string {
-  const normalized = (category || '').trim().toLowerCase();
-
-  if (productType === 'Generic Medicine' && (normalized === 'generic' || normalized === 'branded')) {
-    return getDefaultCategoryForType(productType);
-  }
-
-  if (productType === 'Ayurveda Medicine' && (normalized === 'ayurvedic' || normalized === 'ayurveda')) {
-    return getDefaultCategoryForType(productType);
-  }
-
-  if (productType === 'Homeopathy' && normalized === 'homeopathy') {
-    return getDefaultCategoryForType(productType);
-  }
-
-  if (productType === 'Lab Tests' && (normalized === 'lab tests' || normalized === 'lab-tests' || normalized === 'labtest')) {
-    return getDefaultCategoryForType(productType);
-  }
-
-  const exactMatch = VENDOR_CATEGORY_MAP[productType].find((c) => c.toLowerCase() === normalized);
-  return exactMatch || getDefaultCategoryForType(productType);
 }
 
 function isCloudinaryImageUrl(url?: string): boolean {
@@ -395,7 +336,45 @@ export default function VendorDashboard() {
   const [imageUrl, setImageUrl] = useState('');
   const [selectedEditProductImage, setSelectedEditProductImage] = useState<File | null>(null);
   const [editImagePreviewUrl, setEditImagePreviewUrl] = useState<string>('');
+  const [categoryConfig, setCategoryConfig] = useState<DynamicCategoryConfig | null>(null);
   const { uploadImage, uploading: imageUploading, error: uploadError, previewUrl } = useImageUpload();
+
+  const activeVendorCategoryMap: Record<string, string[]> =
+    categoryConfig?.vendorCategoryMap && Object.keys(categoryConfig.vendorCategoryMap).length > 0
+      ? categoryConfig.vendorCategoryMap
+      : (VENDOR_CATEGORY_MAP as unknown as Record<string, string[]>);
+
+  const activeDiseaseCategoryMap: Record<string, string[]> =
+    categoryConfig?.diseaseSubcategoryMap && Object.keys(categoryConfig.diseaseSubcategoryMap).length > 0
+      ? categoryConfig.diseaseSubcategoryMap
+      : (DISEASE_SUBCATEGORY_MAP as unknown as Record<string, string[]>);
+
+  const productTypeOptions = Object.keys(activeVendorCategoryMap) as VendorProductType[];
+
+  const getDefaultCategoryForTypeDynamic = (productType: VendorProductType): string => {
+    const options = activeVendorCategoryMap[productType] || [];
+    return options[0] || getDefaultCategoryForType(productType);
+  };
+
+  const getSubcategoryOptionsForType = (productType: string, category: string): string[] => {
+    const dynamicByType = categoryConfig?.subcategoryMapByType?.[productType]?.[category];
+    if (dynamicByType && dynamicByType.length > 0) return dynamicByType;
+
+    if (productType === 'Homeopathy') return (HOMEOPATHY_SUBCATEGORY_MAP[category as HomeopathyCategory] || []) as unknown as string[];
+    if (productType === 'Ayurveda Medicine') return (AYURVEDA_SUBCATEGORY_MAP[category as AyurvedaCategory] || []) as unknown as string[];
+    if (productType === 'Nutrition') return (NUTRITION_SUBCATEGORY_MAP[category as NutritionCategory] || []) as unknown as string[];
+    if (productType === 'Personal Care') return (PERSONAL_CARE_SUBCATEGORY_MAP[category as PersonalCareCategory] || []) as unknown as string[];
+    if (productType === 'Baby Care') return (BABY_CARE_SUBCATEGORY_MAP[category as BabyCareCategory] || []) as unknown as string[];
+    if (productType === 'Fitness') return (FITNESS_SUBCATEGORY_MAP[category as FitnessCategory] || []) as unknown as string[];
+    if (productType === 'Unani') return (UNANI_SUBCATEGORY_MAP[category as UnaniCategory] || []) as unknown as string[];
+
+    return [];
+  };
+
+  const getDefaultSubcategoryForTypeDynamic = (productType: string, category: string): string => {
+    const options = getSubcategoryOptionsForType(productType, category);
+    return options[0] || '';
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('vendorToken');
@@ -411,6 +390,20 @@ export default function VendorDashboard() {
     fetchProducts(vendorData._id);
     fetchVendorOrders(vendorData._id);
   }, [router]);
+
+  useEffect(() => {
+    const fetchCategoryConfig = async () => {
+      try {
+        const res = await fetch('/api/categories?mode=config');
+        const data = await res.json();
+        if (data?.success && data?.config) {
+          setCategoryConfig(data.config);
+        }
+      } catch {}
+    };
+
+    fetchCategoryConfig();
+  }, []);
 
   const fetchProducts = async (vendorId: string) => {
     try {
@@ -560,7 +553,7 @@ export default function VendorDashboard() {
         price: '',
         mrp: '',
         productType: 'Generic Medicine',
-        category: getDefaultCategoryForType('Generic Medicine'),
+        category: getDefaultCategoryForTypeDynamic('Generic Medicine'),
         subcategory: '',
         potency: '',
         quantity: '',
@@ -591,8 +584,11 @@ export default function VendorDashboard() {
   };
 
   const handleEditProduct = (product: Product) => {
-    const inferredType = inferProductTypeFromCategory(product.category);
-    const normalizedCategory = normalizeCategoryForType(inferredType, product.category);
+    const inferredType =
+      (Object.entries(activeVendorCategoryMap).find(([, categories]) =>
+        (categories || []).includes(product.category)
+      )?.[0] as VendorProductType) || inferProductTypeFromCategory(product.category);
+    const normalizedCategory = product.category || getDefaultCategoryForTypeDynamic(inferredType);
     const isHomeopathy = (product.productType as VendorProductType || inferredType) === 'Homeopathy';
     const isAyurveda = (product.productType as VendorProductType || inferredType) === 'Ayurveda Medicine';
     const isNutrition = (product.productType as VendorProductType || inferredType) === 'Nutrition';
@@ -612,13 +608,13 @@ export default function VendorDashboard() {
       productType: product.productType as VendorProductType || inferredType,
       category: normalizedCategory,
       subcategory: product.subcategory || (
-        isHomeopathy ? getDefaultSubcategoryForHomeopathyCategory(normalizedCategory)
-          : isAyurveda ? getDefaultSubcategoryForAyurvedaCategory(normalizedCategory)
-          : isNutrition ? getDefaultSubcategoryForNutritionCategory(normalizedCategory)
-          : isPersonalCare ? getDefaultSubcategoryForPersonalCareCategory(normalizedCategory)
-          : isBabyCare ? getDefaultSubcategoryForBabyCareCategory(normalizedCategory)
-          : isFitness ? getDefaultSubcategoryForFitnessCategory(normalizedCategory)
-          : isUnani ? getDefaultSubcategoryForUnaniCategory(normalizedCategory)
+        isHomeopathy ? getDefaultSubcategoryForTypeDynamic(product.productType as VendorProductType || inferredType, normalizedCategory)
+          : isAyurveda ? getDefaultSubcategoryForTypeDynamic(product.productType as VendorProductType || inferredType, normalizedCategory)
+          : isNutrition ? getDefaultSubcategoryForTypeDynamic(product.productType as VendorProductType || inferredType, normalizedCategory)
+          : isPersonalCare ? getDefaultSubcategoryForTypeDynamic(product.productType as VendorProductType || inferredType, normalizedCategory)
+          : isBabyCare ? getDefaultSubcategoryForTypeDynamic(product.productType as VendorProductType || inferredType, normalizedCategory)
+          : isFitness ? getDefaultSubcategoryForTypeDynamic(product.productType as VendorProductType || inferredType, normalizedCategory)
+          : isUnani ? getDefaultSubcategoryForTypeDynamic(product.productType as VendorProductType || inferredType, normalizedCategory)
           : ''
       ),
       potency: product.potency || '',
@@ -987,22 +983,8 @@ export default function VendorDashboard() {
                       value={newProduct.productType}
                       onChange={(e) => {
                         const productType = e.target.value as VendorProductType;
-                        const category = getDefaultCategoryForType(productType);
-                        const subcategory = productType === 'Homeopathy'
-                          ? getDefaultSubcategoryForHomeopathyCategory(category)
-                          : productType === 'Ayurveda Medicine'
-                            ? getDefaultSubcategoryForAyurvedaCategory(category)
-                            : productType === 'Nutrition'
-                              ? getDefaultSubcategoryForNutritionCategory(category)
-                              : productType === 'Personal Care'
-                                ? getDefaultSubcategoryForPersonalCareCategory(category)
-                                : productType === 'Baby Care'
-                                  ? getDefaultSubcategoryForBabyCareCategory(category)
-                                  : productType === 'Fitness'
-                                    ? getDefaultSubcategoryForFitnessCategory(category)
-                                    : productType === 'Unani'
-                                      ? getDefaultSubcategoryForUnaniCategory(category)
-                                      : '';
+                        const category = getDefaultCategoryForTypeDynamic(productType);
+                        const subcategory = getDefaultSubcategoryForTypeDynamic(productType, category);
                         setNewProduct({
                           ...newProduct,
                           productType,
@@ -1012,7 +994,7 @@ export default function VendorDashboard() {
                       }}
                       className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
                     >
-                      {(Object.keys(VENDOR_CATEGORY_MAP) as VendorProductType[]).map((productType) => (
+                      {productTypeOptions.map((productType) => (
                         <option key={productType} value={productType}>{productType}</option>
                       ))}
                     </select>
@@ -1020,48 +1002,20 @@ export default function VendorDashboard() {
                       value={newProduct.category}
                       onChange={(e) => {
                         const category = e.target.value;
-                        const subcategory = newProduct.productType === 'Homeopathy'
-                          ? getDefaultSubcategoryForHomeopathyCategory(category)
-                          : newProduct.productType === 'Ayurveda Medicine'
-                            ? getDefaultSubcategoryForAyurvedaCategory(category)
-                            : newProduct.productType === 'Nutrition'
-                              ? getDefaultSubcategoryForNutritionCategory(category)
-                              : newProduct.productType === 'Personal Care'
-                                ? getDefaultSubcategoryForPersonalCareCategory(category)
-                                : newProduct.productType === 'Baby Care'
-                                  ? getDefaultSubcategoryForBabyCareCategory(category)
-                                  : newProduct.productType === 'Fitness'
-                                    ? getDefaultSubcategoryForFitnessCategory(category)
-                                    : newProduct.productType === 'Unani'
-                                      ? getDefaultSubcategoryForUnaniCategory(category)
-                                      : '';
+                        const subcategory = getDefaultSubcategoryForTypeDynamic(newProduct.productType, category);
                         setNewProduct({ ...newProduct, category, subcategory });
                       }}
                       className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
                     >
                       <option value="">Category *</option>
-                      {VENDOR_CATEGORY_MAP[newProduct.productType].map((category) => (
+                      {(activeVendorCategoryMap[newProduct.productType] || []).map((category) => (
                         <option key={category} value={category}>{category}</option>
                       ))}
                     </select>
                     {(newProduct.productType === 'Homeopathy' || newProduct.productType === 'Ayurveda Medicine' || newProduct.productType === 'Nutrition' || newProduct.productType === 'Personal Care' || newProduct.productType === 'Baby Care' || newProduct.productType === 'Fitness' || newProduct.productType === 'Unani') && (
                       <select value={newProduct.subcategory} onChange={(e) => setNewProduct({ ...newProduct, subcategory: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm">
                         <option value="">Subcategory *</option>
-                        {(
-                          newProduct.productType === 'Homeopathy'
-                            ? (HOMEOPATHY_SUBCATEGORY_MAP[newProduct.category as HomeopathyCategory] || [])
-                            : newProduct.productType === 'Ayurveda Medicine'
-                              ? (AYURVEDA_SUBCATEGORY_MAP[newProduct.category as AyurvedaCategory] || [])
-                              : newProduct.productType === 'Nutrition'
-                                ? (NUTRITION_SUBCATEGORY_MAP[newProduct.category as NutritionCategory] || [])
-                                : newProduct.productType === 'Personal Care'
-                                  ? (PERSONAL_CARE_SUBCATEGORY_MAP[newProduct.category as PersonalCareCategory] || [])
-                                  : newProduct.productType === 'Baby Care'
-                                    ? (BABY_CARE_SUBCATEGORY_MAP[newProduct.category as BabyCareCategory] || [])
-                                    : newProduct.productType === 'Fitness'
-                                      ? (FITNESS_SUBCATEGORY_MAP[newProduct.category as FitnessCategory] || [])
-                                      : (UNANI_SUBCATEGORY_MAP[newProduct.category as UnaniCategory] || [])
-                        ).map((subcategory) => (
+                        {getSubcategoryOptionsForType(newProduct.productType, newProduct.category).map((subcategory) => (
                           <option key={subcategory} value={subcategory}>{subcategory}</option>
                         ))}
                       </select>
@@ -1070,7 +1024,7 @@ export default function VendorDashboard() {
                       value={newProduct.diseaseCategory}
                       onChange={(e) => {
                         const diseaseCategory = e.target.value;
-                        const options = DISEASE_SUBCATEGORY_MAP[diseaseCategory as DiseaseCategory] || [];
+                        const options = activeDiseaseCategoryMap[diseaseCategory] || [];
                         setNewProduct({
                           ...newProduct,
                           diseaseCategory,
@@ -1080,7 +1034,7 @@ export default function VendorDashboard() {
                       className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
                     >
                       <option value="">Disease Category (Optional)</option>
-                      {(Object.keys(DISEASE_SUBCATEGORY_MAP) as DiseaseCategory[]).map((diseaseCategory) => (
+                      {Object.keys(activeDiseaseCategoryMap).map((diseaseCategory) => (
                         <option key={diseaseCategory} value={diseaseCategory}>{diseaseCategory}</option>
                       ))}
                     </select>
@@ -1091,7 +1045,7 @@ export default function VendorDashboard() {
                       className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm disabled:bg-slate-100 disabled:text-slate-400"
                     >
                       <option value="">Disease Subcategory (Optional)</option>
-                      {(DISEASE_SUBCATEGORY_MAP[newProduct.diseaseCategory as DiseaseCategory] || []).map((diseaseSubcategory) => (
+                      {(activeDiseaseCategoryMap[newProduct.diseaseCategory || ''] || []).map((diseaseSubcategory) => (
                         <option key={diseaseSubcategory} value={diseaseSubcategory}>{diseaseSubcategory}</option>
                       ))}
                     </select>
@@ -1320,22 +1274,8 @@ export default function VendorDashboard() {
                       value={editProduct.productType}
                       onChange={(e) => {
                         const productType = e.target.value as VendorProductType;
-                        const category = getDefaultCategoryForType(productType);
-                        const subcategory = productType === 'Homeopathy'
-                          ? getDefaultSubcategoryForHomeopathyCategory(category)
-                          : productType === 'Ayurveda Medicine'
-                            ? getDefaultSubcategoryForAyurvedaCategory(category)
-                            : productType === 'Nutrition'
-                              ? getDefaultSubcategoryForNutritionCategory(category)
-                              : productType === 'Personal Care'
-                                ? getDefaultSubcategoryForPersonalCareCategory(category)
-                                : productType === 'Baby Care'
-                                  ? getDefaultSubcategoryForBabyCareCategory(category)
-                                  : productType === 'Fitness'
-                                    ? getDefaultSubcategoryForFitnessCategory(category)
-                                    : productType === 'Unani'
-                                      ? getDefaultSubcategoryForUnaniCategory(category)
-                                      : '';
+                        const category = getDefaultCategoryForTypeDynamic(productType);
+                        const subcategory = getDefaultSubcategoryForTypeDynamic(productType, category);
                         setEditProduct({
                           ...editProduct,
                           productType,
@@ -1345,7 +1285,7 @@ export default function VendorDashboard() {
                       }}
                       className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
                     >
-                      {(Object.keys(VENDOR_CATEGORY_MAP) as VendorProductType[]).map((productType) => (
+                      {productTypeOptions.map((productType) => (
                         <option key={productType} value={productType}>{productType}</option>
                       ))}
                     </select>
@@ -1353,48 +1293,20 @@ export default function VendorDashboard() {
                       value={editProduct.category}
                       onChange={(e) => {
                         const category = e.target.value;
-                        const subcategory = editProduct.productType === 'Homeopathy'
-                          ? getDefaultSubcategoryForHomeopathyCategory(category)
-                          : editProduct.productType === 'Ayurveda Medicine'
-                            ? getDefaultSubcategoryForAyurvedaCategory(category)
-                            : editProduct.productType === 'Nutrition'
-                              ? getDefaultSubcategoryForNutritionCategory(category)
-                              : editProduct.productType === 'Personal Care'
-                                ? getDefaultSubcategoryForPersonalCareCategory(category)
-                                : editProduct.productType === 'Baby Care'
-                                  ? getDefaultSubcategoryForBabyCareCategory(category)
-                                  : editProduct.productType === 'Fitness'
-                                    ? getDefaultSubcategoryForFitnessCategory(category)
-                                    : editProduct.productType === 'Unani'
-                                      ? getDefaultSubcategoryForUnaniCategory(category)
-                                      : '';
+                        const subcategory = getDefaultSubcategoryForTypeDynamic(editProduct.productType, category);
                         setEditProduct({ ...editProduct, category, subcategory });
                       }}
                       className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
                     >
                       <option value="">Category *</option>
-                      {VENDOR_CATEGORY_MAP[editProduct.productType].map((category) => (
+                      {(activeVendorCategoryMap[editProduct.productType] || []).map((category) => (
                         <option key={category} value={category}>{category}</option>
                       ))}
                     </select>
                     {(editProduct.productType === 'Homeopathy' || editProduct.productType === 'Ayurveda Medicine' || editProduct.productType === 'Nutrition' || editProduct.productType === 'Personal Care' || editProduct.productType === 'Baby Care' || editProduct.productType === 'Fitness' || editProduct.productType === 'Unani') && (
                       <select value={editProduct.subcategory} onChange={(e) => setEditProduct({ ...editProduct, subcategory: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm">
                         <option value="">Subcategory *</option>
-                        {(
-                          editProduct.productType === 'Homeopathy'
-                            ? (HOMEOPATHY_SUBCATEGORY_MAP[editProduct.category as HomeopathyCategory] || [])
-                            : editProduct.productType === 'Ayurveda Medicine'
-                              ? (AYURVEDA_SUBCATEGORY_MAP[editProduct.category as AyurvedaCategory] || [])
-                              : editProduct.productType === 'Nutrition'
-                                ? (NUTRITION_SUBCATEGORY_MAP[editProduct.category as NutritionCategory] || [])
-                                : editProduct.productType === 'Personal Care'
-                                  ? (PERSONAL_CARE_SUBCATEGORY_MAP[editProduct.category as PersonalCareCategory] || [])
-                                  : editProduct.productType === 'Baby Care'
-                                    ? (BABY_CARE_SUBCATEGORY_MAP[editProduct.category as BabyCareCategory] || [])
-                                    : editProduct.productType === 'Fitness'
-                                      ? (FITNESS_SUBCATEGORY_MAP[editProduct.category as FitnessCategory] || [])
-                                      : (UNANI_SUBCATEGORY_MAP[editProduct.category as UnaniCategory] || [])
-                        ).map((subcategory) => (
+                        {getSubcategoryOptionsForType(editProduct.productType, editProduct.category).map((subcategory) => (
                           <option key={subcategory} value={subcategory}>{subcategory}</option>
                         ))}
                       </select>
@@ -1403,7 +1315,7 @@ export default function VendorDashboard() {
                       value={editProduct.diseaseCategory}
                       onChange={(e) => {
                         const diseaseCategory = e.target.value;
-                        const options = DISEASE_SUBCATEGORY_MAP[diseaseCategory as DiseaseCategory] || [];
+                        const options = activeDiseaseCategoryMap[diseaseCategory] || [];
                         setEditProduct({
                           ...editProduct,
                           diseaseCategory,
@@ -1413,7 +1325,7 @@ export default function VendorDashboard() {
                       className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
                     >
                       <option value="">Disease Category (Optional)</option>
-                      {(Object.keys(DISEASE_SUBCATEGORY_MAP) as DiseaseCategory[]).map((diseaseCategory) => (
+                      {Object.keys(activeDiseaseCategoryMap).map((diseaseCategory) => (
                         <option key={diseaseCategory} value={diseaseCategory}>{diseaseCategory}</option>
                       ))}
                     </select>
@@ -1424,7 +1336,7 @@ export default function VendorDashboard() {
                       className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm disabled:bg-slate-100 disabled:text-slate-400"
                     >
                       <option value="">Disease Subcategory (Optional)</option>
-                      {(DISEASE_SUBCATEGORY_MAP[editProduct.diseaseCategory as DiseaseCategory] || []).map((diseaseSubcategory) => (
+                      {(activeDiseaseCategoryMap[editProduct.diseaseCategory || ''] || []).map((diseaseSubcategory) => (
                         <option key={diseaseSubcategory} value={diseaseSubcategory}>{diseaseSubcategory}</option>
                       ))}
                     </select>

@@ -51,20 +51,143 @@ const SORT_OPTIONS = [
 
 // ── Category groups for sidebar ─────────────────────────────────────────────
 const MED_CATEGORIES = ['All', 'Addiction', 'Anxiety & Depression', 'Sleeplessness', 'Weak Memory', 'Acne & Pimples', 'Dark Circles & Marks', 'Wrinkles & Aging', 'Hair Fall', 'Dandruff', 'Cough', 'Asthma', 'Bronchitis', 'Indigestion/Acidity/Gas', 'Diabetes', 'Blood Pressure', 'Headache & Migraine', 'Back & Knee Pain', 'Arthritis & Joint Pains'];
+const DISEASE_CATEGORIES = ['All', 'Mind', 'Face', 'Hair', 'Eyes & Ear', 'Nose & Throat', 'Nervous System', 'Mouth, Gums & Teeth', 'Respiratory', 'Rectum & Piles', 'Digestive System', 'Heart & Cardiovascular', 'Urinary System', 'Bone, Joint & Muscles', 'Skin & Nails', 'Fevers & Flu', 'Male Problems', 'Female Problems', 'Old Age Problems', 'Children Problems', 'Lifestyle Diseases', 'Tonics'];
 const AYUR_CATEGORIES = ['All', 'Himalaya', 'Organic India', 'Baidyanath', 'Dabur', 'Zandu', 'Charak', 'Aimil', 'Ras & Sindoor', 'Bhasm & Pishti', 'Vati, Gutika & Guggulu', 'Chyawanprash', 'Honey'];
 const HOMEO_CATEGORIES = ['All', 'SBL', 'Dr. Reckeweg', 'Willmar Schwabe', 'Bjain', '30 CH', '200 CH', '1000 CH', 'Mother Tinctures', 'Biochemic', 'Bach Flower'];
+const NUTRITION_CATEGORIES = ['All', 'Proteins', 'Fat Burner', 'Weight Gainers', 'Pre Post Workout', 'Aminos', 'Creatines', 'Spreads & Sugar & Honey', 'Oils', 'Herbal & Vegetable Juices', 'Health Drinks', 'Healthy Snacks & Bars', 'Sugar Free', 'Murabba', 'Chyawanprash', 'Edible Seeds', 'Vitamin & Dietary Supplements', 'Organic Foods', 'Coffee & Tea', 'Ghee', 'Atta/Flour', 'Green Teas', 'Digestives'];
+const PERSONAL_CARE_CATEGORIES = ['All', 'Essential Oils', 'Beard Oils and Wax', 'Shaving Cream & Gels', 'Men Wellness', 'Intimate Care', 'Pregnancy & Maternity Care', 'Face', 'Body', 'Foot Care', 'Sanitizers & Hand Wash', 'Shower Gel & Hand Wash', 'Soaps', 'Talcs & Deos', 'Shampoo & Conditioners', 'Hair Oils & Creams', 'Hair Serum & Mask', 'Hair Color & Dyes', 'Henna Mehandi', 'Elderly Care', 'Mosquito Repellents', 'Toothpaste', 'Gums Care'];
+const FITNESS_CATEGORIES = ['All', 'Shoulder Support', 'Elbow Support', 'Forearm Support', 'Wrist Support', 'Chest Support', 'Cervical Support', 'Back Support', 'Abdominal Support', 'Thigh Support', 'Knee Support', 'Calf Support', 'Ankle Support', 'Finger Splint', 'Compression Stockings', 'Insoles & Heel cups', 'Weighing Scales', 'BP Monitors', 'Thermometer', 'Respiratory Care', 'Activity Moniter', 'Hot and Cold Pads & Bottles', 'Exercisers', 'Weights', 'Stethoscopes', 'Protective Gears', 'Hospital Beds', 'Aroma Therapy', 'Disability Aids', 'Massagers', 'Bandages & Tapes', 'Walking Sticks'];
+const BABY_CARE_CATEGORIES = ['All', 'Tonics & Supplements', 'Shampoos & Bath Gels', 'Baby Oils', 'Baby Powder', 'Soaps', 'Wipes & Diapers', 'Gift Packs'];
+const SEXUAL_WELLNESS_CATEGORIES = ['All', 'Supplements', 'Condoms', 'Sexual Wellness'];
+const UNANI_CATEGORIES = ['All', 'Unani Medicines', 'Habbe & Qurs', 'Majun & Jawarish', 'Safoof, Labub & Kushta', 'Sharbat, Sirka & Arq', 'Lauq & Saoot', 'Khamira & Itrifal', 'Roghan & Oils', 'Hamdard', 'New Shama', 'Dehlvi', 'Rex'];
 
 const TAB_CATEGORIES: Record<string, string[]> = {
   medicines: ['Addiction', 'Anxiety & Depression', 'Sleeplessness', 'Weak Memory', 'Acne & Pimples', 'Dark Circles & Marks', 'Wrinkles & Aging', 'Hair Fall', 'Dandruff', 'Cough', 'Asthma', 'Bronchitis', 'Indigestion/Acidity/Gas', 'Diabetes', 'Blood Pressure', 'Headache & Migraine', 'Back & Knee Pain', 'Arthritis & Joint Pains'],
   ayurveda: ['Ayurveda'],
   homeopathy: ['Homeopathy'],
+  nutrition: ['Nutrition'],
+  personalcare: ['Personal Care'],
+  fitness: ['Fitness'],
+  babycare: ['Baby Care'],
+  sexualwellness: ['Sexual Wellness'],
+  unani: ['Unani'],
+  disease: ['Mind', 'Face', 'Hair', 'Eyes & Ear', 'Nose & Throat', 'Nervous System', 'Mouth, Gums & Teeth', 'Respiratory', 'Rectum & Piles', 'Digestive System', 'Heart & Cardiovascular', 'Urinary System', 'Bone, Joint & Muscles', 'Skin & Nails', 'Fevers & Flu', 'Male Problems', 'Female Problems', 'Old Age Problems', 'Children Problems', 'Lifestyle Diseases', 'Tonics'],
 };
 
 const TAB_SIDEBAR: Record<string, string[]> = {
   medicines: MED_CATEGORIES,
   ayurveda: AYUR_CATEGORIES,
   homeopathy: HOMEO_CATEGORIES,
+  nutrition: NUTRITION_CATEGORIES,
+  personalcare: PERSONAL_CARE_CATEGORIES,
+  fitness: FITNESS_CATEGORIES,
+  babycare: BABY_CARE_CATEGORIES,
+  sexualwellness: SEXUAL_WELLNESS_CATEGORIES,
+  unani: UNANI_CATEGORIES,
+  disease: DISEASE_CATEGORIES,
 };
+
+// ── Grouped subcategories mapping (for categories with grouped display) ──────
+// Maps category tab names to their grouped subcategories structure
+const GROUPED_SUBCATEGORIES_MAP: Record<string, Record<string, string[]>> = {
+  nutrition: {
+    'Sports Nutrition': ['Proteins', 'Fat Burner', 'Weight Gainers', 'Pre Post Workout', 'Aminos', 'Creatines'],
+    'Health Food & Drinks': ['Spreads & Sugar & Honey', 'Oils', 'Herbal & Vegetable Juices', 'Health Drinks', 'Healthy Snacks & Bars', 'Sugar Free', 'Murabba', 'Chyawanprash', 'Edible Seeds'],
+    'Vitamin & Dietary Supplements': ['Vitamin & Dietary Supplements'],
+    'Organic Products': ['Organic Foods', 'Coffee & Tea', 'Ghee', 'Atta/Flour'],
+    'Green Teas': ['Green Teas'],
+    'Digestives': ['Digestives'],
+  },
+  personalcare: {
+    'Aroma Oils': ['Essential Oils'],
+    'Mens Grooming': ['Beard Oils and Wax', 'Shaving Cream & Gels', 'Men Wellness'],
+    'Female Care': ['Intimate Care', 'Pregnancy & Maternity Care'],
+    'Skin Care': ['Face', 'Body', 'Foot Care', 'Sanitizers & Hand Wash'],
+    'Bath & Shower': ['Shower Gel & Hand Wash', 'Soaps', 'Talcs & Deos'],
+    'Hair Care': ['Shampoo & Conditioners', 'Hair Oils & Creams', 'Hair Serum & Mask', 'Hair Color & Dyes', 'Henna Mehandi'],
+    'Elderly Care': ['Elderly Care'],
+    'Mosquito Repellents': ['Mosquito Repellents'],
+    'Oral Care': ['Toothpaste', 'Gums Care'],
+  },
+  fitness: {
+    'Supports & Splints': ['Shoulder Support', 'Elbow Support', 'Forearm Support', 'Wrist Support', 'Chest Support', 'Cervical Support', 'Back Support', 'Abdominal Support', 'Thigh Support', 'Knee Support', 'Calf Support', 'Ankle Support', 'Finger Splint', 'Compression Stockings', 'Insoles & Heel cups'],
+    'Health Devices': ['Weighing Scales', 'BP Monitors', 'Thermometer', 'Respiratory Care', 'Activity Moniter', 'Hot and Cold Pads & Bottles'],
+    'Fitness Equipment': ['Exercisers', 'Weights'],
+    'Hospital Supplies': ['Stethoscopes', 'Protective Gears', 'Hospital Beds'],
+    'Aroma Therapy': ['Aroma Therapy'],
+    'Disability Aids': ['Disability Aids'],
+    'Massagers': ['Massagers'],
+    'Bandages & Tapes': ['Bandages & Tapes'],
+    'Walking Sticks': ['Walking Sticks'],
+  },
+  babycare: {
+    'Tonics & Supplements': ['Tonics & Supplements'],
+    'Bath & Skin': ['Shampoos & Bath Gels', 'Baby Oils', 'Baby Powder', 'Soaps'],
+    'Wipes & Diapers': ['Wipes & Diapers'],
+    'Gift Packs': ['Gift Packs'],
+  },
+  sexualwellness: {
+    'Sexual Wellness': ['Supplements', 'Condoms'],
+  },
+  unani: {
+    'Unani Medicines': ['Unani Medicines'],
+    'Habbe & Qurs': ['Habbe & Qurs'],
+    'Majun & Jawarish': ['Majun & Jawarish'],
+    'Safoof, Labub & Kushta': ['Safoof, Labub & Kushta'],
+    'Sharbat, Sirka & Arq': ['Sharbat, Sirka & Arq'],
+    'Lauq & Saoot': ['Lauq & Saoot'],
+    'Khamira & Itrifal': ['Khamira & Itrifal'],
+    'Roghan & Oils': ['Roghan & Oils'],
+    'Unani Brands': ['Hamdard', 'New Shama', 'Dehlvi', 'Rex'],
+  },
+};
+
+// Helper function to get the group name for a leaf subcategory
+function getGroupNameForSubcategory(tabKey: string, leafSubcategory: string): string | null {
+  const grouped = GROUPED_SUBCATEGORIES_MAP[tabKey];
+  if (!grouped) return null;
+  
+  for (const [groupName, items] of Object.entries(grouped)) {
+    if (items.some(item => equalsIgnoreCase(item, leafSubcategory))) {
+      return groupName;
+    }
+  }
+  return null;
+}
+
+// Map URL category names to product types and tabs
+const CATEGORY_TO_TAB: Record<string, string> = {
+  'generic medicine': 'medicines',
+  'medicines': 'medicines',
+  'branded': 'medicines',
+  'generic': 'medicines',
+  'ayurveda': 'ayurveda',
+  'ayurvedic': 'ayurveda',
+  'homeopathy': 'homeopathy',
+  'nutrition': 'nutrition',
+  'personal care': 'personalcare',
+  'personalcare': 'personalcare',
+  'fitness': 'fitness',
+  'baby care': 'babycare',
+  'babycare': 'babycare',
+  'sexual wellness': 'sexualwellness',
+  'sexualwellness': 'sexualwellness',
+  'unani': 'unani',
+  'disease': 'disease',
+};
+
+const CATEGORY_TO_PRODUCT_TYPE: Record<string, string> = {
+  'medicines': 'Generic Medicine',
+  'ayurveda': 'Ayurveda Medicine',
+  'homeopathy': 'Homeopathy',
+  'nutrition': 'Nutrition',
+  'personalcare': 'Personal Care',
+  'fitness': 'Fitness',
+  'babycare': 'Baby Care',
+  'sexualwellness': 'Sexual Wellness',
+  'unani': 'Unani',
+};
+
 
 function normalizeCategory(category?: string) {
   const value = (category || '').trim().toLowerCase();
@@ -133,24 +256,55 @@ const TAB_CONFIG = [
   { key: 'medicines', label: 'Medicines', color: 'emerald' },
   { key: 'ayurveda', label: 'Ayurveda', color: 'amber' },
   { key: 'homeopathy', label: 'Homeopathy', color: 'pink' },
+  { key: 'nutrition', label: 'Nutrition', color: 'green' },
+  { key: 'personalcare', label: 'Personal Care', color: 'purple' },
+  { key: 'fitness', label: 'Fitness', color: 'blue' },
+  { key: 'babycare', label: 'Baby Care', color: 'rose' },
+  { key: 'sexualwellness', label: 'Sexual Wellness', color: 'red' },
+  { key: 'unani', label: 'Unani', color: 'indigo' },
+  { key: 'disease', label: 'Disease', color: 'emerald' },
 ];
 
 const COLOR_MAP: Record<string, { active: string; btn: string; tag: string; ring: string }> = {
   emerald: { active: 'bg-emerald-100 text-emerald-800', btn: 'bg-orange-500 hover:bg-orange-600', tag: 'bg-emerald-50 text-emerald-700', ring: 'border-emerald-500 text-emerald-700' },
   amber:   { active: 'bg-amber-100 text-amber-800',   btn: 'bg-amber-500 hover:bg-amber-600',   tag: 'bg-amber-50 text-amber-700',   ring: 'border-amber-500 text-amber-700' },
   pink:    { active: 'bg-pink-100 text-pink-800',     btn: 'bg-pink-500 hover:bg-pink-600',     tag: 'bg-pink-50 text-pink-700',     ring: 'border-pink-500 text-pink-700' },
+  green:   { active: 'bg-green-100 text-green-800',   btn: 'bg-green-500 hover:bg-green-600',   tag: 'bg-green-50 text-green-700',   ring: 'border-green-500 text-green-700' },
+  purple:  { active: 'bg-purple-100 text-purple-800', btn: 'bg-purple-500 hover:bg-purple-600', tag: 'bg-purple-50 text-purple-700', ring: 'border-purple-500 text-purple-700' },
+  blue:    { active: 'bg-blue-100 text-blue-800',     btn: 'bg-blue-500 hover:bg-blue-600',     tag: 'bg-blue-50 text-blue-700',     ring: 'border-blue-500 text-blue-700' },
+  rose:    { active: 'bg-rose-100 text-rose-800',     btn: 'bg-rose-500 hover:bg-rose-600',     tag: 'bg-rose-50 text-rose-700',     ring: 'border-rose-500 text-rose-700' },
+  red:     { active: 'bg-red-100 text-red-800',       btn: 'bg-red-500 hover:bg-red-600',       tag: 'bg-red-50 text-red-700',       ring: 'border-red-500 text-red-700' },
+  indigo:  { active: 'bg-indigo-100 text-indigo-800', btn: 'bg-indigo-500 hover:bg-indigo-600', tag: 'bg-indigo-50 text-indigo-700', ring: 'border-indigo-500 text-indigo-700' },
 };
+
+function getProductPageHref(product: Product): string {
+  const productType = (product.productType || '').trim().toLowerCase();
+  
+  // Map product type to page and category
+  if (productType === 'ayurveda medicine' || productType === 'ayurveda') {
+    return `/ayurveda/${product._id}`;
+  }
+  if (productType === 'homeopathy') {
+    return `/homeopathy/${product._id}`;
+  }
+  
+  // All other types go to medicines page
+  return `/medicines/${product._id}`;
+}
 
 function MedicinesContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const urlCategory = searchParams.get('category') || '';
-  const urlSubcategory = searchParams.get('subcategory') || '';
+  // Decode URL parameters to handle encoded characters (spaces, special chars)
+  const rawUrlCategory = searchParams.get('category') || '';
+  const urlCategory = rawUrlCategory ? decodeURIComponent(rawUrlCategory) : '';
+  const rawUrlSubcategory = searchParams.get('subcategory') || '';
+  const urlSubcategory = rawUrlSubcategory ? decodeURIComponent(rawUrlSubcategory) : '';
   const urlSearch = searchParams.get('search') || '';
   const productsSectionRef = useRef<HTMLDivElement | null>(null);
   const hasAutoScrolledRef = useRef(false);
 
-  const [activeTab, setActiveTab] = useState<'medicines' | 'ayurveda' | 'homeopathy'>('medicines');
+  const [activeTab, setActiveTab] = useState<'medicines' | 'ayurveda' | 'homeopathy' | 'nutrition' | 'personalcare' | 'fitness' | 'babycare' | 'sexualwellness' | 'unani' | 'disease'>('medicines');
   const [sortOrder, setSortOrder] = useState('featured');
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -170,10 +324,11 @@ function MedicinesContent() {
   // Map URL param category → tab
   useEffect(() => {
     if (!urlCategory) return;
-    const lower = urlCategory.toLowerCase();
-    if (lower === 'ayurveda') setActiveTab('ayurveda');
-    else if (lower === 'homeopathy') setActiveTab('homeopathy');
-    else setActiveTab('medicines');
+    // urlCategory is already decoded at this point
+    const lower = urlCategory.toLowerCase().trim();
+    const mappedTab = CATEGORY_TO_TAB[lower] || 'medicines';
+    console.log('[URL → TAB MAPPING]', { urlCategory, lower, mappedTab, CATEGORY_TO_TAB_value: CATEGORY_TO_TAB[lower] });
+    setActiveTab(mappedTab as any);
   }, [urlCategory]);
 
   useEffect(() => {
@@ -183,6 +338,7 @@ function MedicinesContent() {
     }
 
     const candidates = TAB_SIDEBAR[activeTab] || [];
+    // urlSubcategory is already decoded at this point
     const found = candidates.find(
       (item) => item.toLowerCase() === urlSubcategory.toLowerCase()
     );
@@ -251,24 +407,45 @@ function MedicinesContent() {
 
   // ── Filter products for current tab + sidebar category ──────────────────
   const displayed = useMemo(() => {
+    if (urlSubcategory && activeTab) {
+      console.log('[FILTERING]', {
+        activeTab,
+        urlCategory,
+        urlSubcategory,
+        totalProducts: products.length,
+        hasGroupMapping: !!GROUPED_SUBCATEGORIES_MAP[activeTab],
+      });
+    }
+    
     const tabFiltered = products.filter((p) => {
       const normalizedCategory = normalizeCategory(p.category);
       const productType = (p.productType || '').trim();
       const normalizedType = productType.toLowerCase();
       const isLabTestType = normalizedType === 'lab tests' || normalizedType === 'lab test';
+      
+      // Check product type for all categories
+      const isGenericMedicineType = productType === 'Generic Medicine' || normalizedType === 'generic medicine';
       const isAyurvedaType = productType === 'Ayurveda Medicine' || normalizedCategory === 'Ayurveda' || AYUR_CATEGORIES.includes(normalizedCategory);
       const isHomeopathyType = productType === 'Homeopathy' || normalizedCategory === 'Homeopathy' || HOMEO_CATEGORIES.includes(normalizedCategory);
+      const isNutritionType = productType === 'Nutrition' || normalizedType === 'nutrition';
+      const isPersonalCareType = productType === 'Personal Care' || normalizedType === 'personal care';
+      const isFitnessType = productType === 'Fitness' || normalizedType === 'fitness';
+      const isBabyCareType = productType === 'Baby Care' || normalizedType === 'baby care';
+      const isSexualWellnessType = productType === 'Sexual Wellness' || normalizedType === 'sexual wellness';
+      const isUnaniType = productType === 'Unani' || normalizedType === 'unani';
 
-      if (activeTab === 'ayurveda') {
-        return isAyurvedaType;
-      }
+      // Filter by active tab
+      if (activeTab === 'ayurveda') return isAyurvedaType;
+      if (activeTab === 'homeopathy') return isHomeopathyType;
+      if (activeTab === 'nutrition') return isNutritionType;
+      if (activeTab === 'personalcare') return isPersonalCareType;
+      if (activeTab === 'fitness') return isFitnessType;
+      if (activeTab === 'babycare') return isBabyCareType;
+      if (activeTab === 'sexualwellness') return isSexualWellnessType;
+      if (activeTab === 'unani') return isUnaniType;
 
-      if (activeTab === 'homeopathy') {
-        return isHomeopathyType;
-      }
-
-      // Medicines tab should include all non-lab products except Ayurveda/Homeopathy buckets.
-      return !isLabTestType && !isAyurvedaType && !isHomeopathyType;
+      // Medicines tab - include generic medicines and other non-specialized products
+      return !isLabTestType && !isAyurvedaType && !isHomeopathyType && !isNutritionType && !isPersonalCareType && !isFitnessType && !isBabyCareType && !isSexualWellnessType && !isUnaniType;
     });
 
     const trimmedSearch = deferredSearch.trim();
@@ -300,6 +477,18 @@ function MedicinesContent() {
         normalizeCategory(p.category),
       ];
 
+      // Special handling for Disease category
+      if (equalsIgnoreCase(urlCategory, 'disease')) {
+        // For disease, check diseaseCategory field specifically
+        return !!p.diseaseCategory && equalsIgnoreCase(p.diseaseCategory, urlCategory);
+      }
+
+      // Check if URL category maps to a product type
+      const mappedProductType = CATEGORY_TO_PRODUCT_TYPE[urlCategory.toLowerCase().trim()];
+      if (mappedProductType) {
+        return equalsIgnoreCase(p.productType, mappedProductType);
+      }
+
       if (equalsIgnoreCase(urlCategory, 'ayurveda')) {
         return categoryFields.some((field) => equalsIgnoreCase(field, 'Ayurveda')) || equalsIgnoreCase(p.productType, 'Ayurveda Medicine');
       }
@@ -319,6 +508,24 @@ function MedicinesContent() {
       );
     })();
 
+      // urlSubcategory is already decoded at this point
+      // Check for grouped subcategory mapping (e.g., "Shampoos & Bath Gels" → "Bath & Skin")
+      const groupNameForLeaf = getGroupNameForSubcategory(activeTab, urlSubcategory);
+      
+      // DEBUG: Detailed logging for subcategory filtering
+      if (urlSubcategory && groupNameForLeaf && sidebarCat !== 'All') {
+        console.log('[SUBCATEGORY FILTER]', {
+          activeTab,
+          urlSubcategory,
+          groupNameForLeaf,
+          'p.name': p.name,
+          'p.subcategory': p.subcategory,
+          'p.category': p.category,
+          'p.productType': p.productType,
+          'Match via leaf': equalsIgnoreCase(p.subcategory, groupNameForLeaf),
+        });
+      }
+      
       const urlSubcategoryMatch = !urlSubcategory || fieldMatchesAny(
         [
           p.category,
@@ -331,7 +538,7 @@ function MedicinesContent() {
           p.description,
         ],
         urlSubcategory
-      );
+      ) || (groupNameForLeaf && equalsIgnoreCase(p.subcategory, groupNameForLeaf));
 
       const quantityText = p.quantity !== undefined && p.quantity !== null ? String(p.quantity) : '';
       const matchSearch =
@@ -454,7 +661,7 @@ function MedicinesContent() {
                   placeholder="🔍 Search by product name, brand..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full border-2 border-emerald-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition text-sm"
+                  className="w-full border-2 border-emerald-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition text-sm placeholder:text-gray-700"
                 />
               </div>
             </div>
@@ -487,7 +694,7 @@ function MedicinesContent() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                {activeTab === 'medicines' ? 'Medicines' : activeTab === 'ayurveda' ? 'Ayurveda' : 'Homeopathy'}
+                {TAB_CONFIG.find((t) => t.key === activeTab)?.label || 'Products'}
               </h1>
               <p className="text-gray-600 mt-1 text-sm">
                 {sortedDisplayed.length} {sortedDisplayed.length === 1 ? 'product' : 'products'} available
@@ -553,7 +760,7 @@ function MedicinesContent() {
                   <article
                     key={product._id}
                     className="group w-full max-w-56 mx-auto bg-white/95 border border-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition duration-300 cursor-pointer"
-                    onClick={() => router.push(`/medicines/${product._id}`)}
+                    onClick={() => router.push(getProductPageHref(product))}
                   >
                     {/* Image Container */}
                     <div className="relative h-40 bg-linear-to-br from-white to-slate-50 flex items-center justify-center overflow-hidden">

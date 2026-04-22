@@ -95,6 +95,7 @@ const doctorSchema = new mongoose.Schema(
       default: 'General Medicine',
     },
     specialization: { type: String, default: '' },
+    studyPlace: { type: String, default: '' }, // Where doctor completed study
     experience: { type: Number, default: 0 }, // years
     qualification: { type: String, default: '' },
     bio: { type: String, default: '' },

@@ -68,6 +68,7 @@ export default function AdminSidebar() {
       { label: 'Doctor Verification', href: '/admin/doctors', icon: Icons.consultations },
       { label: 'Vendors', href: '/admin/vendors', icon: Icons.vendors },
     { label: 'Medicines', href: '/admin/medicines', icon: Icons.medicines },
+    { label: 'Categories', href: '/admin/categories', icon: Icons.medicines },
     { label: 'Featured Products', href: '/admin/featured-products', icon: Icons.medicines },
     { label: 'Consultations', href: '/admin/consultations', icon: Icons.consultations },
     { label: 'Analytics', href: '/admin/analytics', icon: Icons.analytics },

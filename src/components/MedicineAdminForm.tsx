@@ -13,7 +13,7 @@ interface Medicine {
   category: string;
   stock: number;
   description?: string;
-  image?: string;
+  images?: string[];
   brand?: string;
   manufacturer?: string;
   dosage?: string;
@@ -34,8 +34,9 @@ export default function MedicineAdminForm({
   onSuccess,
   onCancel,
 }: MedicineFormProps) {
-  const { uploadImage, uploading, error: uploadError, previewUrl } = useImageUpload();
-  const [imageUrl, setImageUrl] = useState(initialData?.image || '');
+  const { uploadImage, uploading, error: uploadError } = useImageUpload();
+  const [images, setImages] = useState<string[]>(initialData?.images || []);
+  const [previews, setPreviews] = useState<string[]>(initialData?.images || []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -46,7 +47,7 @@ export default function MedicineAdminForm({
       category: '',
       stock: 0,
       description: '',
-      image: '',
+      images: [],
       brand: '',
       manufacturer: '',
       dosage: '',
@@ -56,14 +57,27 @@ export default function MedicineAdminForm({
   );
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+    const files = e.target.files;
+    if (!files) return;
+    if (images.length + files.length > 4) {
+      setError('You can upload up to 4 images.');
+      return;
+    }
+    setError('');
+    const newImages: string[] = [];
+    const newPreviews: string[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       const result = await uploadImage(file);
       if (result?.success && result.imageUrl) {
-        setImageUrl(result.imageUrl);
-        setError('');
+        newImages.push(result.imageUrl);
+        newPreviews.push(result.imageUrl);
+      } else {
+        setError('Failed to upload one or more images.');
       }
     }
+    setImages(prev => [...prev, ...newImages].slice(0, 4));
+    setPreviews(prev => [...prev, ...newPreviews].slice(0, 4));
   };
 
   const handleInputChange = (
@@ -90,8 +104,8 @@ export default function MedicineAdminForm({
     e.preventDefault();
     setError('');
 
-    if (!imageUrl && !medicineId) {
-      setError('Please upload an image');
+    if (images.length === 0 && !medicineId) {
+      setError('Please upload at least one image');
       return;
     }
 
@@ -115,7 +129,7 @@ export default function MedicineAdminForm({
 
       const submitData = {
         ...formData,
-        image: imageUrl,
+        images,
       };
 
       const url = medicineId
@@ -154,14 +168,15 @@ export default function MedicineAdminForm({
           category: '',
           stock: 0,
           description: '',
-          image: '',
+          images: [],
           brand: '',
           manufacturer: '',
           dosage: '',
           healthConcerns: [],
           requiresPrescription: false,
         });
-        setImageUrl('');
+        setImages([]);
+        setPreviews([]);
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred');
@@ -182,43 +197,53 @@ export default function MedicineAdminForm({
           {/* Image Upload Section */}
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 bg-gray-50">
             <label className="block text-sm font-semibold text-gray-700 mb-3">
-              Medicine Image {!medicineId && '*'}
+              Medicine Images (up to 4) {!medicineId && '*'}
             </label>
-
             <input
               type="file"
               accept="image/*"
+              multiple
               onChange={handleImageSelect}
-              disabled={uploading}
+              disabled={uploading || images.length >= 4}
               className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
             />
-
             {uploadError && (
               <p className="mt-2 text-red-600 text-sm font-medium">
                 ❌ Upload Error: {uploadError}
               </p>
             )}
-
             {uploading && (
               <p className="mt-2 text-blue-600 text-sm font-medium">
                 ⏳ Uploading image...
               </p>
             )}
-
-            {(previewUrl || imageUrl) && (
-              <div className="mt-4">
-                <p className="text-sm text-gray-600 mb-2">Preview:</p>
-                <img
-                  src={previewUrl || imageUrl}
-                  alt="Medicine"
-                  className="w-40 h-40 object-cover rounded-lg border border-gray-200"
-                />
-                {imageUrl && (
-                  <p className="text-xs text-green-600 mt-2">
-                    ✅ Image ready to save
-                  </p>
-                )}
+            {previews.length > 0 && (
+              <div className="mt-4 grid grid-cols-2 gap-4">
+                {previews.map((url, idx) => (
+                  <div key={idx} className="flex flex-col items-center">
+                    <img
+                      src={url}
+                      alt={`Medicine ${idx + 1}`}
+                      className="w-32 h-32 object-cover rounded-lg border border-gray-200"
+                    />
+                    <button
+                      type="button"
+                      className="mt-2 text-xs text-red-600 hover:underline"
+                      onClick={() => {
+                        setImages(prev => prev.filter((_, i) => i !== idx));
+                        setPreviews(prev => prev.filter((_, i) => i !== idx));
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
               </div>
+            )}
+            {images.length >= 4 && (
+              <p className="mt-2 text-yellow-600 text-sm font-medium">
+                Maximum 4 images allowed.
+              </p>
             )}
           </div>
 

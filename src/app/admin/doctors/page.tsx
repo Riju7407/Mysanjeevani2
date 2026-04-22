@@ -16,6 +16,7 @@ interface DoctorRequest {
   registrationCertificateUrl?: string;
   approvalStatus: string;
   createdAt: string;
+  studyPlace?: string;
 }
 
 export default function AdminDoctors() {
@@ -277,6 +278,11 @@ export default function AdminDoctors() {
                     <p className="text-gray-600 text-sm">
                       <span className="font-medium">Registration Number:</span> {doctor.registrationNumber}
                     </p>
+                    {doctor.studyPlace && (
+                      <p className="text-gray-600 text-sm">
+                        <span className="font-medium">Study Place:</span> {doctor.studyPlace}
+                      </p>
+                    )}
                     <p className="text-gray-600 text-sm">
                       <span className="font-medium">Document Type:</span>{' '}
                       {(doctor.identityDocumentType || 'other').replace('-', ' ').toUpperCase()}

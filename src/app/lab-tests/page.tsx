@@ -64,8 +64,8 @@ interface BookingForm {
 const CATEGORIES = ['all', 'general', 'diabetic', 'cardiac', 'thyroid', 'liver', 'kidney', 'vitamin', 'infection', 'womens-health'];
 
 const CATEGORY_LABELS: Record<string, string> = {
-  all: '🔍 All Tests', general: '🧪 General', diabetic: '🩸 Diabetes', cardiac: '❤️ Cardiac', thyroid: '🦋 Thyroid',
-  liver: '🫘 Liver', kidney: '💧 Kidney', vitamin: '☀️ Vitamins', infection: '🦠 Infection', 'womens-health': '💜 Women',
+  all: 'All Tests', general: 'General', diabetic: 'Diabetes', cardiac: 'Cardiac', thyroid: 'Thyroid',
+  liver: 'Liver', kidney: 'Kidney', vitamin: 'Vitamins', infection: 'Infection', 'womens-health': 'Women',
 };
 
 const SORT_OPTIONS = [
@@ -541,7 +541,7 @@ function LabTestsPageContent() {
                   placeholder="🔍 Search lab tests, health packages, categories..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full border-2 border-emerald-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition text-sm"
+                  className="w-full border-2 border-emerald-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition text-sm placeholder:text-gray-700"
                 />
               </div>
             </div>
@@ -632,7 +632,7 @@ function LabTestsPageContent() {
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900">
-                    {category === 'all' ? '🧪 All Lab Tests' : `${CATEGORY_LABELS[category]}`}
+                    {category === 'all' ? 'All Lab Tests' : `${CATEGORY_LABELS[category]}`}
                   </h1>
                   <p className="text-gray-600 mt-1 text-sm">
                     {filteredAndSortedTests.length} {filteredAndSortedTests.length === 1 ? 'test' : 'tests'} available

@@ -50,10 +50,38 @@ export default function FeaturedProductsSection() {
       return;
     }
 
-    let categoryQuery = 'medicines';
-    if (category === 'Ayurveda Medicine') categoryQuery = 'ayurveda';
-    else if (category === 'Homeopathy') categoryQuery = 'homeopathy';
+    // Map category to URL parameter
+    const categoryMap: Record<string, string> = {
+      'Ayurveda Medicine': 'ayurveda',
+      'Ayurveda': 'ayurveda',
+      'Homeopathy': 'homeopathy',
+      'Nutrition': 'nutrition',
+      'Personal Care': 'personal-care',
+      'Fitness': 'fitness',
+      'Sexual Wellness': 'sexual-wellness',
+      'Baby Care': 'baby-care',
+      'Unani': 'unani',
+      'Generic Medicine': 'medicines',
+    };
 
+    let categoryQuery = categoryMap[category] || 'medicines';
+
+    // For Ayurveda and Homeopathy, route to dedicated pages
+    if (categoryQuery === 'ayurveda') {
+      const params = new URLSearchParams();
+      if (subcategory) params.set('subcategory', subcategory);
+      router.push(`/ayurveda?${params.toString()}`);
+      return;
+    }
+
+    if (categoryQuery === 'homeopathy') {
+      const params = new URLSearchParams();
+      if (subcategory) params.set('subcategory', subcategory);
+      router.push(`/homeopathy?${params.toString()}`);
+      return;
+    }
+
+    // For all other categories, use medicines page with category filter
     const params = new URLSearchParams();
     params.set('category', categoryQuery);
     if (subcategory) params.set('subcategory', subcategory);

@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { User } from '@/lib/models/User';
+import { Doctor } from '@/lib/models/Doctor';
 import { Vendor } from '@/lib/models/Vendor';
 import { PhoneOtp } from '@/lib/models/PhoneOtp';
 import {
@@ -26,6 +27,7 @@ export async function POST(request: NextRequest) {
     const fullName = String(body?.fullName || '').trim();
     const email = String(body?.email || '').trim();
     const role = normalizeRole(String(body?.role || 'user')) as PhoneLoginRole;
+    const studyPlace = String(body?.studyPlace || '').trim();
 
     // Validation
     if (!rawPhone || !otp || !fullName) {
@@ -129,6 +131,7 @@ export async function POST(request: NextRequest) {
         verifiedEmail: !!email,
       });
     } else if (role === 'doctor') {
+      // Create User
       newUser = await User.create({
         fullName,
         phone: normalizedPhone,
@@ -137,6 +140,16 @@ export async function POST(request: NextRequest) {
         isVerified: true,
         isPhoneVerified: true,
         isApproved: false, // Needs doctor approval
+      });
+      // Create Doctor profile
+      await Doctor.create({
+        userId: newUser._id,
+        name: fullName,
+        email: email || '',
+        phone: normalizedPhone,
+        registrationNumber: '',
+        studyPlace: studyPlace || '',
+        approvalStatus: 'pending',
       });
     } else {
       // Regular user

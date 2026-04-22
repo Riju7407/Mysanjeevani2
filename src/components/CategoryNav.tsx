@@ -348,6 +348,12 @@ export default function CategoryNav({ isMobile = false }: { isMobile?: boolean }
       return buildHref('/homeopathy', { category: subcategoryName });
     }
 
+    if (categoryName === 'Disease') {
+      // For Disease, use category param with the disease category name
+      return buildHref('/medicines', { category: 'disease', subcategory: subcategoryName });
+    }
+
+    // For all other categories (Nutrition, Personal Care, Fitness, etc.)
     return buildHref('/medicines', { category: categoryName.toLowerCase(), subcategory: subcategoryName });
   };
 

@@ -113,8 +113,134 @@ const FEATURED_CATEGORY_MAP = {
 
 type FeaturedCategory = keyof typeof FEATURED_CATEGORY_MAP;
 
+type FeaturedCategoryHierarchy = Record<string, readonly string[]>;
+
+const FEATURED_CATEGORY_GROUPED_MAP: Partial<Record<FeaturedCategory, FeaturedCategoryHierarchy>> = {
+  'Ayurveda Medicine': {
+    Medicines: ['Himalaya', 'Organic India', 'Baidyanath', 'Dabur', 'Zandu', 'Charak', 'Aimil'],
+    'Single Remedies': [
+      'Ras & Sindoor',
+      'Bhasm & Pishti',
+      'Vati, Gutika & Guggulu',
+      'Asava Arishta & Kadha',
+      'Loha & Mandur',
+      'Churan, Powder, Avaleha & Pak',
+      'Tailam & Ghrita',
+    ],
+    'Herbal Food & Juices': ['Chyawanprash', 'Honey', 'Digestives', 'Herbal & Vegetable Juice'],
+  },
+  Homeopathy: {
+    Medicines: ['SBL', 'Dr. Reckeweg', 'Willmar Schwabe', 'Adel Pekana', 'Schwabe India', 'Bjain', 'R S Bhargava', 'Baksons', 'REPL', 'New Life'],
+    Dilutions: ['3X', '6X', '3 CH', '6 CH', '12 CH', '30 CH', '200 CH', '1000 CH', '10M CH', '50M CH', 'CM CH'],
+    Categories: ['Mother Tinctures', 'Biochemic', 'Triturations', 'Bio Combination', 'Bach Flower', 'Homeopathy Kits', 'Milleimal LM Potency'],
+    Cosmetics: ['Hair Care', 'Skin Care', 'Oral Care'],
+  },
+  Nutrition: {
+    'Sports Nutrition': ['Proteins', 'Fat Burner', 'Weight Gainers', 'Pre Post Workout', 'Aminos', 'Creatines'],
+    'Organic Products': ['Organic Foods', 'Coffee & Tea', 'Ghee', 'Atta/Flour'],
+    'Health Food & Drinks': ['Spreads, Sugar & Honey', 'Oils', 'Health Drinks', 'Healthy Snacks & Bars', 'Sugar Free', 'Murabba', 'Edible Seeds'],
+  },
+  'Personal Care': {
+    'Aroma Oils': ['Essential Oils'],
+    'Skin Care': ['Face', 'Body', 'Foot Care', 'Sanitizers & Hand Wash'],
+    'Hair Care': ['Shampoo & Conditioners', 'Hair Oils & Creams', 'Hair Serum & Mask', 'Hair Color & Dyes', 'Henna Mehndi'],
+    'Mens Grooming': ['Beard Oils and Wax', 'Shaving Cream & Gels', 'Men Wellness'],
+    'Bath & Shower': ['Shower Gel & Hand Wash', 'Soaps', 'Talcs & Deos'],
+    'Oral Care': ['Toothpaste', 'Gums Care'],
+    'Female Care': ['Intimate Care', 'Pregnancy & Maternity Care'],
+  },
+  Fitness: {
+    'Supports & Splints': ['Shoulder Support', 'Elbow Support', 'Forearm Support', 'Wrist Support', 'Chest Support', 'Cervical Support', 'Back Support', 'Abdominal Support', 'Thigh Support', 'Knee Support', 'Calf Support', 'Ankle Support', 'Finger Splint', 'Compression Stockings', 'Insoles & Heel Cups'],
+    'Health Devices': ['Weighing Scales', 'BP Monitors', 'Thermometer', 'Respiratory Care', 'Activity Monitor', 'Hot and Cold Pads & Bottles'],
+    'Fitness Equipment': ['Exercisers', 'Weights'],
+    'Hospital Supplies': ['Stethoscopes', 'Protective Gears', 'Hospital Beds'],
+    'Support Devices': ['Walking Sticks', 'Massagers', 'Disability Aids'],
+  },
+  'Sexual Wellness': {
+    'Sexual Wellness': ['Sexual Supplements', 'Condoms'],
+  },
+  Disease: {
+    Mind: ['Addiction', 'Anxiety & Depression', 'Sleeplessness', 'Weak Memory'],
+    Face: ['Acne & Pimples', 'Dark Circles & Marks', 'Wrinkles & Aging'],
+    Hair: ['Hair Fall', 'Dandruff', 'Alopecia & Bald Patches', 'Premature Graying', 'Lice'],
+    'Eyes & Ear': ['Conjunctivitis', 'Cataract', 'Eye Strain', 'Glaucoma', 'Styes', 'Ear Pain', 'Ear Wax'],
+    'Nose & Throat': ['Allergic Rhinitis', 'Sneezing & Running Nose', 'Sinusitis & Blocked Nose', 'Snoring', 'Tonsillitis & Throat Pain', 'Laryngitis & Hoarse Voice'],
+    'Nervous System': ['Headache & Migraine', 'Vertigo/Motion Sickness', 'Neuralgia & Nerve Pain', 'Epilepsy & Fits'],
+    'Mouth, Gums & Teeth': ['Bad Breath', 'Bleeding Gum/Pyorrhea', 'Mouth Ulcers/Aphthae', 'Cavities & Tooth Pain', 'Stammering'],
+    Respiratory: ['Asthma', 'Bronchitis', 'Cough', 'Pneumonia'],
+    'Rectum & Piles': ['Constipation', 'Piles & Fissures', 'Loose Motions/Diarrhoea', 'IBS & Colitis', 'Fistula', 'Worms'],
+    'Digestive System': ['Indigestion/Acidity/Gas', 'Loss of Appetite', 'Jaundice & Fatty Liver', 'Stomach Pain & Colic', 'Vomiting & Nausea', 'Gall Stones', 'Appendicitis', 'Hernia'],
+    'Heart & Cardiovascular': ['Heart Tonics', 'Chest Pain & Angina', 'Cholesterol & Triglyceride'],
+    'Urinary System': ['Urinary Tract Infection', 'Kidney Stone', 'Frequent Urination'],
+    'Bone, Joint & Muscles': ['Arthritis & Joint Pains', 'Back & Knee Pain', 'Cervical Spondylosis', 'Injuries & Fractures', 'Gout & Uric Acid', 'Osteoporosis', 'Sciatica', 'Heel Pain'],
+    'Skin & Nails': ['Bed Sores', 'Boils & Abscesses', 'Burns', 'Cyst & Tumor', 'Eczema', 'Herpes', 'Nail Fungus', 'Psoriasis & Dry Skin', 'Rash/Itch/Urticaria/Hives', 'Vitiligo & Leucoderma', 'Warts & Corns'],
+    'Fevers & Flu': ['Dengue', 'Flu & Fever', 'Malaria', 'Typhoid'],
+    'Male Problems': ['Hydrocele', 'Premature Ejaculation', 'Impotency', 'Prostate Enlargement'],
+    'Female Problems': ['Underdeveloped Breasts', 'Enlarged Breasts', 'Leucorrhoea', 'Excessive Menses', 'Vaginitis', 'Menopause', 'Painful, Delayed & Scanty Menses'],
+    'Children Problems': ['Low Height', 'Autism', 'Bed Wetting', 'Immunity', 'Teething Troubles', 'Irritability & Hyperactive'],
+    'Lifestyle Diseases': ['Diabetes', 'Blood Pressure', 'Obesity', 'Thyroid', 'Hang Over', 'Varicose Veins'],
+    'Old Age Problems': ['Parkinsons & Trembling', 'Involuntary Urination', 'Alzheimers'],
+    Tonics: ['Anaemia', 'Blood Purifiers', 'General Tonics', 'Weakness & Fatigue'],
+  },
+  Unani: {
+    'Unani Categories': ['Habbe & Qurs', 'Majun & Jawarish', 'Safoof, Labub & Kushta', 'Sharbat, Sirka & Arq', 'Lauq & Saoot', 'Khamira & Itrifal', 'Roghan & Oils'],
+    Brands: ['Hamdard', 'New Shama', 'Dehlvi', 'Rex'],
+  },
+  'Baby Care': {
+    'Baby Care': ['Tonics & Supplements', 'Shampoos & Bath Gels', 'Baby Oils', 'Baby Powder', 'Soaps', 'Wipes & Diapers', 'Gift Packs'],
+  },
+};
+
+function getCategoryHierarchy(category: FeaturedCategory): FeaturedCategoryHierarchy {
+  const grouped = FEATURED_CATEGORY_GROUPED_MAP[category];
+  if (grouped && Object.keys(grouped).length > 0) {
+    return grouped;
+  }
+
+  return {
+    'All Items': FEATURED_CATEGORY_MAP[category],
+  };
+}
+
+function getDefaultSubcategoryLevel1(category: FeaturedCategory): string {
+  return Object.keys(getCategoryHierarchy(category))[0] || '';
+}
+
+function getDefaultSubcategoryLevel2(category: FeaturedCategory, level1: string): string {
+  return getCategoryHierarchy(category)[level1]?.[0] || '';
+}
+
+function resolveSubcategoryPath(category: FeaturedCategory, subcategory?: string) {
+  const hierarchy = getCategoryHierarchy(category);
+  const level1Keys = Object.keys(hierarchy);
+  const fallbackLevel1 = level1Keys[0] || '';
+
+  if (!subcategory) {
+    return {
+      subcategoryLevel1: fallbackLevel1,
+      subcategoryLevel2: getDefaultSubcategoryLevel2(category, fallbackLevel1),
+    };
+  }
+
+  for (const level1 of level1Keys) {
+    const options = hierarchy[level1] || [];
+    if (options.includes(subcategory)) {
+      return {
+        subcategoryLevel1: level1,
+        subcategoryLevel2: subcategory,
+      };
+    }
+  }
+
+  return {
+    subcategoryLevel1: fallbackLevel1,
+    subcategoryLevel2: subcategory,
+  };
+}
+
 function getDefaultSubcategory(category: FeaturedCategory): string {
-  return FEATURED_CATEGORY_MAP[category][0];
+  const level1 = getDefaultSubcategoryLevel1(category);
+  return getDefaultSubcategoryLevel2(category, level1);
 }
 
 const PRESET_CARD_COLORS = [
@@ -148,7 +274,8 @@ export default function FeaturedProductsAdmin() {
   const [formData, setFormData] = useState({
     brandName: '',
     category: 'Generic Medicine' as FeaturedCategory,
-    subcategory: getDefaultSubcategory('Generic Medicine'),
+    subcategoryLevel1: getDefaultSubcategoryLevel1('Generic Medicine'),
+    subcategoryLevel2: getDefaultSubcategory('Generic Medicine'),
     cardBgColor: '#ffffff',
   });
 
@@ -278,7 +405,7 @@ export default function FeaturedProductsAdmin() {
           body: JSON.stringify({
             brandName: formData.brandName,
             category: formData.category,
-            subcategory: formData.subcategory,
+            subcategory: formData.subcategoryLevel2 || formData.subcategoryLevel1,
             cardBgColor: formData.cardBgColor,
             imageUrl: currentProduct.imageUrl,
           }),
@@ -383,7 +510,7 @@ export default function FeaturedProductsAdmin() {
             body: JSON.stringify({
               brandName: formData.brandName,
               category: formData.category,
-              subcategory: formData.subcategory,
+              subcategory: formData.subcategoryLevel2 || formData.subcategoryLevel1,
               cardBgColor: formData.cardBgColor,
               imageUrl: uploadData.url,
               cloudinaryPublicId: uploadData.publicId,
@@ -471,13 +598,15 @@ export default function FeaturedProductsAdmin() {
 
   // Handle edit
   const handleEdit = (product: FeaturedProduct) => {
+    const category = (product.category as FeaturedCategory) || 'Generic Medicine';
+    const path = resolveSubcategoryPath(category, product.subcategory);
+
     setEditingId(product._id);
     setFormData({
       brandName: product.brandName,
-      category: (product.category as FeaturedCategory) || 'Generic Medicine',
-      subcategory:
-        product.subcategory ||
-        getDefaultSubcategory(((product.category as FeaturedCategory) || 'Generic Medicine')),
+      category,
+      subcategoryLevel1: path.subcategoryLevel1,
+      subcategoryLevel2: path.subcategoryLevel2,
       cardBgColor: product.cardBgColor || '#ffffff',
     });
     setShowModal(true);
@@ -488,7 +617,8 @@ export default function FeaturedProductsAdmin() {
     setFormData({
       brandName: '',
       category: 'Generic Medicine',
-      subcategory: getDefaultSubcategory('Generic Medicine'),
+      subcategoryLevel1: getDefaultSubcategoryLevel1('Generic Medicine'),
+      subcategoryLevel2: getDefaultSubcategory('Generic Medicine'),
       cardBgColor: '#ffffff',
     });
     setEditingId(null);
@@ -503,7 +633,7 @@ export default function FeaturedProductsAdmin() {
     <div className="min-h-screen bg-slate-50">
       <main className="overflow-auto">
         {/* Header Section */}
-        <div className="sticky top-0 z-40 bg-gradient-to-r from-blue-600 to-blue-700 shadow-lg">
+        <div className="sticky top-0 z-40 bg-linear-to-r from-blue-600 to-blue-700 shadow-lg">
           <div className="max-w-7xl mx-auto px-6 py-6">
             <div className="flex justify-between items-start gap-4">
               <div>
@@ -607,7 +737,7 @@ export default function FeaturedProductsAdmin() {
                     style={{ backgroundColor: product.cardBgColor || '#ffffff' }}
                   >
                     {/* Image Container */}
-                    <div className="relative bg-gradient-to-br from-slate-100 to-slate-200 h-64 overflow-hidden">
+                    <div className="relative bg-linear-to-br from-slate-100 to-slate-200 h-64 overflow-hidden">
                       <img
                         src={product.imageUrl}
                         alt={product.brandName}
@@ -674,7 +804,7 @@ export default function FeaturedProductsAdmin() {
           ) : (
             <div className="bg-white rounded-lg shadow overflow-hidden border border-slate-200">
               <table className="w-full">
-                <thead className="bg-gradient-to-r from-slate-800 to-slate-900 text-white">
+                <thead className="bg-linear-to-r from-slate-800 to-slate-900 text-white">
                   <tr>
                     <th className="px-6 py-4 text-left font-bold">Brand Name</th>
                     <th className="px-6 py-4 text-left font-bold">Category</th>
@@ -752,7 +882,7 @@ export default function FeaturedProductsAdmin() {
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
-            <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6 flex justify-between items-center border-b border-slate-200">
+            <div className="sticky top-0 bg-linear-to-r from-blue-600 to-blue-700 px-8 py-6 flex justify-between items-center border-b border-slate-200">
               <h2 className="text-2xl font-black text-white">
                 {editingId ? '✎ Edit Product' : '➕ Add New Product'}
               </h2>
@@ -793,10 +923,12 @@ export default function FeaturedProductsAdmin() {
                     value={formData.category}
                     onChange={(e) => {
                       const category = e.target.value as FeaturedCategory;
+                      const subcategoryLevel1 = getDefaultSubcategoryLevel1(category);
                       setFormData({
                         ...formData,
                         category,
-                        subcategory: getDefaultSubcategory(category),
+                        subcategoryLevel1,
+                        subcategoryLevel2: getDefaultSubcategoryLevel2(category, subcategoryLevel1),
                       });
                     }}
                     className="w-full px-5 py-3 border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-semibold"
@@ -814,17 +946,65 @@ export default function FeaturedProductsAdmin() {
                     Subcategory <span className="text-red-500">*</span>
                   </label>
                   <select
-                    value={formData.subcategory}
-                    onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
+                    value={formData.subcategoryLevel1}
+                    onChange={(e) => {
+                      const subcategoryLevel1 = e.target.value;
+                      setFormData({
+                        ...formData,
+                        subcategoryLevel1,
+                        subcategoryLevel2: getDefaultSubcategoryLevel2(formData.category, subcategoryLevel1),
+                      });
+                    }}
                     className="w-full px-5 py-3 border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-semibold"
                     required
                   >
-                    {FEATURED_CATEGORY_MAP[formData.category].map((subcategory) => (
+                    {Object.keys(getCategoryHierarchy(formData.category)).map((subcategory) => (
                       <option key={subcategory} value={subcategory}>
                         {subcategory}
                       </option>
                     ))}
                   </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wide">
+                    Subcategory&apos;s Subcategory <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.subcategoryLevel2}
+                    onChange={(e) => setFormData({ ...formData, subcategoryLevel2: e.target.value })}
+                    className="w-full px-5 py-3 border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-semibold"
+                    required
+                  >
+                    {(() => {
+                      const options = [
+                        ...(getCategoryHierarchy(formData.category)[formData.subcategoryLevel1] || []),
+                      ];
+
+                      if (
+                        formData.subcategoryLevel2 &&
+                        !options.includes(formData.subcategoryLevel2)
+                      ) {
+                        options.push(formData.subcategoryLevel2);
+                      }
+
+                      return options.map((subcategory) => (
+                        <option key={subcategory} value={subcategory}>
+                          {subcategory}
+                        </option>
+                      ));
+                    })()}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-3 uppercase tracking-wide">
+                    Next Category (Preview)
+                  </label>
+                  <div className="w-full px-5 py-3 border-2 border-slate-200 rounded-lg bg-slate-50 text-slate-700 font-semibold min-h-13 flex items-center">
+                    {`${formData.category} → ${formData.subcategoryLevel1} → ${formData.subcategoryLevel2 || '—'}`}
+                  </div>
                 </div>
               </div>
 
@@ -908,7 +1088,7 @@ export default function FeaturedProductsAdmin() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-blue-400 disabled:to-blue-400 text-white font-bold rounded-lg transition-all transform hover:scale-105 shadow-lg"
+                  className="flex-1 px-6 py-3 bg-linear-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-blue-400 disabled:to-blue-400 text-white font-bold rounded-lg transition-all transform hover:scale-105 shadow-lg"
                 >
                   {submitting
                     ? '⟳ Saving...'

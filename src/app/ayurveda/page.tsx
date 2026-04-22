@@ -216,7 +216,7 @@ function AyurvedaContent() {
                   placeholder="🔍 Search Ayurvedic products, brands, benefits..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full border-2 border-amber-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition text-sm"
+                  className="w-full border-2 border-amber-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition text-sm placeholder:text-gray-700"
                 />
               </div>
             </div>

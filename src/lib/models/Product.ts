@@ -52,7 +52,18 @@ const productSchema = new mongoose.Schema(
     },
     productType: {
       type: String,
-      enum: ['Generic Medicine', 'Ayurveda Medicine', 'Homeopathy', 'Lab Tests'],
+      enum: [
+        'Generic Medicine',
+        'Ayurveda Medicine',
+        'Homeopathy',
+        'Lab Tests',
+        'Nutrition',
+        'Personal Care',
+        'Fitness',
+        'Sexual Wellness',
+        'Unani',
+        'Baby Care',
+      ],
       set: (value: string | undefined) => {
         const normalized = typeof value === 'string' ? value.trim() : value;
         return normalized ? normalized : undefined;
@@ -84,7 +95,12 @@ const productSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    image: String,
+    image: String, // legacy single image
+    images: {
+      type: [String],
+      validate: [arr => !arr || arr.length <= 4, 'Maximum 4 images allowed'],
+      default: [],
+    },
 
     // Vendor Info
     vendorId: {

@@ -56,6 +56,13 @@ interface LabTest {
   isActive: boolean;
 }
 
+interface DynamicCategoryConfig {
+  vendorCategoryMap?: Record<string, string[]>;
+  subcategoryMapByType?: Record<string, Record<string, string[]>>;
+  diseaseSubcategoryMap?: Record<string, string[]>;
+  labCategories?: string[];
+}
+
 const PROD_CATEGORIES = ['Disease', 'Homeopathy', 'Ayurveda', 'Nutrition', 'Personal Care', 'Baby Care', 'Sexual Wellness', 'Fitness', 'Consultation', 'Unani', 'Allopathy'];
 const LAB_CATEGORIES = ['General', 'Diabetes', 'Cardiac', 'Thyroid', 'Liver', 'Kidney', 'Vitamins', 'Infection', 'Women'];
 const POTENCY_OPTIONS = ['1000 CH', '3 CH', '10M CH', '200 CH', '30 CH', '12 CH', '6 CH', 'CM CH', '50M CH'];
@@ -368,48 +375,6 @@ function getDefaultCategoryForType(productType: VendorProductType): string {
   return VENDOR_CATEGORY_MAP[productType][0];
 }
 
-function getDefaultSubcategoryForHomeopathyCategory(category: string): string {
-  const key = category as HomeopathyCategory;
-  const options = HOMEOPATHY_SUBCATEGORY_MAP[key] || [];
-  return options[0] || '';
-}
-
-function getDefaultSubcategoryForAyurvedaCategory(category: string): string {
-  const key = category as AyurvedaCategory;
-  const options = AYURVEDA_SUBCATEGORY_MAP[key] || [];
-  return options[0] || '';
-}
-
-function getDefaultSubcategoryForNutritionCategory(category: string): string {
-  const key = category as NutritionCategory;
-  const options = NUTRITION_SUBCATEGORY_MAP[key] || [];
-  return options[0] || '';
-}
-
-function getDefaultSubcategoryForPersonalCareCategory(category: string): string {
-  const key = category as PersonalCareCategory;
-  const options = PERSONAL_CARE_SUBCATEGORY_MAP[key] || [];
-  return options[0] || '';
-}
-
-function getDefaultSubcategoryForBabyCareCategory(category: string): string {
-  const key = category as BabyCareCategory;
-  const options = BABY_CARE_SUBCATEGORY_MAP[key] || [];
-  return options[0] || '';
-}
-
-function getDefaultSubcategoryForFitnessCategory(category: string): string {
-  const key = category as FitnessCategory;
-  const options = FITNESS_SUBCATEGORY_MAP[key] || [];
-  return options[0] || '';
-}
-
-function getDefaultSubcategoryForUnaniCategory(category: string): string {
-  const key = category as UnaniCategory;
-  const options = UNANI_SUBCATEGORY_MAP[key] || [];
-  return options[0] || '';
-}
-
 const EMPTY_PROD = { name: '', brand: '', category: '', subcategory: '', potency: '', quantity: '', quantityUnit: 'None', diseaseCategory: '', diseaseSubcategory: '', price: '', mrp: '', stock: '', description: '', safetyInformation: '', specifications: '', benefit: '', requiresPrescription: false, image: '', isPopular: false, productType: 'Generic Medicine' as VendorProductType, isPopularGeneric: false, isPopularAyurveda: false, isPopularHomeopathy: false, isPopularLabTests: false };
 const EMPTY_LAB  = { name: '', category: '', price: '', mrp: '', description: '', icon: '', duration: '', testsIncluded: '', popular: false };
 
@@ -441,7 +406,7 @@ export default function AdminMedicines() {
   const [prodForm, setProdForm] = useState(EMPTY_PROD);
   const [medLoading, setMedLoading] = useState(true);
   const [medSaving, setMedSaving] = useState(false);
-  const [imageUrl, setImageUrl] = useState('');
+  const [images, setImages] = useState<string[]>([]);
   const [featureSubmittingId, setFeatureSubmittingId] = useState<string | null>(null);
 
   // ── Lab Tests state ───────────────────────────────────────────────────────
@@ -456,6 +421,49 @@ export default function AdminMedicines() {
 
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState('');
+  const [categoryConfig, setCategoryConfig] = useState<DynamicCategoryConfig | null>(null);
+
+  const activeVendorCategoryMap: Record<string, string[]> =
+    categoryConfig?.vendorCategoryMap && Object.keys(categoryConfig.vendorCategoryMap).length > 0
+      ? categoryConfig.vendorCategoryMap
+      : (VENDOR_CATEGORY_MAP as unknown as Record<string, string[]>);
+
+  const activeDiseaseCategoryMap: Record<string, string[]> =
+    categoryConfig?.diseaseSubcategoryMap && Object.keys(categoryConfig.diseaseSubcategoryMap).length > 0
+      ? categoryConfig.diseaseSubcategoryMap
+      : (DISEASE_SUBCATEGORY_MAP as unknown as Record<string, string[]>);
+
+  const activeLabCategories: string[] =
+    categoryConfig?.labCategories && categoryConfig.labCategories.length > 0
+      ? categoryConfig.labCategories
+      : [...LAB_CATEGORIES];
+
+  const productTypeOptions = Object.keys(activeVendorCategoryMap) as VendorProductType[];
+
+  const getDefaultCategoryForTypeDynamic = (productType: VendorProductType): string => {
+    const options = activeVendorCategoryMap[productType] || [];
+    return options[0] || getDefaultCategoryForType(productType);
+  };
+
+  const getSubcategoryOptionsForType = (productType: string, category: string): string[] => {
+    const dynamicByType = categoryConfig?.subcategoryMapByType?.[productType]?.[category];
+    if (dynamicByType && dynamicByType.length > 0) return dynamicByType;
+
+    if (productType === 'Homeopathy') return (HOMEOPATHY_SUBCATEGORY_MAP[category as HomeopathyCategory] || []) as unknown as string[];
+    if (productType === 'Ayurveda Medicine') return (AYURVEDA_SUBCATEGORY_MAP[category as AyurvedaCategory] || []) as unknown as string[];
+    if (productType === 'Nutrition') return (NUTRITION_SUBCATEGORY_MAP[category as NutritionCategory] || []) as unknown as string[];
+    if (productType === 'Personal Care') return (PERSONAL_CARE_SUBCATEGORY_MAP[category as PersonalCareCategory] || []) as unknown as string[];
+    if (productType === 'Baby Care') return (BABY_CARE_SUBCATEGORY_MAP[category as BabyCareCategory] || []) as unknown as string[];
+    if (productType === 'Fitness') return (FITNESS_SUBCATEGORY_MAP[category as FitnessCategory] || []) as unknown as string[];
+    if (productType === 'Unani') return (UNANI_SUBCATEGORY_MAP[category as UnaniCategory] || []) as unknown as string[];
+
+    return [];
+  };
+
+  const getDefaultSubcategoryForTypeDynamic = (productType: string, category: string): string => {
+    const options = getSubcategoryOptionsForType(productType, category);
+    return options[0] || '';
+  };
 
   // ── Fetch products ────────────────────────────────────────────────────────
   const fetchProducts = useCallback(async () => {
@@ -485,6 +493,19 @@ export default function AdminMedicines() {
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
   useEffect(() => { fetchLabTests(); }, [fetchLabTests]);
+  useEffect(() => {
+    const fetchCategoryConfig = async () => {
+      try {
+        const res = await fetch('/api/categories?mode=config');
+        const data = await res.json();
+        if (data?.success && data?.config) {
+          setCategoryConfig(data.config);
+        }
+      } catch {}
+    };
+
+    fetchCategoryConfig();
+  }, []);
 
   // ── Seed ──────────────────────────────────────────────────────────────────
   const seedAll = async (force = false) => {
@@ -502,7 +523,7 @@ export default function AdminMedicines() {
   };
 
   // ── Product CRUD ──────────────────────────────────────────────────────────
-  const openAddProd = () => { setEditMed(null); setProdForm(EMPTY_PROD); setImageUrl(''); setShowProdForm(true); };
+  const openAddProd = () => { setEditMed(null); setProdForm(EMPTY_PROD); setImages([]); setShowProdForm(true); };
   const openEditProd = (m: Medicine) => {
     setEditMed(m);
     const productType = (m.productType as VendorProductType) || 'Generic Medicine';
@@ -513,7 +534,7 @@ export default function AdminMedicines() {
     const isBabyCare = productType === 'Baby Care';
     const isFitness = productType === 'Fitness';
     const isUnani = productType === 'Unani';
-    setProdForm({ name: m.name, brand: m.brand || '', category: m.category, subcategory: isHomeopathy ? (m.subcategory || getDefaultSubcategoryForHomeopathyCategory(m.category)) : isAyurveda ? (m.subcategory || getDefaultSubcategoryForAyurvedaCategory(m.category)) : isNutrition ? (m.subcategory || getDefaultSubcategoryForNutritionCategory(m.category)) : isPersonalCare ? (m.subcategory || getDefaultSubcategoryForPersonalCareCategory(m.category)) : isBabyCare ? (m.subcategory || getDefaultSubcategoryForBabyCareCategory(m.category)) : isFitness ? (m.subcategory || getDefaultSubcategoryForFitnessCategory(m.category)) : isUnani ? (m.subcategory || getDefaultSubcategoryForUnaniCategory(m.category)) : '', potency: m.potency || '', quantity: m.quantity !== undefined ? String(m.quantity) : '', quantityUnit: m.quantityUnit || 'None', diseaseCategory: (m as any).diseaseCategory || '', diseaseSubcategory: (m as any).diseaseSubcategory || '', price: String(m.price), mrp: String(m.mrp || ''), stock: String(m.stock), description: m.description || '', safetyInformation: (m as any).safetyInformation || '', specifications: (m as any).specifications || '', benefit: m.benefit || '', requiresPrescription: m.requiresPrescription || false, image: m.image || '', isPopular: m.isPopular || false, productType, isPopularGeneric: (m as any).isPopularGeneric || false, isPopularAyurveda: (m as any).isPopularAyurveda || false, isPopularHomeopathy: (m as any).isPopularHomeopathy || false, isPopularLabTests: (m as any).isPopularLabTests || false });
+    setProdForm({ name: m.name, brand: m.brand || '', category: m.category, subcategory: isHomeopathy ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : isAyurveda ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : isNutrition ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : isPersonalCare ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : isBabyCare ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : isFitness ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : isUnani ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : '', potency: m.potency || '', quantity: m.quantity !== undefined ? String(m.quantity) : '', quantityUnit: m.quantityUnit || 'None', diseaseCategory: (m as any).diseaseCategory || '', diseaseSubcategory: (m as any).diseaseSubcategory || '', price: String(m.price), mrp: String(m.mrp || ''), stock: String(m.stock), description: m.description || '', safetyInformation: (m as any).safetyInformation || '', specifications: (m as any).specifications || '', benefit: m.benefit || '', requiresPrescription: m.requiresPrescription || false, image: m.image || '', isPopular: m.isPopular || false, productType, isPopularGeneric: (m as any).isPopularGeneric || false, isPopularAyurveda: (m as any).isPopularAyurveda || false, isPopularHomeopathy: (m as any).isPopularHomeopathy || false, isPopularLabTests: (m as any).isPopularLabTests || false });
     setImageUrl(m.image || '');
     setShowProdForm(true);
   };
@@ -620,7 +641,7 @@ export default function AdminMedicines() {
         ? productType
         : 'Generic Medicine';
 
-    const allowedSubcategories = VENDOR_CATEGORY_MAP[category] as readonly string[];
+    const allowedSubcategories = (activeVendorCategoryMap[category] || []) as readonly string[];
     const preferredSubcategory =
       [m.subcategory, m.category, m.brand, m.name]
         .map((value) => (value || '').trim())
@@ -889,90 +910,61 @@ export default function AdminMedicines() {
               <div className="bg-white rounded-lg shadow-md border border-slate-200 p-6 mb-6">
                 <h2 className="text-xl font-bold text-slate-900 mb-6">{editMed ? 'Edit Product' : 'Add New Product'}</h2>
                 
-                {/* Image Upload Section */}
+                {/* Multi-Image Upload Section */}
                 <div className="mb-6 p-4 border-2 border-dashed border-slate-300 rounded-lg bg-slate-50">
-                  <label className="block text-sm font-semibold text-slate-700 mb-3">Medicine Image</label>
-                  
-                  {/* Current Image Display */}
-                  {imageUrl && (
-                    <div className="mb-4 p-3 bg-white border border-slate-200 rounded-lg">
-                      <p className="text-xs text-slate-600 mb-2 font-medium">Current Image:</p>
-                      <div className="flex gap-3 items-start">
-                        <img
-                          src={imageUrl}
-                          alt="Current"
-                          className="h-24 w-24 object-cover rounded-lg border border-slate-300"
-                        />
-                        <div className="flex-1">
-                          <p className="text-xs text-slate-600 truncate mb-2">URL: {imageUrl}</p>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              if (!confirm('Delete this image? You can upload a new one.')) return;
-                              const publicId = extractPublicIdFromUrl(imageUrl);
-                              if (!publicId) {
-                                alert('Could not extract image ID');
-                                return;
-                              }
-                              try {
-                                const res = await fetch('/api/medicines/delete-image', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ publicId }),
-                                });
-                                if (res.ok) {
-                                  setImageUrl('');
-                                  alert('✅ Image deleted successfully');
-                                } else {
-                                  alert('❌ Failed to delete image');
-                                }
-                              } catch (error) {
-                                alert('❌ Error deleting image');
-                              }
-                            }}
-                            disabled={imageUploading}
-                            className="text-red-600 hover:text-red-800 text-xs font-semibold disabled:opacity-50"
-                          >
-                            🗑️ Delete Image
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
+                  <label className="block text-sm font-semibold text-slate-700 mb-3">Medicine Images (up to 4)</label>
                   <input
                     type="file"
                     accept="image/*"
+                    multiple
                     onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
+                      const files = e.target.files;
+                      if (!files) return;
+                      if (images.length + files.length > 4) {
+                        alert('You can upload up to 4 images.');
+                        return;
+                      }
+                      for (let i = 0; i < files.length; i++) {
+                        const file = files[i];
                         const result = await uploadImage(file);
                         if (result?.success && result.imageUrl) {
-                          setImageUrl(result.imageUrl);
+                          setImages(prev => [...prev, result.imageUrl].slice(0, 4));
+                        } else {
+                          alert('Failed to upload one or more images.');
                         }
                       }
                     }}
-                    disabled={imageUploading}
+                    disabled={imageUploading || images.length >= 4}
                     className="block w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 disabled:opacity-50"
                   />
-                  
                   {uploadError && (
                     <p className="mt-2 text-red-600 text-sm font-medium">❌ {uploadError}</p>
                   )}
-                  
                   {imageUploading && (
                     <p className="mt-2 text-blue-600 text-sm font-medium">⏳ Uploading image...</p>
                   )}
-                  
-                  {previewUrl && !imageUrl.includes(previewUrl) && (
-                    <div className="mt-3">
-                      <p className="text-xs text-slate-600 mb-2">Preview:</p>
-                      <img
-                        src={previewUrl}
-                        alt="Preview"
-                        className="h-32 w-32 object-cover rounded-lg border border-slate-300"
-                      />
+                  {images.length > 0 && (
+                    <div className="mt-4 grid grid-cols-2 gap-4">
+                      {images.map((url, idx) => (
+                        <div key={idx} className="flex flex-col items-center">
+                          <img
+                            src={url}
+                            alt={`Medicine ${idx + 1}`}
+                            className="w-32 h-32 object-cover rounded-lg border border-slate-200"
+                          />
+                          <button
+                            type="button"
+                            className="mt-2 text-xs text-red-600 hover:underline"
+                            onClick={() => setImages(prev => prev.filter((_, i) => i !== idx))}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
                     </div>
+                  )}
+                  {images.length >= 4 && (
+                    <p className="mt-2 text-yellow-600 text-sm font-medium">Maximum 4 images allowed.</p>
                   )}
                 </div>
 
@@ -980,85 +972,43 @@ export default function AdminMedicines() {
                   <input type="text" placeholder="Product Name *" value={prodForm.name} onChange={(e) => setProdForm({ ...prodForm, name: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm" />
                   <select value={prodForm.productType || 'Generic Medicine'} onChange={(e) => {
                     const productType = e.target.value as VendorProductType;
-                    const category = getDefaultCategoryForType(productType);
-                    const subcategory = productType === 'Homeopathy'
-                      ? getDefaultSubcategoryForHomeopathyCategory(category)
-                      : productType === 'Ayurveda Medicine'
-                        ? getDefaultSubcategoryForAyurvedaCategory(category)
-                        : productType === 'Nutrition'
-                          ? getDefaultSubcategoryForNutritionCategory(category)
-                          : productType === 'Personal Care'
-                            ? getDefaultSubcategoryForPersonalCareCategory(category)
-                            : productType === 'Baby Care'
-                              ? getDefaultSubcategoryForBabyCareCategory(category)
-                              : productType === 'Fitness'
-                                ? getDefaultSubcategoryForFitnessCategory(category)
-                                : productType === 'Unani'
-                                  ? getDefaultSubcategoryForUnaniCategory(category)
-                        : '';
+                    const category = getDefaultCategoryForTypeDynamic(productType);
+                    const subcategory = getDefaultSubcategoryForTypeDynamic(productType, category);
                     setProdForm({ ...prodForm, productType, category, subcategory });
                   }} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm">
-                    {(Object.keys(VENDOR_CATEGORY_MAP) as VendorProductType[]).map((productType) => (
+                    {productTypeOptions.map((productType) => (
                       <option key={productType} value={productType}>{productType}</option>
                     ))}
                   </select>
                   <select value={prodForm.category} onChange={(e) => {
                     const category = e.target.value;
-                    const subcategory = prodForm.productType === 'Homeopathy'
-                      ? getDefaultSubcategoryForHomeopathyCategory(category)
-                      : prodForm.productType === 'Ayurveda Medicine'
-                        ? getDefaultSubcategoryForAyurvedaCategory(category)
-                        : prodForm.productType === 'Nutrition'
-                          ? getDefaultSubcategoryForNutritionCategory(category)
-                          : prodForm.productType === 'Personal Care'
-                            ? getDefaultSubcategoryForPersonalCareCategory(category)
-                            : prodForm.productType === 'Baby Care'
-                              ? getDefaultSubcategoryForBabyCareCategory(category)
-                              : prodForm.productType === 'Fitness'
-                                ? getDefaultSubcategoryForFitnessCategory(category)
-                                : prodForm.productType === 'Unani'
-                                  ? getDefaultSubcategoryForUnaniCategory(category)
-                        : '';
+                    const subcategory = getDefaultSubcategoryForTypeDynamic(prodForm.productType, category);
                     setProdForm({ ...prodForm, category, subcategory });
                   }} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm">
                     <option value="">Category *</option>
-                    {VENDOR_CATEGORY_MAP[prodForm.productType as VendorProductType || 'Generic Medicine'].map((c) => <option key={c}>{c}</option>)}
+                    {(activeVendorCategoryMap[prodForm.productType as VendorProductType || 'Generic Medicine'] || []).map((c) => <option key={c}>{c}</option>)}
                   </select>
                   {(prodForm.productType === 'Homeopathy' || prodForm.productType === 'Ayurveda Medicine' || prodForm.productType === 'Nutrition' || prodForm.productType === 'Personal Care' || prodForm.productType === 'Baby Care' || prodForm.productType === 'Fitness' || prodForm.productType === 'Unani') && (
                     <select value={prodForm.subcategory} onChange={(e) => setProdForm({ ...prodForm, subcategory: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm">
                       <option value="">Subcategory *</option>
-                      {(
-                        prodForm.productType === 'Homeopathy'
-                          ? (HOMEOPATHY_SUBCATEGORY_MAP[prodForm.category as HomeopathyCategory] || [])
-                          : prodForm.productType === 'Ayurveda Medicine'
-                            ? (AYURVEDA_SUBCATEGORY_MAP[prodForm.category as AyurvedaCategory] || [])
-                            : prodForm.productType === 'Nutrition'
-                              ? (NUTRITION_SUBCATEGORY_MAP[prodForm.category as NutritionCategory] || [])
-                              : prodForm.productType === 'Personal Care'
-                                ? (PERSONAL_CARE_SUBCATEGORY_MAP[prodForm.category as PersonalCareCategory] || [])
-                                : prodForm.productType === 'Baby Care'
-                                  ? (BABY_CARE_SUBCATEGORY_MAP[prodForm.category as BabyCareCategory] || [])
-                                  : prodForm.productType === 'Fitness'
-                                    ? (FITNESS_SUBCATEGORY_MAP[prodForm.category as FitnessCategory] || [])
-                                    : (UNANI_SUBCATEGORY_MAP[prodForm.category as UnaniCategory] || [])
-                      ).map((subcategory) => (
+                      {getSubcategoryOptionsForType(prodForm.productType, prodForm.category).map((subcategory) => (
                         <option key={subcategory} value={subcategory}>{subcategory}</option>
                       ))}
                     </select>
                   )}
                   <select value={prodForm.diseaseCategory || ''} onChange={(e) => {
                     const diseaseCategory = e.target.value;
-                    const options = DISEASE_SUBCATEGORY_MAP[diseaseCategory as DiseaseCategory] || [];
+                    const options = activeDiseaseCategoryMap[diseaseCategory] || [];
                     setProdForm({ ...prodForm, diseaseCategory, diseaseSubcategory: options[0] || '' });
                   }} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm">
                     <option value="">Disease Category (Optional)</option>
-                    {(Object.keys(DISEASE_SUBCATEGORY_MAP) as DiseaseCategory[]).map((diseaseCategory) => (
+                    {Object.keys(activeDiseaseCategoryMap).map((diseaseCategory) => (
                       <option key={diseaseCategory} value={diseaseCategory}>{diseaseCategory}</option>
                     ))}
                   </select>
                   <select value={prodForm.diseaseSubcategory || ''} onChange={(e) => setProdForm({ ...prodForm, diseaseSubcategory: e.target.value })} disabled={!prodForm.diseaseCategory} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm disabled:bg-slate-100 disabled:text-slate-400">
                     <option value="">Disease Subcategory (Optional)</option>
-                    {((DISEASE_SUBCATEGORY_MAP[prodForm.diseaseCategory as DiseaseCategory] || [])).map((diseaseSubcategory) => (
+                    {((activeDiseaseCategoryMap[prodForm.diseaseCategory || ''] || [])).map((diseaseSubcategory) => (
                       <option key={diseaseSubcategory} value={diseaseSubcategory}>{diseaseSubcategory}</option>
                     ))}
                   </select>
@@ -1263,7 +1213,7 @@ export default function AdminMedicines() {
                   <input type="text" placeholder="Test Name *" value={labForm.name} onChange={(e) => setLabForm({ ...labForm, name: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm" />
                   <select value={labForm.category} onChange={(e) => setLabForm({ ...labForm, category: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm">
                     <option value="">Category *</option>
-                    {LAB_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                    {activeLabCategories.map((c) => <option key={c}>{c}</option>)}
                   </select>
                   <input type="number" placeholder="Price ₹ *" value={labForm.price} onChange={(e) => setLabForm({ ...labForm, price: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm" />
                   <input type="number" placeholder="MRP ₹" value={labForm.mrp} onChange={(e) => setLabForm({ ...labForm, mrp: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm" />

@@ -66,9 +66,14 @@ type ThyrocareSlotsResponse = {
 };
 
 const DEFAULT_BASE_URL = 'https://api-sandbox.thyrocare.com';
+const FALLBACK_BASE_URLS = ['https://api.thyrocare.com', 'https://api-sandbox.thyrocare.com'];
 
 let cachedToken: { token: string; expiresAt: number } | null = null;
 let cachedPincodes: { expiresAt: number; data: ThyrocarePincodesResponse } | null = null;
+let cachedCatalog: { expiresAt: number; data: ExternalLabTest[] } | null = null;
+let resolvedBaseUrl: string | null = null;
+
+const DEFAULT_AUTH_PATH = '/partners/v1/auth/login';
 
 function readConfig() {
   const username = process.env.THYROCARE_USERNAME || '';
@@ -84,7 +89,63 @@ function readConfig() {
     userAgent: process.env.THYROCARE_USER_AGENT || 'MySanjeevni/1.0',
     entityType: process.env.THYROCARE_ENTITY_TYPE || 'DSA',
     apiVersion: process.env.THYROCARE_API_VERSION || 'v1',
+    authPath: process.env.THYROCARE_AUTH_PATH || DEFAULT_AUTH_PATH,
   };
+}
+
+function getBaseUrlCandidates(preferredBaseUrl: string) {
+  const envList = String(process.env.THYROCARE_BASE_URLS || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => item.replace(/\/$/, ''));
+
+  const ordered = [resolvedBaseUrl || '', preferredBaseUrl, ...envList, ...FALLBACK_BASE_URLS]
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  return Array.from(new Set(ordered));
+}
+
+function isNetworkFetchError(error: unknown) {
+  const err = error as any;
+  const message = String(err?.message || '').toLowerCase();
+  const causeMessage = String(err?.cause?.message || '').toLowerCase();
+  const code = String(err?.code || err?.cause?.code || '').toUpperCase();
+
+  return (
+    message.includes('fetch failed') ||
+    message.includes('enotfound') ||
+    causeMessage.includes('enotfound') ||
+    code === 'ENOTFOUND' ||
+    code === 'EAI_AGAIN' ||
+    code === 'ETIMEDOUT' ||
+    code === 'ECONNRESET' ||
+    code === 'ECONNREFUSED'
+  );
+}
+
+function getAuthPathCandidates(authPath: string) {
+  const candidates = [
+    authPath,
+    DEFAULT_AUTH_PATH,
+    '/partners/v1/auth/login',
+  ];
+
+  return Array.from(new Set(candidates.filter(Boolean).map((path) => (path.startsWith('/') ? path : `/${path}`))));
+}
+
+function parseAuthToken(data: any) {
+  return String(
+    data?.token ||
+      data?.accessToken ||
+      data?.access_token ||
+      data?.jwt ||
+      data?.data?.token ||
+      data?.data?.accessToken ||
+      data?.result?.token ||
+      ''
+  ).trim();
 }
 
 function formatIndiaPhone(phone?: string) {
@@ -224,6 +285,21 @@ async function parseJsonOrThrow(res: Response) {
   return body as any;
 }
 
+function shouldRetryAuth(error: unknown) {
+  const message = String((error as Error)?.message || '').toLowerCase();
+  return (
+    message.includes('http exception') ||
+    message.includes('cannot post') ||
+    message.includes('method not allowed') ||
+    message.includes('resource_not_found') ||
+    message.includes('not found') ||
+    message.includes('too_many_requests') ||
+    message.includes('rate limit') ||
+    message.includes('timeout') ||
+    message.includes('timed out')
+  );
+}
+
 function normalizePartnerGender(gender?: 'MALE' | 'FEMALE' | 'OTHER') {
   if (gender === 'MALE' || gender === 'FEMALE') return gender;
   return 'MALE';
@@ -235,30 +311,75 @@ async function getToken(forceRefresh = false) {
   }
 
   const cfg = readConfig();
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'Partner-Id': cfg.partnerId,
-    'Request-Id': randomUUID(),
-    'User-Agent': cfg.userAgent,
-    'Client-Type': cfg.clientType,
-    'Entity-Type': cfg.entityType,
-    'API-Version': cfg.apiVersion,
-  };
+  const authPaths = getAuthPathCandidates(cfg.authPath);
+  const headerVariants: Record<string, string>[] = [
+    {
+      'Content-Type': 'application/json',
+      'Partner-Id': cfg.partnerId,
+      'Request-Id': randomUUID(),
+      'User-Agent': cfg.userAgent,
+      'Client-Type': cfg.clientType,
+      'Entity-Type': cfg.entityType,
+      'API-Version': cfg.apiVersion,
+    },
+    {
+      'Content-Type': 'application/json',
+      'Partner-Id': cfg.partnerId,
+      'Request-Id': randomUUID(),
+      'User-Agent': cfg.userAgent,
+      'Client-Type': cfg.clientType,
+      'Entity-Type': cfg.entityType,
+    },
+  ];
+  const bodyVariants = [
+    { username: cfg.username, password: cfg.password },
+    { userName: cfg.username, password: cfg.password },
+    { username: cfg.username, password: cfg.password, partnerId: cfg.partnerId },
+  ];
 
-  const res = await fetch(`${cfg.baseUrl}/partners/v1/auth/login`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      username: cfg.username,
-      password: cfg.password,
-    }),
-    cache: 'no-store',
-  });
+  let token = '';
+  let lastError: Error | null = null;
 
-  const data = await parseJsonOrThrow(res);
-  const token = String(data.token || '');
+  const baseUrls = getBaseUrlCandidates(cfg.baseUrl);
+
+  for (const baseUrl of baseUrls) {
+    for (const path of authPaths) {
+    for (const headers of headerVariants) {
+      for (const body of bodyVariants) {
+        try {
+          const res = await fetch(`${baseUrl}${path}`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(body),
+            cache: 'no-store',
+          });
+
+          const data = await parseJsonOrThrow(res);
+          token = parseAuthToken(data);
+          if (token) {
+            resolvedBaseUrl = baseUrl;
+            break;
+          }
+          lastError = new Error('Thyrocare login did not return a token');
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error('Thyrocare login failed');
+          if (isNetworkFetchError(error)) {
+            break;
+          }
+          // Keep probing alternate auth path/header/body combinations before failing.
+          if (!shouldRetryAuth(lastError)) continue;
+        }
+      }
+
+      if (token) break;
+    }
+
+    if (token) break;
+  }
+  }
+
   if (!token) {
-    throw new Error('Thyrocare login did not return a token');
+    throw lastError || new Error('Thyrocare login did not return a token');
   }
 
   cachedToken = {
@@ -273,29 +394,45 @@ async function getToken(forceRefresh = false) {
 async function callThyrocare(path: string, init: RequestInit = {}, retry = true) {
   const cfg = readConfig();
   const token = await getToken(false);
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'Partner-Id': cfg.partnerId,
-    'Request-Id': randomUUID(),
-    'User-Agent': cfg.userAgent,
-    'Client-Type': cfg.clientType,
-    'API-Version': cfg.apiVersion,
-    Authorization: `Bearer ${token}`,
-    ...(init.headers as Record<string, string> | undefined),
-  };
+  const baseUrls = getBaseUrlCandidates(cfg.baseUrl);
+  let lastError: unknown = null;
 
-  const res = await fetch(`${cfg.baseUrl}${path}`, {
-    ...init,
-    headers,
-    cache: 'no-store',
-  });
+  for (const baseUrl of baseUrls) {
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Partner-Id': cfg.partnerId,
+        'Request-Id': randomUUID(),
+        'User-Agent': cfg.userAgent,
+        'Client-Type': cfg.clientType,
+        'API-Version': cfg.apiVersion,
+        Authorization: `Bearer ${token}`,
+        ...(init.headers as Record<string, string> | undefined),
+      };
 
-  if (retry && res.status === 401) {
-    await getToken(true);
-    return callThyrocare(path, init, false);
+      const res = await fetch(`${baseUrl}${path}`, {
+        ...init,
+        headers,
+        cache: 'no-store',
+      });
+
+      if (retry && res.status === 401) {
+        await getToken(true);
+        return callThyrocare(path, init, false);
+      }
+
+      const data = await parseJsonOrThrow(res);
+      resolvedBaseUrl = baseUrl;
+      return data;
+    } catch (error) {
+      lastError = error;
+      if (!isNetworkFetchError(error)) {
+        throw error;
+      }
+    }
   }
 
-  return parseJsonOrThrow(res);
+  throw (lastError instanceof Error ? lastError : new Error('Thyrocare request failed'));
 }
 
 function parseThyrocareTestId(testId: string) {
@@ -467,7 +604,9 @@ export const thyrocareAdapter: LabPartnerAdapter = {
   },
 
   async fetchCatalog(params) {
-    if (!this.isConfigured()) return [];
+    if (!this.isConfigured()) {
+      return cachedCatalog?.data || [];
+    }
 
     const pageSize = Math.max(10, Math.min(100, params?.limit || 100));
     const requestedGender = String(params?.gender || '').trim().toUpperCase();
@@ -476,33 +615,57 @@ export const thyrocareAdapter: LabPartnerAdapter = {
     const gender = effectiveGender === 'FEMALE' ? 'FEMALE' : 'MALE';
     const maxPages = Number(process.env.THYROCARE_CATALOG_MAX_PAGES || 25);
 
-    let page = 1;
-    const skuList: ThyrocareCatalogItem[] = [];
+    const fetchAllByGender = async (catalogGender: 'MALE' | 'FEMALE') => {
+      let page = 1;
+      const skuList: ThyrocareCatalogItem[] = [];
 
-    while (page <= maxPages) {
-      const query = new URLSearchParams({
-        minPrice: '0',
-        maxPrice: '100000',
-        gender,
-        page: String(page),
-        pageSize: String(pageSize),
-      });
+      while (page <= maxPages) {
+        const query = new URLSearchParams({
+          minPrice: '0',
+          maxPrice: '100000',
+          gender: catalogGender,
+          page: String(page),
+          pageSize: String(pageSize),
+        });
 
-      const data = (await callThyrocare(`/partners/v1/catalog/products?${query.toString()}`)) as ThyrocareCatalogResponse;
-      const pageItems = Array.isArray(data.skuList) ? data.skuList : [];
-      skuList.push(...pageItems);
+        const data = (await callThyrocare(`/partners/v1/catalog/products?${query.toString()}`)) as ThyrocareCatalogResponse;
+        const pageItems = Array.isArray(data.skuList) ? data.skuList : [];
+        skuList.push(...pageItems);
 
-      if (data.isLastPage || !data.nextPage || pageItems.length === 0) {
-        break;
+        if (data.isLastPage || !data.nextPage || pageItems.length === 0) {
+          break;
+        }
+
+        page = Number(data.nextPage);
+        if (!Number.isFinite(page) || page < 1) {
+          break;
+        }
       }
 
-      page = Number(data.nextPage);
-      if (!Number.isFinite(page) || page < 1) {
-        break;
+      return skuList.map(toPartnerTest).filter((t): t is ExternalLabTest => Boolean(t));
+    };
+
+    let all: ExternalLabTest[] = [];
+    try {
+      all = await fetchAllByGender(gender);
+      if (!all.length) {
+        all = await fetchAllByGender(gender === 'MALE' ? 'FEMALE' : 'MALE');
+      }
+    } catch (error) {
+      if (cachedCatalog?.data?.length) {
+        all = cachedCatalog.data;
+      } else {
+        throw error;
       }
     }
 
-    const all = skuList.map(toPartnerTest).filter((t): t is ExternalLabTest => Boolean(t));
+    if (all.length) {
+      cachedCatalog = {
+        data: all,
+        expiresAt: Date.now() + 60 * 60 * 1000,
+      };
+    }
+
     const category = String(params?.category || '').trim().toLowerCase();
     const search = String(params?.search || '').trim().toLowerCase();
 
