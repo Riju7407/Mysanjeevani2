@@ -19,6 +19,7 @@ interface Product {
   mrp?: number;
   stock: number;
   image?: string;
+  images?: string[];
   icon?: string;
   rating?: number;
   reviews?: number;
@@ -177,6 +178,22 @@ export default function MedicineDetailsPage() {
   const [quantityProducts, setQuantityProducts] = useState<Product[]>([]);
   const [isImageZoomed, setIsImageZoomed] = useState(false);
   const [imageZoomPosition, setImageZoomPosition] = useState({ x: 50, y: 50 });
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+  const allImages = useMemo(() => {
+    if (!product) return [];
+    const images = product.images || [];
+    const primaryImage = product.image;
+    // Use images array if available, otherwise fall back to single image
+    if (images.length > 0) return images;
+    if (primaryImage) return [primaryImage];
+    return [];
+  }, [product]);
+
+  const currentImage = useMemo(() => {
+    if (allImages.length > 0) return allImages[selectedImageIndex];
+    return product?.image || null;
+  }, [allImages, selectedImageIndex, product]);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -196,6 +213,7 @@ export default function MedicineDetailsPage() {
         }
 
         setProduct(data.product || null);
+        setSelectedImageIndex(0);
       } catch {
         setError('Unable to load product details');
         setProduct(null);
@@ -440,7 +458,7 @@ export default function MedicineDetailsPage() {
           price: product.price,
           quantity: 1,
           brand: product.brand,
-          image: product.image || product.icon || '💊',
+          image: (product.images && product.images.length > 0 ? product.images[0] : product.image) || product.icon || '💊',
           vendorName: 'MySanjeevni',
         });
       }
@@ -637,10 +655,11 @@ export default function MedicineDetailsPage() {
             <>
               {/* Hero Section */}
               <div className="grid grid-cols-1 md:grid-cols-5 gap-8 mb-12">
-                {/* Product Image */}
+                {/* Product Image Gallery */}
                 <div className="md:col-span-2">
+                  {/* Main Image */}
                   <div
-                    className="bg-gray-50 rounded-lg p-8 flex items-center justify-center min-h-96 border border-gray-200 sticky top-24 overflow-hidden"
+                    className="bg-gray-50 rounded-lg p-8 flex items-center justify-center min-h-96 border border-gray-200 sticky top-24 overflow-hidden relative"
                     onMouseEnter={() => setIsImageZoomed(true)}
                     onMouseLeave={() => {
                       setIsImageZoomed(false);
@@ -648,11 +667,11 @@ export default function MedicineDetailsPage() {
                     }}
                     onMouseMove={handleImageMouseMove}
                   >
-                    {product.image ? (
+                    {currentImage ? (
                       <>
                         <img
-                          src={product.image}
-                          alt={product.name}
+                          src={currentImage}
+                          alt={`${product.name} - Image ${selectedImageIndex + 1}`}
                           className="max-h-80 w-full object-contain"
                           style={{
                             transform: isImageZoomed ? 'scale(1.9)' : 'scale(1)',
@@ -664,11 +683,39 @@ export default function MedicineDetailsPage() {
                         <span className="absolute bottom-3 right-3 text-[11px] font-semibold text-slate-600 bg-white/90 border border-slate-200 px-2 py-1 rounded">
                           Hover to zoom
                         </span>
+                        {allImages.length > 1 && (
+                          <span className="absolute top-3 right-3 text-xs font-semibold text-slate-600 bg-white/90 border border-slate-200 px-2 py-1 rounded">
+                            {selectedImageIndex + 1} / {allImages.length}
+                          </span>
+                        )}
                       </>
                     ) : (
                       <div className="text-6xl">{product.icon || '💊'}</div>
                     )}
                   </div>
+
+                  {/* Image Thumbnails */}
+                  {allImages.length > 1 && (
+                    <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
+                      {allImages.map((img, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setSelectedImageIndex(idx)}
+                          className={`flex-shrink-0 h-20 w-20 rounded-lg border-2 overflow-hidden transition-all ${
+                            selectedImageIndex === idx
+                              ? 'border-emerald-600 ring-2 ring-emerald-300'
+                              : 'border-slate-300 hover:border-emerald-400'
+                          }`}
+                        >
+                          <img
+                            src={img}
+                            alt={`Thumbnail ${idx + 1}`}
+                            className="h-full w-full object-cover"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Product Details */}
