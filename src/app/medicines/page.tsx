@@ -298,6 +298,7 @@ function MedicinesContent() {
   // Decode URL parameters to handle encoded characters (spaces, special chars)
   const rawUrlCategory = searchParams.get('category') || '';
   const urlCategory = rawUrlCategory ? decodeURIComponent(rawUrlCategory) : '';
+  const isOrgProductsView = searchParams.get('orgProductsView') === 'true';
   const rawUrlSubcategory = searchParams.get('subcategory') || '';
   const urlSubcategory = rawUrlSubcategory ? decodeURIComponent(rawUrlSubcategory) : '';
   const urlSearch = searchParams.get('search') || '';
@@ -450,7 +451,18 @@ function MedicinesContent() {
 
     const trimmedSearch = deferredSearch.trim();
 
+    // Define organic product subcategories
+    const ORGANIC_PRODUCTS_SUBCATS = ['Organic Foods', 'Coffee & Tea', 'Ghee', 'Atta/Flour'];
+
     return tabFiltered.filter((p) => {
+      // If viewing organic products, only show products with organic subcategories
+      if (isOrgProductsView) {
+        const isOrgProduct = ORGANIC_PRODUCTS_SUBCATS.some(subcat => 
+          equalsIgnoreCase(p.subcategory, subcat)
+        );
+        if (!isOrgProduct) return false;
+      }
+
       const matchCat =
         sidebarCat === 'All' ||
         fieldMatchesAny(

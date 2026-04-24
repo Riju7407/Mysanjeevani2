@@ -368,8 +368,8 @@ export default function CategoryNav({ isMobile = false }: { isMobile?: boolean }
     }
 
     if (categoryName === 'Organic Products') {
-      // For Organic Products, redirect to nutrition with organic subcategory
-      return buildHref('/medicines', { category: 'nutrition', subcategory: subcategoryName });
+      // For Organic Products, redirect to nutrition with organic subcategory and special flag
+      return buildHref('/medicines', { category: 'nutrition', subcategory: subcategoryName, orgProductsView: 'true' });
     }
 
     // For all other categories (Nutrition, Personal Care, Fitness, etc.)
