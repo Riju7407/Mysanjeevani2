@@ -28,7 +28,7 @@ const LANGUAGE_OPTIONS = [
   { code: 'or', label: 'Odia' },
 ] as const;
 
-const SEARCH_SECTION_PRIORITY = ['medicines', 'ayurveda', 'homeopathy', 'nutrition', 'personal-care', 'fitness', 'sexual-wellness', 'baby-care', 'unani', 'disease'] as const;
+const SEARCH_SECTION_PRIORITY = ['medicines', 'ayurveda', 'homeopathy', 'nutrition', 'organic-products', 'personal-care', 'fitness', 'sexual-wellness', 'baby-care', 'unani', 'disease', 'lab-tests'] as const;
 
 // Product type to URL category mapping
 const PRODUCT_TYPE_TO_ROUTE: Record<string, string> = {
@@ -85,6 +85,11 @@ const UNANI_QUERY_HINTS = [
   'unani', 'unani medicine', 'hamdard', 'jaborandi', 'roghan', 'ubtan', 'ruh',
 ];
 
+const ORGANIC_PRODUCTS_QUERY_HINTS = [
+  'organic', 'organic products', 'organic food', 'coffee', 'tea', 'ghee', 'atta', 'flour', 'organic grains',
+  'organic groceries', 'natural food', 'eco-friendly',
+];
+
 const LAB_TESTS_QUERY_HINTS = [
   'lab tests', 'test', 'blood test', 'thyroid', 'glucose', 'covid', 'diabetes', 'checkup',
   'profile', 'diagnostic', 'report',
@@ -99,6 +104,9 @@ export default function Header() {
   const [isSearchRedirecting, setIsSearchRedirecting] = useState(false);
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('en');
+  const [searchSuggestions, setSearchSuggestions] = useState<string[]>([]);
+  const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
 
   const getRootDomain = (hostname: string) => {
@@ -138,6 +146,9 @@ export default function Header() {
   };
 
   useEffect(() => {
+    // Mark component as mounted to prevent hydration mismatch
+    setIsMounted(true);
+    
     // Get user data from localStorage
     const userStr = localStorage.getItem('user');
     if (userStr) {
@@ -202,6 +213,50 @@ export default function Header() {
     window.location.reload();
   };
 
+  const generateSearchSuggestions = (query: string): string[] => {
+    if (!query.trim()) {
+      setSearchSuggestions([]);
+      return [];
+    }
+
+    const lowerQuery = query.toLowerCase().trim();
+    
+    const allSuggestions = [
+      // Popular medicine categories
+      'Fever & Cold Relief', 'Headache & Migraine', 'Digestive Care', 'Pain Relief',
+      'Skin Care Products', 'Hair Care', 'Vitamins & Supplements', 'Immunity Boost',
+      
+      // Ayurveda suggestions
+      'Himalaya Products', 'Organic India', 'Ayurvedic Herbs', 'Chyawanprash',
+      
+      // Homeopathy suggestions
+      'Homeopathic Remedies', 'SBL Products', 'Dr. Reckeweg',
+      
+      // Nutrition suggestions
+      'Protein Powder', 'Multivitamins', 'Weight Gainer', 'Fat Burner',
+      
+      // Organic Products suggestions
+      'Organic Coffee', 'Organic Tea', 'Organic Ghee', 'Organic Atta', 'Organic Flour',
+      'Organic Foods', 'Natural Groceries',
+      
+      // Personal care suggestions
+      'Shampoo', 'Face Wash', 'Toothpaste', 'Deodorant', 'Moisturizer',
+      
+      // Fitness suggestions
+      'Fitness Equipment', 'Yoga Mat', 'Dumbbell', 'Resistance Bands',
+      
+      // Lab tests suggestions
+      'Blood Test', 'Thyroid Test', 'Diabetes Test', 'Full Body Checkup',
+    ];
+
+    const filtered = allSuggestions.filter(suggestion => 
+      suggestion.toLowerCase().includes(lowerQuery)
+    ).slice(0, 8);
+
+    setSearchSuggestions(filtered);
+    return filtered;
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -250,6 +305,7 @@ export default function Header() {
     ]);
 
     const nutritionHints = new Set(NUTRITION_QUERY_HINTS);
+    const organicProductsHints = new Set(ORGANIC_PRODUCTS_QUERY_HINTS);
     const personalCareHints = new Set(PERSONAL_CARE_QUERY_HINTS);
     const fitnessHints = new Set(FITNESS_QUERY_HINTS);
     const sexualWellnessHints = new Set(SEXUAL_WELLNESS_QUERY_HINTS);
@@ -262,6 +318,9 @@ export default function Header() {
     // Check for specific category signals
     const hasNutritionSignal = fields.some((field) => field.includes('nutrition')) ||
       fields.some((field) => Array.from(nutritionHints).some((hint) => field.includes(hint)));
+    
+    const hasOrganicProductsSignal = fields.some((field) => field.includes('organic')) ||
+      fields.some((field) => Array.from(organicProductsHints).some((hint) => field.includes(hint)));
     
     const hasPersonalCareSignal = fields.some((field) => field.includes('personal care')) ||
       fields.some((field) => Array.from(personalCareHints).some((hint) => field.includes(hint)));
@@ -292,9 +351,10 @@ export default function Header() {
     if (hasUnaniSignal && !hasAyurvedaSignal && !hasHomeopathySignal) return 'unani';
     if (hasBabyCareSignal && !hasPersonalCareSignal) return 'baby-care';
     if (hasSexualWellnessSignal && !hasPersonalCareSignal) return 'sexual-wellness';
-    if (hasFitnessSignal && !hasNutritionSignal) return 'fitness';
-    if (hasPersonalCareSignal && !hasNutritionSignal) return 'personal-care';
-    if (hasNutritionSignal && !hasPersonalCareSignal) return 'nutrition';
+    if (hasFitnessSignal && !hasNutritionSignal && !hasOrganicProductsSignal) return 'fitness';
+    if (hasOrganicProductsSignal && !hasPersonalCareSignal) return 'organic-products';
+    if (hasPersonalCareSignal && !hasNutritionSignal && !hasOrganicProductsSignal) return 'personal-care';
+    if (hasNutritionSignal && !hasPersonalCareSignal && !hasOrganicProductsSignal) return 'nutrition';
     if (hasLabTestsSignal) return 'lab-tests';
     if (hasHomeopathySignal) return 'homeopathy';
     if (hasAyurvedaSignal) return 'ayurveda';
@@ -310,6 +370,7 @@ export default function Header() {
       .replace(/\s+/g, ' ');
 
     const isNutritionIntent = NUTRITION_QUERY_HINTS.some((hint) => normalizedQuery.includes(hint));
+    const isOrganicProductsIntent = ORGANIC_PRODUCTS_QUERY_HINTS.some((hint) => normalizedQuery.includes(hint));
     const isPersonalCareIntent = PERSONAL_CARE_QUERY_HINTS.some((hint) => normalizedQuery.includes(hint));
     const isFitnessIntent = FITNESS_QUERY_HINTS.some((hint) => normalizedQuery.includes(hint));
     const isSexualWellnessIntent = SEXUAL_WELLNESS_QUERY_HINTS.some((hint) => normalizedQuery.includes(hint));
@@ -326,6 +387,10 @@ export default function Header() {
       return ['unani', 'medicines', 'ayurveda', 'homeopathy', 'nutrition', 'personal-care', 'fitness', 'sexual-wellness', 'baby-care', 'lab-tests'] as const;
     }
 
+    if (isOrganicProductsIntent && !isNutritionIntent) {
+      return ['organic-products', 'nutrition', 'personal-care', 'medicines', 'ayurveda', 'homeopathy', 'fitness', 'sexual-wellness', 'baby-care', 'unani', 'lab-tests'] as const;
+    }
+
     if (isBabyCareIntent && !isPersonalCareIntent) {
       return ['baby-care', 'personal-care', 'nutrition', 'medicines', 'ayurveda', 'homeopathy', 'fitness', 'sexual-wellness', 'unani', 'lab-tests'] as const;
     }
@@ -334,15 +399,15 @@ export default function Header() {
       return ['sexual-wellness', 'personal-care', 'nutrition', 'medicines', 'ayurveda', 'homeopathy', 'fitness', 'baby-care', 'unani', 'lab-tests'] as const;
     }
 
-    if (isFitnessIntent && !isNutritionIntent) {
+    if (isFitnessIntent && !isNutritionIntent && !isOrganicProductsIntent) {
       return ['fitness', 'nutrition', 'personal-care', 'medicines', 'ayurveda', 'homeopathy', 'sexual-wellness', 'baby-care', 'unani', 'lab-tests'] as const;
     }
 
-    if (isPersonalCareIntent && !isNutritionIntent) {
+    if (isPersonalCareIntent && !isNutritionIntent && !isOrganicProductsIntent) {
       return ['personal-care', 'nutrition', 'baby-care', 'medicines', 'ayurveda', 'homeopathy', 'fitness', 'sexual-wellness', 'unani', 'lab-tests'] as const;
     }
 
-    if (isNutritionIntent && !isPersonalCareIntent) {
+    if (isNutritionIntent && !isPersonalCareIntent && !isOrganicProductsIntent) {
       return ['nutrition', 'fitness', 'personal-care', 'medicines', 'ayurveda', 'homeopathy', 'sexual-wellness', 'baby-care', 'unani', 'lab-tests'] as const;
     }
 
@@ -376,6 +441,8 @@ export default function Header() {
         return `/medicines?category=lab%20tests&search=${encodedQuery}#products-section`;
       case 'nutrition':
         return `/medicines?category=nutrition&search=${encodedQuery}#products-section`;
+      case 'organic-products':
+        return `/medicines?category=organic%20products&search=${encodedQuery}#products-section`;
       case 'personal-care':
         return `/medicines?category=personal%20care&search=${encodedQuery}#products-section`;
       case 'fitness':
@@ -553,9 +620,13 @@ export default function Header() {
       <div className="bg-linear-to-r from-emerald-600 to-emerald-500 text-white py-2 px-3 sm:px-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center text-[11px] sm:text-sm gap-3">
           <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-            <span className="truncate">Trusted by 5 Crore+ Indians</span>
-            <span className="text-emerald-100 hidden sm:inline">|</span>
-            <span className="hidden sm:inline">India's Healthcare Platform</span>
+            {isMounted && (
+              <>
+                <span className="truncate">Your All-in-One Natural Healthcare Destination</span>
+                <span className="text-emerald-100 hidden sm:inline">|</span>
+                <span className="hidden sm:inline">India's Healthcare Platform</span>
+              </>
+            )}
           </div>
           <div className="hidden sm:flex items-center gap-4 shrink-0">
             <div className="relative">
@@ -616,16 +687,58 @@ export default function Header() {
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    generateSearchSuggestions(e.target.value);
+                    setShowSearchSuggestions(true);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
+                      setShowSearchSuggestions(false);
                       handleSearch();
                     }
+                  }}
+                  onFocus={() => {
+                    if (searchQuery.trim()) {
+                      setShowSearchSuggestions(true);
+                    }
+                  }}
+                  onBlur={() => {
+                    // Delay closing to allow click on suggestions
+                    setTimeout(() => setShowSearchSuggestions(false), 200);
                   }}
                   placeholder="Search for medicines, health conditions, products..."
                   className="w-full px-4 py-3 rounded-lg bg-gray-100 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm text-gray-900 placeholder:text-gray-700"
                 />
+                
+                {/* Search Suggestions Dropdown */}
+                {showSearchSuggestions && searchSuggestions.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
+                    {searchSuggestions.map((suggestion, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery(suggestion);
+                          setShowSearchSuggestions(false);
+                          // Trigger search after a small delay to ensure state is updated
+                          setTimeout(() => {
+                            const searchBtn = document.querySelector('[aria-label="Search"]') as HTMLButtonElement;
+                            if (searchBtn) searchBtn.click();
+                          }, 0);
+                        }}
+                        className="w-full text-left px-4 py-3 hover:bg-emerald-50 border-b border-gray-100 last:border-b-0 transition-colors flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <span className="text-sm text-gray-700">{suggestion}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                
                 <button
                   type="button"
                   onClick={handleSearch}
@@ -838,16 +951,56 @@ export default function Header() {
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  generateSearchSuggestions(e.target.value);
+                  setShowSearchSuggestions(true);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
+                    setShowSearchSuggestions(false);
                     handleSearch();
                   }
+                }}
+                onFocus={() => {
+                  if (searchQuery.trim()) {
+                    setShowSearchSuggestions(true);
+                  }
+                }}
+                onBlur={() => {
+                  setTimeout(() => setShowSearchSuggestions(false), 200);
                 }}
                 placeholder="Search medicines and products..."
                 className="w-full px-4 py-2.5 rounded-lg bg-gray-100 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm text-gray-900 placeholder:text-gray-700"
               />
+              
+              {/* Mobile Search Suggestions Dropdown */}
+              {showSearchSuggestions && searchSuggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
+                  {searchSuggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery(suggestion);
+                        setShowSearchSuggestions(false);
+                        setTimeout(() => {
+                          const searchBtn = document.querySelector('[aria-label="Search"]') as HTMLButtonElement;
+                          if (searchBtn) searchBtn.click();
+                        }, 0);
+                      }}
+                      className="w-full text-left px-4 py-3 hover:bg-emerald-50 border-b border-gray-100 last:border-b-0 transition-colors flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                      <span className="text-sm text-gray-700">{suggestion}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              
               <button
                 type="button"
                 onClick={handleSearch}

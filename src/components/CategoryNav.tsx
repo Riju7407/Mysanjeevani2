@@ -60,9 +60,15 @@ const NUTRITION_GROUPED_SUBCATEGORIES: Record<string, string[]> = {
   'Sports Nutrition': ['Proteins', 'Fat Burner', 'Weight Gainers', 'Pre Post Workout', 'Aminos', 'Creatines'],
   'Health Food & Drinks': ['Spreads & Sugar & Honey', 'Oils', 'Herbal & Vegetable Juices', 'Health Drinks', 'Healthy Snacks & Bars', 'Sugar Free', 'Murabba', 'Chyawanprash', 'Edible Seeds'],
   'Vitamin & Dietary Supplements': ['Vitamin & Dietary Supplements'],
-  'Organic Products': ['Organic Foods', 'Coffee & Tea', 'Ghee', 'Atta/Flour'],
   'Green Teas': ['Green Teas'],
   Digestives: ['Digestives'],
+};
+
+const ORGANIC_PRODUCTS_GROUPED_SUBCATEGORIES: Record<string, string[]> = {
+  'Organic Foods': ['Organic Foods'],
+  'Coffee & Tea': ['Coffee & Tea'],
+  'Ghee': ['Ghee'],
+  'Atta/Flour': ['Atta/Flour'],
 };
 
 const PERSONAL_CARE_GROUPED_SUBCATEGORIES: Record<string, string[]> = {
@@ -215,6 +221,14 @@ const CATEGORIES: Category[] = [
     groupedSubcategories: NUTRITION_GROUPED_SUBCATEGORIES,
   },
   {
+    name: 'Organic Products',
+    icon: '🌾',
+    color: 'green',
+    href: '/medicines',
+    subcategories: ['All', ...flattenSubcategories(ORGANIC_PRODUCTS_GROUPED_SUBCATEGORIES)],
+    groupedSubcategories: ORGANIC_PRODUCTS_GROUPED_SUBCATEGORIES,
+  },
+  {
     name: 'Personal Care',
     icon: '🧴',
     color: 'emerald',
@@ -353,6 +367,11 @@ export default function CategoryNav({ isMobile = false }: { isMobile?: boolean }
       return buildHref('/medicines', { category: 'disease', subcategory: subcategoryName });
     }
 
+    if (categoryName === 'Organic Products') {
+      // For Organic Products, redirect to nutrition with organic subcategory
+      return buildHref('/medicines', { category: 'nutrition', subcategory: subcategoryName });
+    }
+
     // For all other categories (Nutrition, Personal Care, Fitness, etc.)
     return buildHref('/medicines', { category: categoryName.toLowerCase(), subcategory: subcategoryName });
   };
@@ -410,7 +429,7 @@ export default function CategoryNav({ isMobile = false }: { isMobile?: boolean }
 
   // Desktop menu version - with hover dropdowns
   return (
-    <div className="hidden md:flex gap-0 mt-4 text-sm text-gray-700 border-t border-gray-100 pt-3 flex-nowrap relative pb-2">
+    <div className="hidden md:flex gap-0 mt-4 text-xs text-gray-700 border-t border-gray-100 pt-2 flex-nowrap relative pb-2 overflow-visible justify-center">
       {CATEGORIES.map((category) => (
         <div
           key={category.name}
@@ -421,14 +440,14 @@ export default function CategoryNav({ isMobile = false }: { isMobile?: boolean }
           {/* Category Button */}
           <Link
             href={getCategoryHref(category)}
-            className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 ${COLOR_STYLES[category.color].text} ${COLOR_STYLES[category.color].hover} hover:text-orange-500 shrink-0`}
+            className={`inline-flex items-center gap-1 px-2 py-1 rounded transition-all duration-200 ${COLOR_STYLES[category.color].text} ${COLOR_STYLES[category.color].hover} hover:text-orange-500 whitespace-nowrap text-xs`}
           >
             <span className="font-medium">{category.name}</span>
           </Link>
 
           {/* Dropdown Menu */}
           <div
-            className={`absolute left-0 mt-0 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50`}
+            className={`absolute left-1/2 -translate-x-1/2 mt-0 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50`}
           >
             {category.groupedSubcategories ? (
               <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-5" style={{ width: '780px', maxWidth: '80vw' }}>
@@ -490,18 +509,20 @@ export default function CategoryNav({ isMobile = false }: { isMobile?: boolean }
       ))}
 
       {/* Other Navigation Links */}
-      <Link
-        href="/doctor-consultation"
-        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-emerald-700 hover:text-orange-500 hover:bg-emerald-50 font-medium transition-all shrink-0"
-      >
-        Consult Doctor
-      </Link>
-      <Link
-        href="/lab-tests"
-        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-emerald-700 hover:text-orange-500 hover:bg-emerald-50 font-medium transition-all shrink-0"
-      >
-        Lab Tests
-      </Link>
+      <div className="flex gap-0 items-center">
+        <Link
+          href="/doctor-consultation"
+          className="inline-flex items-center gap-1 px-2 py-1 rounded text-emerald-700 hover:text-orange-500 hover:bg-emerald-50 font-medium transition-all whitespace-nowrap text-xs"
+        >
+          Consult Doctor
+        </Link>
+        <Link
+          href="/lab-tests"
+          className="inline-flex items-center gap-1 px-2 py-1 rounded text-emerald-700 hover:text-orange-500 hover:bg-emerald-50 font-medium transition-all whitespace-nowrap text-xs"
+        >
+          Lab Tests
+        </Link>
+      </div>
     </div>
   );
 }
