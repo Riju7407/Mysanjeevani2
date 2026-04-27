@@ -10,6 +10,7 @@
     "test:phone-otp": "node test-phone-otp-api.js"
   },
   "dependencies": {
+    "@types/node-cache": "^4.1.3",
     "agora-rtc-sdk-ng": "^4.24.0",
     "agora-token": "^2.0.4",
     "bcrypt": "^6.0.0",
@@ -19,11 +20,13 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.1.5",
     "next": "16.1.6",
+    "node-cache": "^5.1.2",
     "razorpay": "^2.9.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-slick": "^0.31.0",
-    "slick-carousel": "^1.8.1"
+    "slick-carousel": "^1.8.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

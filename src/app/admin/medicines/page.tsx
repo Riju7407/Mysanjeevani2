@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useImageUpload } from '@/lib/hooks/useImageUpload';
+import MultiCategorySelect from '@/components/MultiCategorySelect';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Medicine {
@@ -11,6 +12,7 @@ interface Medicine {
   name: string;
   brand: string;
   category: string;
+  categories?: string[];
   subcategory?: string;
   potency?: string;
   quantity?: number;
@@ -376,7 +378,7 @@ function getDefaultCategoryForType(productType: VendorProductType): string {
   return VENDOR_CATEGORY_MAP[productType][0];
 }
 
-const EMPTY_PROD = { name: '', brand: '', category: '', subcategory: '', potency: '', quantity: '', quantityUnit: 'None', diseaseCategory: '', diseaseSubcategory: '', price: '', mrp: '', stock: '', description: '', safetyInformation: '', specifications: '', benefit: '', requiresPrescription: false, image: '', isPopular: false, productType: 'Generic Medicine' as VendorProductType, isPopularGeneric: false, isPopularAyurveda: false, isPopularHomeopathy: false, isPopularLabTests: false };
+const EMPTY_PROD = { name: '', brand: '', category: '', categories: [] as string[], subcategory: '', potency: '', quantity: '', quantityUnit: 'None', diseaseCategory: '', diseaseSubcategory: '', price: '', mrp: '', stock: '', description: '', safetyInformation: '', specifications: '', benefit: '', requiresPrescription: false, image: '', isPopular: false, productType: 'Generic Medicine' as VendorProductType, isPopularGeneric: false, isPopularAyurveda: false, isPopularHomeopathy: false, isPopularLabTests: false };
 const EMPTY_LAB  = { name: '', category: '', price: '', mrp: '', description: '', icon: '', duration: '', testsIncluded: '', popular: false };
 
 /**
@@ -535,7 +537,7 @@ export default function AdminMedicines() {
     const isBabyCare = productType === 'Baby Care';
     const isFitness = productType === 'Fitness';
     const isUnani = productType === 'Unani';
-    setProdForm({ name: m.name, brand: m.brand || '', category: m.category, subcategory: isHomeopathy ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : isAyurveda ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : isNutrition ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : isPersonalCare ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : isBabyCare ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : isFitness ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : isUnani ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : '', potency: m.potency || '', quantity: m.quantity !== undefined ? String(m.quantity) : '', quantityUnit: m.quantityUnit || 'None', diseaseCategory: (m as any).diseaseCategory || '', diseaseSubcategory: (m as any).diseaseSubcategory || '', price: String(m.price), mrp: String(m.mrp || ''), stock: String(m.stock), description: m.description || '', safetyInformation: (m as any).safetyInformation || '', specifications: (m as any).specifications || '', benefit: m.benefit || '', requiresPrescription: m.requiresPrescription || false, image: m.image || '', isPopular: m.isPopular || false, productType, isPopularGeneric: (m as any).isPopularGeneric || false, isPopularAyurveda: (m as any).isPopularAyurveda || false, isPopularHomeopathy: (m as any).isPopularHomeopathy || false, isPopularLabTests: (m as any).isPopularLabTests || false });
+    setProdForm({ name: m.name, brand: m.brand || '', category: m.category, categories: (m as any).categories || [], subcategory: isHomeopathy ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : isAyurveda ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : isNutrition ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : isPersonalCare ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : isBabyCare ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : isFitness ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : isUnani ? (m.subcategory || getDefaultSubcategoryForTypeDynamic(productType, m.category)) : '', potency: m.potency || '', quantity: m.quantity !== undefined ? String(m.quantity) : '', quantityUnit: m.quantityUnit || 'None', diseaseCategory: (m as any).diseaseCategory || '', diseaseSubcategory: (m as any).diseaseSubcategory || '', price: String(m.price), mrp: String(m.mrp || ''), stock: String(m.stock), description: m.description || '', safetyInformation: (m as any).safetyInformation || '', specifications: (m as any).specifications || '', benefit: m.benefit || '', requiresPrescription: m.requiresPrescription || false, image: m.image || '', isPopular: m.isPopular || false, productType, isPopularGeneric: (m as any).isPopularGeneric || false, isPopularAyurveda: (m as any).isPopularAyurveda || false, isPopularHomeopathy: (m as any).isPopularHomeopathy || false, isPopularLabTests: (m as any).isPopularLabTests || false });
     setImages(m.images || []);
     setShowProdForm(true);
   };
@@ -568,7 +570,7 @@ export default function AdminMedicines() {
         }
       }
       
-      const payload = { name: prodForm.name, brand: prodForm.brand, category: prodForm.category, subcategory: (prodForm.productType === 'Homeopathy' || prodForm.productType === 'Ayurveda Medicine' || prodForm.productType === 'Nutrition' || prodForm.productType === 'Personal Care' || prodForm.productType === 'Baby Care' || prodForm.productType === 'Fitness' || prodForm.productType === 'Unani') ? (prodForm.subcategory || undefined) : undefined, potency: prodForm.potency || undefined, quantity: prodForm.quantity ? Number(prodForm.quantity) : undefined, quantityUnit: prodForm.quantityUnit || 'None', diseaseCategory: prodForm.diseaseCategory || undefined, diseaseSubcategory: prodForm.diseaseSubcategory || undefined, productType: prodForm.productType || 'Generic Medicine', price: Number(prodForm.price), mrp: prodForm.mrp ? Number(prodForm.mrp) : undefined, stock: Number(prodForm.stock) || 0, description: prodForm.description, safetyInformation: prodForm.safetyInformation || undefined, specifications: prodForm.specifications || undefined, benefit: prodForm.benefit || undefined, requiresPrescription: prodForm.requiresPrescription, images: images, image: images.length > 0 ? images[0] : undefined, isActive: true, isPopular: prodForm.isPopular || false, isPopularGeneric: prodForm.isPopularGeneric || false, isPopularAyurveda: prodForm.isPopularAyurveda || false, isPopularHomeopathy: prodForm.isPopularHomeopathy || false, isPopularLabTests: prodForm.isPopularLabTests || false };
+      const payload = { name: prodForm.name, brand: prodForm.brand, category: prodForm.category, categories: prodForm.categories || [], subcategory: (prodForm.productType === 'Homeopathy' || prodForm.productType === 'Ayurveda Medicine' || prodForm.productType === 'Nutrition' || prodForm.productType === 'Personal Care' || prodForm.productType === 'Baby Care' || prodForm.productType === 'Fitness' || prodForm.productType === 'Unani') ? (prodForm.subcategory || undefined) : undefined, potency: prodForm.potency || undefined, quantity: prodForm.quantity ? Number(prodForm.quantity) : undefined, quantityUnit: prodForm.quantityUnit || 'None', diseaseCategory: prodForm.diseaseCategory || undefined, diseaseSubcategory: prodForm.diseaseSubcategory || undefined, productType: prodForm.productType || 'Generic Medicine', price: Number(prodForm.price), mrp: prodForm.mrp ? Number(prodForm.mrp) : undefined, stock: Number(prodForm.stock) || 0, description: prodForm.description, safetyInformation: prodForm.safetyInformation || undefined, specifications: prodForm.specifications || undefined, benefit: prodForm.benefit || undefined, requiresPrescription: prodForm.requiresPrescription, images: images, image: images.length > 0 ? images[0] : undefined, isActive: true, isPopular: prodForm.isPopular || false, isPopularGeneric: prodForm.isPopularGeneric || false, isPopularAyurveda: prodForm.isPopularAyurveda || false, isPopularHomeopathy: prodForm.isPopularHomeopathy || false, isPopularLabTests: prodForm.isPopularLabTests || false };
       if (editMed) await fetch(`/api/admin/products/${editMed._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       else await fetch('/api/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       setShowProdForm(false); setEditMed(null); setImages([]); await fetchProducts();
@@ -1020,10 +1022,21 @@ export default function AdminMedicines() {
                   <input type="number" placeholder="MRP ₹" value={prodForm.mrp} onChange={(e) => setProdForm({ ...prodForm, mrp: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm" />
                   <input type="number" placeholder="Stock Qty" value={prodForm.stock} onChange={(e) => setProdForm({ ...prodForm, stock: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm" />
                   <input type="text" placeholder="Benefit tag (e.g. Immunity)" value={prodForm.benefit} onChange={(e) => setProdForm({ ...prodForm, benefit: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm" />
+                  <div className="md:col-span-3">
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">Additional Categories (Optional)</label>
+                    <MultiCategorySelect
+                      selectedCategories={prodForm.categories || []}
+                      onChange={(categories) => setProdForm({ ...prodForm, categories })}
+                      placeholder="Select additional categories for this product"
+                      className="w-full"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">You can select multiple categories and subcategories to help customers find this product</p>
+                  </div>
                   <textarea placeholder="Description" value={prodForm.description} onChange={(e) => setProdForm({ ...prodForm, description: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm md:col-span-3" rows={2} />
                   <textarea placeholder="Safety Information (one point per line)" value={prodForm.safetyInformation || ''} onChange={(e) => setProdForm({ ...prodForm, safetyInformation: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm md:col-span-3" rows={3} />
                   <textarea placeholder="Specifications (one point per line)" value={prodForm.specifications || ''} onChange={(e) => setProdForm({ ...prodForm, specifications: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm md:col-span-3" rows={3} />
                 </div>
+
                 <label className="flex items-center gap-2 cursor-pointer mb-6 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
                   <input type="checkbox" checked={prodForm.requiresPrescription} onChange={(e) => setProdForm({ ...prodForm, requiresPrescription: e.target.checked })} className="w-5 h-5 rounded border-slate-300 accent-emerald-600" />
                   <span className="text-sm font-medium text-slate-700">Requires Prescription (Rx)</span>

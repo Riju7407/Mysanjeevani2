@@ -12,6 +12,8 @@ interface MedicineCardProps {
     _id: string;
     name: string;
     price: number;
+    displayPrice?: number;
+    currencySymbol?: string;
     image?: string;
     rating?: number;
     reviews?: number;
@@ -132,7 +134,7 @@ export default function MedicineCard({
         <div className="space-y-3 pt-4">
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-bold text-blue-600">
-              ₹{medicine.price}
+              {medicine.currencySymbol || '₹'}{medicine.displayPrice || medicine.price}
             </span>
           </div>
 

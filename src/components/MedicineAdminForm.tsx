@@ -5,12 +5,14 @@
 
 import { useImageUpload } from '@/lib/hooks/useImageUpload';
 import { useState } from 'react';
+import MultiCategorySelect from './MultiCategorySelect';
 
 interface Medicine {
   _id?: string;
   name: string;
   price: number;
   category: string;
+  categories?: string[];
   stock: number;
   description?: string;
   images?: string[];
@@ -45,6 +47,7 @@ export default function MedicineAdminForm({
       name: '',
       price: 0,
       category: '',
+      categories: [],
       stock: 0,
       description: '',
       images: [],
@@ -114,6 +117,11 @@ export default function MedicineAdminForm({
       return;
     }
 
+    if (!formData.categories || formData.categories.length === 0) {
+      setError('At least one category must be selected');
+      return;
+    }
+
     if (formData.price <= 0) {
       setError('Price must be greater than 0');
       return;
@@ -166,6 +174,7 @@ export default function MedicineAdminForm({
           name: '',
           price: 0,
           category: '',
+          categories: [],
           stock: 0,
           description: '',
           images: [],
@@ -282,20 +291,14 @@ export default function MedicineAdminForm({
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Category *
+                Categories *
               </label>
-              <select
-                name="category"
-                value={formData.category}
-                onChange={handleInputChange}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select Category</option>
-                <option value="ayurveda">Ayurveda</option>
-                <option value="homeopathy">Homeopathy</option>
-                <option value="allopathy">Allopathy</option>
-              </select>
+              <MultiCategorySelect
+                selectedCategories={formData.categories || []}
+                onChange={(categories) => setFormData(prev => ({ ...prev, categories }))}
+                placeholder="Select one or more categories"
+                className="w-full"
+              />
             </div>
 
             <div>

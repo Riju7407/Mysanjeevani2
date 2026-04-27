@@ -65,7 +65,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="admin-panel flex h-screen bg-slate-50">
       <AdminSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
@@ -81,7 +81,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <p className="text-sm font-medium text-slate-900">Admin User</p>
               <p className="text-xs text-slate-500">MySanjeevni Platform</p>
             </div>
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold shadow-md">
+            <div className="w-10 h-10 bg-linear-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold shadow-md">
               A
             </div>
           </div>

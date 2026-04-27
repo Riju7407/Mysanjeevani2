@@ -23,6 +23,10 @@ const productSchema = new mongoose.Schema(
     subcategory: {
       type: String,
     },
+    categories: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'CategoryNode',
+    }],
     potency: {
       type: String,
       enum: POTENCY_OPTIONS,

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface Category {
   name: string;
@@ -11,6 +11,12 @@ interface Category {
   color: string;
   href: string;
 }
+
+type DynamicCategoryConfig = {
+  vendorCategoryMap?: Record<string, string[]>;
+  subcategoryMapByType?: Record<string, Record<string, string[]>>;
+  diseaseSubcategoryMap?: Record<string, string[]>;
+};
 
 const AYURVEDA_GROUPED_SUBCATEGORIES: Record<string, string[]> = {
   Medicines: ['Himalaya', 'Organic India', 'Baidyanath', 'Dabur', 'Zandu', 'Charak', 'Aimil'],
@@ -278,6 +284,68 @@ const CATEGORIES: Category[] = [
   },
 ];
 
+const buildFlatSubcategories = (groupedSubcategories?: Record<string, string[]>) => {
+  if (!groupedSubcategories) return [];
+  return ['All', ...Object.values(groupedSubcategories).flat()];
+};
+
+const toSingleGroup = (groupName: string, values?: string[]) => {
+  if (!values || values.length === 0) return undefined;
+  return { [groupName]: values };
+};
+
+const pickFirstMap = (
+  source: Record<string, Record<string, string[]>>,
+  keys: string[]
+) => {
+  for (const key of keys) {
+    if (source[key] && Object.keys(source[key]).length > 0) {
+      return source[key];
+    }
+  }
+  return undefined;
+};
+
+const getDynamicGroupedByCategory = (
+  config: DynamicCategoryConfig
+): Partial<Record<string, Record<string, string[]>>> => {
+  const subByType = config.subcategoryMapByType || {};
+  const vendorMap = config.vendorCategoryMap || {};
+  const diseaseMap = config.diseaseSubcategoryMap || {};
+
+  const nutritionMap = pickFirstMap(subByType, ['Nutrition']) || NUTRITION_GROUPED_SUBCATEGORIES;
+  const organicProductsFromNutrition = nutritionMap['Organic Products'];
+
+  return {
+    Medicines:
+      Object.keys(diseaseMap).length > 0
+        ? diseaseMap
+        : toSingleGroup('Categories', vendorMap['Generic Medicine']),
+    Ayurveda:
+      pickFirstMap(subByType, ['Ayurveda', 'Ayurveda Medicine']) ||
+      AYURVEDA_GROUPED_SUBCATEGORIES,
+    Homeopathy:
+      pickFirstMap(subByType, ['Homeopathy']) || HOMEOPATHY_GROUPED_SUBCATEGORIES,
+    Nutrition: nutritionMap,
+    'Organic Products':
+      (organicProductsFromNutrition && toSingleGroup('Organic Products', organicProductsFromNutrition)) ||
+      pickFirstMap(subByType, ['Organic Products']) ||
+      ORGANIC_PRODUCTS_GROUPED_SUBCATEGORIES,
+    'Personal Care':
+      pickFirstMap(subByType, ['Personal Care']) || PERSONAL_CARE_GROUPED_SUBCATEGORIES,
+    Fitness: pickFirstMap(subByType, ['Fitness']) || FITNESS_GROUPED_SUBCATEGORIES,
+    'Sexual Wellness':
+      pickFirstMap(subByType, ['Sexual Wellness']) ||
+      toSingleGroup('Sexual Wellness', vendorMap['Sexual Wellness']) ||
+      SEXUAL_WELLNESS_GROUPED_SUBCATEGORIES,
+    Disease:
+      Object.keys(diseaseMap).length > 0
+        ? diseaseMap
+        : DISEASE_GROUPED_SUBCATEGORIES,
+    Unani: pickFirstMap(subByType, ['Unani']) || UNANI_GROUPED_SUBCATEGORIES,
+  };
+};
+
 const COLOR_STYLES: Record<string, any> = {
   emerald: {
     hover: 'hover:bg-emerald-50',
@@ -343,6 +411,44 @@ const COLOR_STYLES: Record<string, any> = {
 
 export default function CategoryNav({ isMobile = false }: { isMobile?: boolean }) {
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>(CATEGORIES);
+
+  useEffect(() => {
+    let active = true;
+
+    const fetchDynamicCategories = async () => {
+      try {
+        const response = await fetch('/api/categories?mode=config');
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (!data?.success || !active) return;
+
+        const dynamicGrouped = getDynamicGroupedByCategory(data.config || {});
+
+        setCategories((prev) =>
+          prev.map((category) => {
+            const groupedSubcategories = dynamicGrouped[category.name] || category.groupedSubcategories;
+            if (!groupedSubcategories) return category;
+
+            return {
+              ...category,
+              groupedSubcategories,
+              subcategories: buildFlatSubcategories(groupedSubcategories),
+            };
+          })
+        );
+      } catch {
+        // Keep fallback static categories when dynamic config cannot be loaded.
+      }
+    };
+
+    fetchDynamicCategories();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const buildHref = (path: string, params?: Record<string, string>) => {
     const query = new URLSearchParams(params).toString();
@@ -392,7 +498,7 @@ export default function CategoryNav({ isMobile = false }: { isMobile?: boolean }
     // Mobile menu version - expanded categories
     return (
       <div className="space-y-2 pb-2">
-        {CATEGORIES.map((category) => (
+        {categories.map((category) => (
           <div key={category.name} className="border-b border-gray-100">
             <Link
               href={getCategoryHref(category)}
@@ -430,13 +536,21 @@ export default function CategoryNav({ isMobile = false }: { isMobile?: boolean }
   // Desktop menu version - with hover dropdowns
   return (
     <div className="hidden md:flex gap-0 mt-4 text-xs text-gray-700 border-t border-gray-100 pt-2 flex-nowrap relative pb-2 overflow-visible justify-center">
-      {CATEGORIES.map((category) => (
-        <div
-          key={category.name}
-          className="relative group"
-          onMouseEnter={() => setHoveredCategory(category.name)}
-          onMouseLeave={() => setHoveredCategory(null)}
-        >
+      {categories.map((category, index) => {
+        const dropdownPositionClass =
+          index <= 2
+            ? 'left-0'
+            : index >= categories.length - 2
+              ? 'right-0'
+              : 'left-1/2 -translate-x-1/2';
+
+        return (
+          <div
+            key={category.name}
+            className="relative group"
+            onMouseEnter={() => setHoveredCategory(category.name)}
+            onMouseLeave={() => setHoveredCategory(null)}
+          >
           {/* Category Button */}
           <Link
             href={getCategoryHref(category)}
@@ -447,7 +561,7 @@ export default function CategoryNav({ isMobile = false }: { isMobile?: boolean }
 
           {/* Dropdown Menu */}
           <div
-            className={`absolute left-1/2 -translate-x-1/2 mt-0 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50`}
+            className={`absolute ${dropdownPositionClass} mt-0 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50`}
           >
             {category.groupedSubcategories ? (
               <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-5" style={{ width: '780px', maxWidth: '80vw' }}>
@@ -505,8 +619,9 @@ export default function CategoryNav({ isMobile = false }: { isMobile?: boolean }
               </div>
             )}
           </div>
-        </div>
-      ))}
+          </div>
+        );
+      })}
 
       {/* Other Navigation Links */}
       <div className="flex gap-0 items-center">

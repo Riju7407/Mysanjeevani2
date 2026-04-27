@@ -57,3 +57,24 @@ button {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;  /* Chrome, Safari and Opera */
 }
+
+.admin-panel input,
+.admin-panel textarea,
+.admin-panel select {
+  color: #0f172a;
+  background-color: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.admin-panel input::placeholder,
+.admin-panel textarea::placeholder {
+  color: #64748b;
+  opacity: 1;
+}
+
+.admin-panel input:disabled,
+.admin-panel textarea:disabled,
+.admin-panel select:disabled {
+  background-color: #f8fafc;
+  color: #475569;
+}

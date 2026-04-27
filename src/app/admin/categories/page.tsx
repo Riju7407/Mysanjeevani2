@@ -12,8 +12,95 @@ type CategoryTreeNode = {
   children: CategoryTreeNode[];
 };
 
+type DynamicCategoryConfig = {
+  vendorCategoryMap?: Record<string, string[]>;
+  subcategoryMapByType?: Record<string, Record<string, string[]>>;
+  diseaseSubcategoryMap?: Record<string, string[]>;
+};
+
+const PRIMARY_MEDICINE_CATEGORIES = [
+  'Medicines',
+  'Ayurveda',
+  'Homeopathy',
+  'Nutrition',
+  'Organic Products',
+  'Personal Care',
+  'Fitness',
+  'Sexual Wellness',
+  'Disease',
+  'Unani',
+];
+
+const CATEGORY_ACCENT_CLASSES: Record<string, string> = {
+  Medicines: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  Ayurveda: 'border-green-200 bg-green-50 text-green-800',
+  Homeopathy: 'border-pink-200 bg-pink-50 text-pink-800',
+  Nutrition: 'border-lime-200 bg-lime-50 text-lime-800',
+  'Organic Products': 'border-amber-200 bg-amber-50 text-amber-800',
+  'Personal Care': 'border-cyan-200 bg-cyan-50 text-cyan-800',
+  Fitness: 'border-sky-200 bg-sky-50 text-sky-800',
+  'Sexual Wellness': 'border-rose-200 bg-rose-50 text-rose-800',
+  Disease: 'border-red-200 bg-red-50 text-red-800',
+  Unani: 'border-indigo-200 bg-indigo-50 text-indigo-800',
+};
+
+function getHierarchyGroups(config: DynamicCategoryConfig | null, categoryName: string): string[] {
+  if (!config) return [];
+
+  const vendorMap = config.vendorCategoryMap || {};
+  const subByType = config.subcategoryMapByType || {};
+  const diseaseMap = config.diseaseSubcategoryMap || {};
+
+  if (categoryName === 'Medicines') {
+    if (Object.keys(diseaseMap).length > 0) return Object.keys(diseaseMap);
+    return vendorMap['Generic Medicine'] || [];
+  }
+
+  if (categoryName === 'Disease') {
+    return Object.keys(diseaseMap);
+  }
+
+  if (categoryName === 'Ayurveda') {
+    return Object.keys(subByType.Ayurveda || subByType['Ayurveda Medicine'] || {});
+  }
+
+  if (categoryName === 'Homeopathy') {
+    return Object.keys(subByType.Homeopathy || {});
+  }
+
+  if (categoryName === 'Nutrition') {
+    return Object.keys(subByType.Nutrition || {});
+  }
+
+  if (categoryName === 'Organic Products') {
+    const nutritionOrganic = subByType.Nutrition?.['Organic Products'] || [];
+    if (nutritionOrganic.length > 0) return nutritionOrganic;
+    return Object.keys(subByType['Organic Products'] || {});
+  }
+
+  if (categoryName === 'Personal Care') {
+    return Object.keys(subByType['Personal Care'] || {});
+  }
+
+  if (categoryName === 'Fitness') {
+    return Object.keys(subByType.Fitness || {});
+  }
+
+  if (categoryName === 'Sexual Wellness') {
+    const mapped = Object.keys(subByType['Sexual Wellness'] || {});
+    return mapped.length > 0 ? mapped : vendorMap['Sexual Wellness'] || [];
+  }
+
+  if (categoryName === 'Unani') {
+    return Object.keys(subByType.Unani || {});
+  }
+
+  return [];
+}
+
 export default function AdminCategoriesPage() {
   const [tree, setTree] = useState<CategoryTreeNode[]>([]);
+  const [categoryConfig, setCategoryConfig] = useState<DynamicCategoryConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [newRootName, setNewRootName] = useState('');
@@ -21,10 +108,19 @@ export default function AdminCategoriesPage() {
   const fetchTree = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/categories');
-      const data = await response.json();
-      if (data?.success) {
-        setTree(data.tree || []);
+      const [treeResponse, configResponse] = await Promise.all([
+        fetch('/api/categories'),
+        fetch('/api/categories?mode=config'),
+      ]);
+
+      const treeData = await treeResponse.json();
+      if (treeData?.success) {
+        setTree(treeData.tree || []);
+      }
+
+      const configData = await configResponse.json();
+      if (configData?.success) {
+        setCategoryConfig(configData.config || null);
       }
     } finally {
       setLoading(false);
@@ -166,6 +262,51 @@ export default function AdminCategoriesPage() {
             >
               Add Root
             </button>
+          </div>
+        </div>
+
+        <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4">
+          <h2 className="mb-2 text-sm font-semibold text-slate-900">Medicine Category Hierarchy Cards</h2>
+          <p className="mb-4 text-xs text-slate-600">
+            These cards drive user header hover hierarchy. Any add, update, or delete done in this panel updates this data and is reflected for users.
+          </p>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {PRIMARY_MEDICINE_CATEGORIES.map((categoryName) => {
+              const groups = getHierarchyGroups(categoryConfig, categoryName);
+              const accentClass = CATEGORY_ACCENT_CLASSES[categoryName] || 'border-slate-200 bg-slate-50 text-slate-800';
+
+              return (
+                <div key={categoryName} className={`rounded-lg border p-3 ${accentClass}`}>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold">{categoryName}</h3>
+                    <span className="rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold">
+                      {groups.length} levels
+                    </span>
+                  </div>
+
+                  {groups.length === 0 ? (
+                    <p className="mt-2 text-xs">No hierarchy available yet.</p>
+                  ) : (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {groups.slice(0, 6).map((groupName) => (
+                        <span
+                          key={`${categoryName}-${groupName}`}
+                          className="rounded-full bg-white/85 px-2 py-0.5 text-[11px] font-medium"
+                        >
+                          {groupName}
+                        </span>
+                      ))}
+                      {groups.length > 6 && (
+                        <span className="rounded-full bg-white/85 px-2 py-0.5 text-[11px] font-medium">
+                          +{groups.length - 6} more
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 

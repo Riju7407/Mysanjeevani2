@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Product } from '@/lib/models/Product';
+import { detectUserCountry, convertPrice } from '@/lib/currencyUtils';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,10 +73,34 @@ export async function GET(request: NextRequest) {
 
     const total = await Product.countDocuments(query);
 
+    // Get user location for currency conversion
+    const ip = request.headers.get('x-forwarded-for') ||
+               request.headers.get('x-real-ip') ||
+               '127.0.0.1';
+    const userLocation = await detectUserCountry(ip as string);
+
+    // Convert prices for all products
+    const productsWithConvertedPrices = await Promise.all(
+      products.map(async (product) => {
+        const productObj = product.toObject();
+        const conversion = await convertPrice(productObj.price, userLocation);
+
+        return {
+          ...productObj,
+          displayPrice: conversion.convertedPrice,
+          currency: conversion.currency,
+          currencySymbol: conversion.symbol,
+          originalPrice: productObj.price,
+          exchangeRate: conversion.exchangeRate,
+        };
+      })
+    );
+
     return NextResponse.json(
       {
         message: 'Products fetched successfully',
-        products,
+        products: productsWithConvertedPrices,
+        userLocation,
         pagination: {
           total,
           page,
