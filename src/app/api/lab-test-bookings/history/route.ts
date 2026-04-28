@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { connectDB } from '@/lib/db';
 import { LabTestBooking } from '@/lib/models/LabTestBooking';
 import { Product } from '@/lib/models/Product';
+import { User } from '@/lib/models/User';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'MySanjeevni-secret-key-2024';
 
@@ -50,6 +51,9 @@ async function getVendorLabProductIds(vendorId: string) {
 export async function GET(req: Request) {
   try {
     await connectDB();
+
+    // Ensure User model is registered
+    const { User: UserModel } = await import('@/lib/models/User');
 
     const { searchParams } = new URL(req.url);
     const scope = String(searchParams.get('scope') || 'me').trim().toLowerCase();

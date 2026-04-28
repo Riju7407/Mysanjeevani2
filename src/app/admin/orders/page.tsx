@@ -10,6 +10,7 @@ export default function AdminOrders() {
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [showModal, setShowModal] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
 
   useEffect(() => {
     fetchOrders();
@@ -72,6 +73,30 @@ export default function AdminOrders() {
     }
 
     setFilteredOrders(filtered);
+  };
+
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      setUpdatingStatus(orderId);
+      
+      // Update localStorage
+      const ordersStr = localStorage.getItem('orders') || '[]';
+      const ordersList = JSON.parse(ordersStr);
+      const updatedOrders = ordersList.map((order: any) => 
+        (order._id === orderId || order.id === orderId) ? { ...order, status: newStatus } : order
+      );
+      localStorage.setItem('orders', JSON.stringify(updatedOrders));
+      
+      // Update local state
+      setOrders(updatedOrders);
+      
+      alert('Order status updated successfully');
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      alert('Failed to update order status');
+    } finally {
+      setUpdatingStatus(null);
+    }
   };
 
   const getStatusBadgeColor = (status: string) => {
@@ -217,15 +242,29 @@ export default function AdminOrders() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      <button
-                        onClick={() => {
-                          setSelectedOrder(order);
-                          setShowModal(true);
-                        }}
-                        className="text-indigo-600 hover:text-indigo-900 font-medium"
-                      >
-                        View Details
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={order.status || 'pending'}
+                          onChange={(e) => updateOrderStatus(order._id || order.id, e.target.value)}
+                          disabled={updatingStatus === (order._id || order.id)}
+                          className="px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="confirmed">Confirmed</option>
+                          <option value="shipped">Shipped</option>
+                          <option value="delivered">Delivered</option>
+                          <option value="cancelled">Cancelled</option>
+                        </select>
+                        <button
+                          onClick={() => {
+                            setSelectedOrder(order);
+                            setShowModal(true);
+                          }}
+                          className="text-indigo-600 hover:text-indigo-900 font-medium text-xs"
+                        >
+                          View
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
