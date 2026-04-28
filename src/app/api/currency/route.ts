@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
     const ip = request.headers.get('x-forwarded-for') ||
                request.headers.get('x-real-ip') ||
                '127.0.0.1';
+    const acceptLanguage = request.headers.get('accept-language') || '';
 
     if (!price || isNaN(Number(price))) {
       return NextResponse.json(
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Detect user location
-    const userLocation = await detectUserCountry(ip as string);
+    const userLocation = await detectUserCountry(ip as string, acceptLanguage);
 
     // Convert price
     const conversion = await convertPrice(inrPrice, userLocation);
@@ -69,7 +70,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Detect user location
-    const userLocation = await detectUserCountry(ip);
+    const acceptLanguage = request.headers.get('accept-language') || '';
+    const userLocation = await detectUserCountry(ip, acceptLanguage);
 
     // Convert all prices
     const conversions = await Promise.all(

@@ -676,7 +676,7 @@ export default function Header() {
               <div className="h-10 w-10 sm:h-12 sm:w-12 shrink-0">
                 <LogoImage />
               </div>
-              <div className="text-lg sm:text-xl font-bold hidden sm:block">
+              <div className="text-lg sm:text-xl font-bold">
                 <span className="text-emerald-600">My</span><span className="text-orange-500">Sanjeevni</span>
               </div>
             </Link>
@@ -1024,6 +1024,20 @@ export default function Header() {
       {isMenuOpen && (
         <div className="md:hidden bg-white border-t border-gray-100 p-4 space-y-2 max-h-[75vh] overflow-y-auto">
           <CategoryNav isMobile={true} />
+          <div className="mt-2 flex flex-col gap-2">
+            <Link
+              href="/doctor-consultation"
+              className="block w-full text-left px-3 py-2 rounded text-emerald-700 hover:text-orange-500 hover:bg-emerald-50 font-medium transition"
+            >
+              Consult Doctor
+            </Link>
+            <Link
+              href="/lab-tests"
+              className="block w-full text-left px-3 py-2 rounded text-emerald-700 hover:text-orange-500 hover:bg-emerald-50 font-medium transition"
+            >
+              Lab Tests
+            </Link>
+          </div>
           <div className="border-t border-gray-100 pt-3"></div>
           <div className="rounded-lg border border-gray-200 p-3">
             <button

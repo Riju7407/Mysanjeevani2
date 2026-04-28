@@ -7,6 +7,7 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import HeroCarousel from '@/components/HeroCarousel';
+import LeftSideCarousel from '@/components/LeftSideCarousel';
 import PrimaryServicesCarousel from '@/components/PrimaryServicesCarousel';
 import HealthConcernCarousel from '@/components/HealthConcernCarousel';
 import FeaturedProductsSection from '@/components/FeaturedProductsSection';
@@ -403,27 +404,12 @@ export default function HomePage() {
       <section className="w-full px-4 py-6">
         <div className="max-w-7xl mx-auto flex justify-center">
           <div className="w-full max-w-6xl flex flex-col lg:flex-row justify-center items-center gap-4 lg:h-56">
-            {/* Left Image Section */}
-            <Link
-              href="/signup"
-              className="w-full max-w-[320px] lg:max-w-none lg:w-56 aspect-square mx-auto lg:mx-0 rounded-2xl overflow-hidden shadow-lg bg-gray-100 block cursor-pointer"
-              aria-label="Go to signup page"
-            >
-              <img
-                src="/lb.jpeg"
-                alt="Hero Left Banner"
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'contain',
-                  objectPosition: 'center',
-                  display: 'block',
-                  backgroundColor: '#f8fafc',
-                }}
-              />
-            </Link>
+            {/* Left Carousel Section */}
+            <div className="w-full max-w-[320px] lg:max-w-none lg:w-56 mx-auto lg:mx-0">
+              <LeftSideCarousel />
+            </div>
 
-            {/* Carousel Section */}
+            {/* Center Carousel Section */}
             <div className="w-full lg:flex-1 lg:max-w-4xl rounded-2xl overflow-hidden shadow-lg bg-white min-h-[220px] sm:min-h-[280px] lg:min-h-0">
               <HeroCarousel />
             </div>

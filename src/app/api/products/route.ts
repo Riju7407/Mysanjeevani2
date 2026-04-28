@@ -77,7 +77,8 @@ export async function GET(request: NextRequest) {
     const ip = request.headers.get('x-forwarded-for') ||
                request.headers.get('x-real-ip') ||
                '127.0.0.1';
-    const userLocation = await detectUserCountry(ip as string);
+    const acceptLanguage = request.headers.get('accept-language') || '';
+    const userLocation = await detectUserCountry(ip as string, acceptLanguage);
 
     // Convert prices for all products
     const productsWithConvertedPrices = await Promise.all(

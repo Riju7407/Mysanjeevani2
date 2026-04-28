@@ -205,7 +205,7 @@ function AyurvedaContent() {
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="sticky top-0 z-30 bg-white border-b border-amber-200 shadow-sm -mt-40">
+      <div className="sticky top-[68px] md:top-0 z-30 bg-white border-b border-amber-200 shadow-sm -mt-40">
         <div className="max-w-7xl mx-auto px-4 py-1">
           <div className="flex flex-col gap-4 md:gap-0 md:flex-row md:items-center md:justify-between">
             {/* Search Bar */}
@@ -225,7 +225,7 @@ function AyurvedaContent() {
             <select
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value)}
-              className="border-2 border-amber-200 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400 transition text-sm font-medium text-gray-700"
+              className="w-full md:w-auto border-2 border-amber-200 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400 transition text-sm font-medium text-gray-700"
             >
               {SORT_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>

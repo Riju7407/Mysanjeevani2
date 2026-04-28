@@ -530,7 +530,7 @@ function LabTestsPageContent() {
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="sticky top-0 z-30 bg-white border-b border-emerald-200 shadow-sm -mt-40">
+      <div className="sticky top-[68px] md:top-0 z-30 bg-white border-b border-emerald-200 shadow-sm -mt-40">
         <div className="max-w-7xl mx-auto px-4 py-1">
           <div className="flex flex-col gap-4 md:gap-0 md:flex-row md:items-center md:justify-between">
             {/* Search Bar */}
@@ -546,12 +546,12 @@ function LabTestsPageContent() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               {/* Thyrocare Gender Filter */}
               <select
                 value={gender}
                 onChange={(e) => setGender(e.target.value as 'MALE' | 'FEMALE')}
-                className="border-2 border-emerald-200 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 transition text-sm font-medium text-gray-700"
+                className="w-full sm:w-auto border-2 border-emerald-200 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 transition text-sm font-medium text-gray-700"
                 aria-label="Filter Thyrocare catalog by gender"
                 title="Thyrocare catalog gender"
               >
@@ -566,7 +566,7 @@ function LabTestsPageContent() {
               <select
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value)}
-                className="border-2 border-emerald-200 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 transition text-sm font-medium text-gray-700"
+                className="w-full sm:w-auto border-2 border-emerald-200 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 transition text-sm font-medium text-gray-700"
               >
                 {SORT_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>

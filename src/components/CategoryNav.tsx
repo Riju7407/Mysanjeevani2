@@ -507,10 +507,10 @@ export default function CategoryNav({ isMobile = false }: { isMobile?: boolean }
               <span>{category.name}</span>
             </Link>
             <div className="pl-6 space-y-1">
-              {category.subcategories.slice(1, 6).map((subcat) => {
+              {category.subcategories.slice(1, 6).map((subcat, idx) => {
                 return (
                   <Link
-                    key={subcat}
+                    key={`${category.name}-${subcat}-${idx}`}
                     href={getSubcategoryHref(category.name, subcat)}
                     className="text-xs text-gray-600 hover:text-emerald-700 block py-1"
                   >
@@ -605,7 +605,7 @@ export default function CategoryNav({ isMobile = false }: { isMobile?: boolean }
               <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.25rem', width: 'fit-content', maxWidth: '500px' }}>
                 {category.subcategories.map((subcat, idx) => (
                   <Link
-                    key={subcat}
+                    key={`${category.name}-${subcat}-${idx}`}
                     href={subcat === 'All' ? getCategoryHref(category) : getSubcategoryHref(category.name, subcat)}
                     className={`text-center px-2 py-2 text-sm rounded transition-colors duration-150 ${
                       idx === 0

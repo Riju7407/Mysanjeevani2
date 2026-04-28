@@ -462,7 +462,7 @@ export default function DoctorConsultationPage() {
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="sticky top-0 z-30 bg-white border-b border-emerald-200 shadow-sm -mt-40">
+      <div className="sticky top-[68px] md:top-0 z-30 bg-white border-b border-emerald-200 shadow-sm -mt-40">
         <div className="max-w-7xl mx-auto px-4 py-1">
           <div className="flex flex-col gap-4 md:gap-0 md:flex-row md:items-center md:justify-between">
             {/* Search Bar */}
@@ -483,7 +483,7 @@ export default function DoctorConsultationPage() {
             <select
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value)}
-              className="border-2 border-emerald-200 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 transition text-sm font-medium text-gray-700"
+              className="w-full md:w-auto border-2 border-emerald-200 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400 transition text-sm font-medium text-gray-700"
             >
               {SORT_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -567,7 +567,7 @@ export default function DoctorConsultationPage() {
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900">
-                    {selectedDept === 'All' ? 'Find a Doctor' : selectedDept}
+                    {selectedDept === 'All' ? 'Find a Doctor (Emergency Support May Not Be Available Anytime)' : selectedDept}
                   </h1>
                   <p className="text-gray-600 mt-1 text-sm">
                     {sortedDoctors.length} {sortedDoctors.length === 1 ? 'doctor' : 'doctors'} available

@@ -17,44 +17,68 @@ export interface UserLocation {
 }
 
 /**
- * Detect user's country using IP address
+ * Check if IP is a reserved/private IP address
  */
-export async function detectUserCountry(ip?: string): Promise<UserLocation> {
+function isReservedIP(ip: string): boolean {
+  const reservedRanges = [
+    /^127\./,                    // Loopback
+    /^192\.168\./,              // Private
+    /^10\./,                     // Private
+    /^172\.(1[6-9]|2[0-9]|3[01])\./, // Private
+    /^::1$/,                      // IPv6 loopback
+    /^fc00:/,                     // IPv6 private
+  ];
+  
+  return reservedRanges.some(range => range.test(ip));
+}
+
+/**
+ * Detect user's country using IP address
+ * Falls back to header-based detection and defaults to non-India for development
+ */
+export async function detectUserCountry(ip?: string, acceptLanguage?: string): Promise<UserLocation> {
   try {
-    // If no IP provided, try to get from request headers
-    if (!ip) {
-      // In a real implementation, you'd get this from the request
-      // For now, we'll use a fallback
-      return { country: 'IN', isIndia: true };
-    }
+    // If IP is provided and not reserved, try geolocation
+    if (ip && !isReservedIP(ip)) {
+      try {
+        // Use ipapi.co for IP geolocation
+        const response = await fetch(`http://ipapi.co/${ip}/json/`, {
+          headers: {
+            'User-Agent': 'MySanjeevani/1.0'
+          }
+        });
 
-    // Use ipapi.co for IP geolocation
-    const response = await fetch(`http://ipapi.co/${ip}/json/`, {
-      headers: {
-        'User-Agent': 'MySanjeevani/1.0'
+        if (response.ok) {
+          const data = await response.json();
+
+          if (!data.error && data.country_code) {
+            const isIndia = data.country_code === 'IN' || data.country === 'India';
+            return {
+              country: data.country || 'Unknown',
+              isIndia
+            };
+          }
+        }
+      } catch (geoError) {
+        // Geolocation failed, continue to fallback
       }
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch location data');
     }
 
-    const data = await response.json();
-
-    if (data.error) {
-      throw new Error(data.reason || 'Location detection failed');
+    // Fallback: Check Accept-Language header for country hints
+    if (acceptLanguage) {
+      const languageLower = acceptLanguage.toLowerCase();
+      if (languageLower.includes('hi') || languageLower.includes('ta') || languageLower.includes('te')) {
+        return { country: 'IN', isIndia: true };
+      }
     }
 
-    const isIndia = data.country_code === 'IN' || data.country === 'India';
-
-    return {
-      country: data.country || 'Unknown',
-      isIndia
-    };
+    // Default: Assume non-India for localhost and other development scenarios
+    // This ensures proper USD pricing for testing
+    return { country: 'US', isIndia: false };
   } catch (error) {
     console.error('Error detecting user country:', error);
-    // Fallback to India for safety
-    return { country: 'IN', isIndia: true };
+    // Fallback to non-India to show USD prices
+    return { country: 'US', isIndia: false };
   }
 }
 
@@ -133,13 +157,16 @@ export async function convertPrice(
     };
   } catch (error) {
     console.error('Error converting price:', error);
-    // Fallback: return INR price
+    // Fallback: return USD price (better to show USD than INR for unknown users)
+    const fallbackRate = 0.012;
+    const usdPrice = inrPrice * fallbackRate;
+    const roundedUsdPrice = Math.round(usdPrice * 100) / 100;
     return {
       originalPrice: inrPrice,
-      convertedPrice: inrPrice,
-      currency: 'INR',
-      exchangeRate: 1,
-      symbol: '₹'
+      convertedPrice: roundedUsdPrice,
+      currency: 'USD',
+      exchangeRate: fallbackRate,
+      symbol: '$'
     };
   }
 }
