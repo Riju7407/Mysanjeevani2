@@ -28,6 +28,20 @@ const LANGUAGE_OPTIONS = [
   { code: 'or', label: 'Odia' },
 ] as const;
 
+type SearchSuggestionKind =
+  | 'Category'
+  | 'Subcategory'
+  | 'Sub-subcategory'
+  | 'Product'
+  | 'Doctor'
+  | 'Lab Test'
+  | 'Brand';
+
+type SearchSuggestion = {
+  value: string;
+  type: SearchSuggestionKind;
+};
+
 const SEARCH_SECTION_PRIORITY = ['medicines', 'ayurveda', 'homeopathy', 'nutrition', 'organic-products', 'personal-care', 'fitness', 'sexual-wellness', 'baby-care', 'unani', 'disease', 'lab-tests'] as const;
 
 // Product type to URL category mapping
@@ -95,6 +109,27 @@ const LAB_TESTS_QUERY_HINTS = [
   'profile', 'diagnostic', 'report',
 ];
 
+const FALLBACK_SEARCH_SUGGESTIONS: SearchSuggestion[] = [
+  { value: 'Fever & Cold Relief', type: 'Category' },
+  { value: 'Headache & Migraine', type: 'Category' },
+  { value: 'Digestive Care', type: 'Category' },
+  { value: 'Pain Relief', type: 'Category' },
+  { value: 'Skin Care Products', type: 'Category' },
+  { value: 'Vitamins & Supplements', type: 'Category' },
+  { value: 'Himalaya Products', type: 'Brand' },
+  { value: 'Organic India', type: 'Brand' },
+  { value: 'Homeopathic Remedies', type: 'Subcategory' },
+  { value: 'SBL', type: 'Brand' },
+  { value: 'Dr. Reckeweg', type: 'Brand' },
+  { value: 'Protein Powder', type: 'Product' },
+  { value: 'Multivitamins', type: 'Product' },
+  { value: 'Weight Gainer', type: 'Product' },
+  { value: 'Blood Test', type: 'Lab Test' },
+  { value: 'Thyroid Test', type: 'Lab Test' },
+  { value: 'Diabetes Test', type: 'Lab Test' },
+  { value: 'Full Body Checkup', type: 'Lab Test' },
+];
+
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -104,7 +139,8 @@ export default function Header() {
   const [isSearchRedirecting, setIsSearchRedirecting] = useState(false);
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('en');
-  const [searchSuggestions, setSearchSuggestions] = useState<string[]>([]);
+  const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestion[]>([]);
+  const [searchSuggestionPool, setSearchSuggestionPool] = useState<SearchSuggestion[]>([]);
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
@@ -205,6 +241,113 @@ export default function Header() {
     }
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    const suggestionMap = new Map<string, SearchSuggestion>();
+
+    const pushSuggestion = (value: unknown, type: SearchSuggestionKind) => {
+      const cleanValue = String(value || '').trim();
+      if (cleanValue.length < 2) return;
+      const key = `${type}:${cleanValue.toLowerCase()}`;
+      if (!suggestionMap.has(key)) {
+        suggestionMap.set(key, { value: cleanValue, type });
+      }
+    };
+
+    for (const fallbackSuggestion of FALLBACK_SEARCH_SUGGESTIONS) {
+      pushSuggestion(fallbackSuggestion.value, fallbackSuggestion.type);
+    }
+
+    const loadSearchSuggestions = async () => {
+      try {
+        const [productsResult, doctorsResult, labTestsResult, categoriesResult] = await Promise.allSettled([
+          fetch('/api/products?limit=600', { cache: 'no-store' }),
+          fetch('/api/doctors', { cache: 'no-store' }),
+          fetch('/api/lab-tests?limit=300', { cache: 'no-store' }),
+          fetch('/api/categories?mode=config', { cache: 'no-store' }),
+        ]);
+
+        if (productsResult.status === 'fulfilled' && productsResult.value.ok) {
+          const productsData = await productsResult.value.json();
+          const products = Array.isArray(productsData?.products) ? productsData.products : [];
+
+          for (const product of products) {
+            pushSuggestion(product?.name, 'Product');
+            pushSuggestion(product?.brand, 'Brand');
+            pushSuggestion(product?.category, 'Category');
+            pushSuggestion(product?.subcategory, 'Subcategory');
+            pushSuggestion(product?.diseaseCategory, 'Subcategory');
+            pushSuggestion(product?.diseaseSubcategory, 'Sub-subcategory');
+          }
+        }
+
+        if (doctorsResult.status === 'fulfilled' && doctorsResult.value.ok) {
+          const doctorsData = await doctorsResult.value.json();
+          const doctors = Array.isArray(doctorsData?.doctors) ? doctorsData.doctors : [];
+
+          for (const doctor of doctors) {
+            pushSuggestion(doctor?.name, 'Doctor');
+            pushSuggestion(doctor?.department, 'Category');
+            pushSuggestion(doctor?.specialization, 'Subcategory');
+          }
+        }
+
+        if (labTestsResult.status === 'fulfilled' && labTestsResult.value.ok) {
+          const labTestsData = await labTestsResult.value.json();
+          const tests = Array.isArray(labTestsData?.tests) ? labTestsData.tests : [];
+
+          for (const test of tests) {
+            pushSuggestion(test?.name, 'Lab Test');
+            pushSuggestion(test?.category, 'Category');
+          }
+        }
+
+        if (categoriesResult.status === 'fulfilled' && categoriesResult.value.ok) {
+          const categoriesData = await categoriesResult.value.json();
+          const config = categoriesData?.config || {};
+
+          const vendorCategoryMap = config?.vendorCategoryMap || {};
+          for (const categories of Object.values(vendorCategoryMap) as string[][]) {
+            for (const category of categories) {
+              pushSuggestion(category, 'Category');
+            }
+          }
+
+          const subcategoryMapByType = config?.subcategoryMapByType || {};
+          for (const subcategoryMap of Object.values(subcategoryMapByType) as Record<string, string[]>[]) {
+            for (const [subcategory, nestedSubcategories] of Object.entries(subcategoryMap)) {
+              pushSuggestion(subcategory, 'Subcategory');
+              for (const nestedSubcategory of nestedSubcategories || []) {
+                pushSuggestion(nestedSubcategory, 'Sub-subcategory');
+              }
+            }
+          }
+
+          const diseaseSubcategoryMap = config?.diseaseSubcategoryMap || {};
+          for (const [diseaseCategory, diseaseSubcategories] of Object.entries(diseaseSubcategoryMap) as [string, string[]][]) {
+            pushSuggestion(diseaseCategory, 'Subcategory');
+            for (const diseaseSubcategory of diseaseSubcategories || []) {
+              pushSuggestion(diseaseSubcategory, 'Sub-subcategory');
+            }
+          }
+        }
+      } catch {
+        // Keep fallback suggestions when dynamic loading fails.
+      } finally {
+        if (active) {
+          setSearchSuggestionPool(Array.from(suggestionMap.values()));
+        }
+      }
+    };
+
+    loadSearchSuggestions();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const changeLanguage = (languageCode: string) => {
     setSelectedLanguage(languageCode);
     localStorage.setItem('siteLanguage', languageCode);
@@ -213,45 +356,31 @@ export default function Header() {
     window.location.reload();
   };
 
-  const generateSearchSuggestions = (query: string): string[] => {
+  const generateSearchSuggestions = (query: string): SearchSuggestion[] => {
     if (!query.trim()) {
       setSearchSuggestions([]);
       return [];
     }
 
     const lowerQuery = query.toLowerCase().trim();
-    
-    const allSuggestions = [
-      // Popular medicine categories
-      'Fever & Cold Relief', 'Headache & Migraine', 'Digestive Care', 'Pain Relief',
-      'Skin Care Products', 'Hair Care', 'Vitamins & Supplements', 'Immunity Boost',
-      
-      // Ayurveda suggestions
-      'Himalaya Products', 'Organic India', 'Ayurvedic Herbs', 'Chyawanprash',
-      
-      // Homeopathy suggestions
-      'Homeopathic Remedies', 'SBL Products', 'Dr. Reckeweg',
-      
-      // Nutrition suggestions
-      'Protein Powder', 'Multivitamins', 'Weight Gainer', 'Fat Burner',
-      
-      // Organic Products suggestions
-      'Organic Coffee', 'Organic Tea', 'Organic Ghee', 'Organic Atta', 'Organic Flour',
-      'Organic Foods', 'Natural Groceries',
-      
-      // Personal care suggestions
-      'Shampoo', 'Face Wash', 'Toothpaste', 'Deodorant', 'Moisturizer',
-      
-      // Fitness suggestions
-      'Fitness Equipment', 'Yoga Mat', 'Dumbbell', 'Resistance Bands',
-      
-      // Lab tests suggestions
-      'Blood Test', 'Thyroid Test', 'Diabetes Test', 'Full Body Checkup',
-    ];
 
-    const filtered = allSuggestions.filter(suggestion => 
-      suggestion.toLowerCase().includes(lowerQuery)
-    ).slice(0, 8);
+    const source = searchSuggestionPool.length > 0 ? searchSuggestionPool : FALLBACK_SEARCH_SUGGESTIONS;
+
+    const filtered = source
+      .map((suggestion) => ({
+        ...suggestion,
+        index: suggestion.value.toLowerCase().indexOf(lowerQuery),
+      }))
+      .filter((suggestion) => suggestion.index >= 0)
+      .sort((a, b) => {
+        const aStarts = a.index === 0 ? 0 : 1;
+        const bStarts = b.index === 0 ? 0 : 1;
+        if (aStarts !== bStarts) return aStarts - bStarts;
+        if (a.index !== b.index) return a.index - b.index;
+        return a.value.localeCompare(b.value);
+      })
+      .slice(0, 10)
+      .map(({ value, type }) => ({ value, type }));
 
     setSearchSuggestions(filtered);
     return filtered;
@@ -468,8 +597,8 @@ export default function Header() {
     return scores;
   };
 
-  const handleSearch = async () => {
-    const q = searchQuery.trim();
+  const handleSearch = async (overrideQuery?: string) => {
+    const q = (overrideQuery ?? searchQuery).trim();
     if (!q) {
       router.push('/medicines#products-section');
       return;
@@ -717,23 +846,23 @@ export default function Header() {
                   <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
                     {searchSuggestions.map((suggestion, index) => (
                       <button
-                        key={index}
+                        key={`${suggestion.type}-${suggestion.value}-${index}`}
                         type="button"
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => {
-                          setSearchQuery(suggestion);
+                          setSearchQuery(suggestion.value);
                           setShowSearchSuggestions(false);
-                          // Trigger search after a small delay to ensure state is updated
-                          setTimeout(() => {
-                            const searchBtn = document.querySelector('[aria-label="Search"]') as HTMLButtonElement;
-                            if (searchBtn) searchBtn.click();
-                          }, 0);
+                          handleSearch(suggestion.value);
                         }}
                         className="w-full text-left px-4 py-3 hover:bg-emerald-50 border-b border-gray-100 last:border-b-0 transition-colors flex items-center gap-2"
                       >
                         <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
-                        <span className="text-sm text-gray-700">{suggestion}</span>
+                        <span className="text-sm text-gray-700 flex-1">{suggestion.value}</span>
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700 bg-emerald-50 rounded px-2 py-1">
+                          {suggestion.type}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -741,7 +870,9 @@ export default function Header() {
                 
                 <button
                   type="button"
-                  onClick={handleSearch}
+                  onClick={() => {
+                    handleSearch();
+                  }}
                   disabled={isSearchRedirecting}
                   className="absolute right-3 top-3 text-gray-400 hover:text-emerald-600"
                   aria-label="Search"
@@ -980,22 +1111,23 @@ export default function Header() {
                 <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
                   {searchSuggestions.map((suggestion, index) => (
                     <button
-                      key={index}
+                      key={`${suggestion.type}-${suggestion.value}-${index}`}
                       type="button"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => {
-                        setSearchQuery(suggestion);
+                        setSearchQuery(suggestion.value);
                         setShowSearchSuggestions(false);
-                        setTimeout(() => {
-                          const searchBtn = document.querySelector('[aria-label="Search"]') as HTMLButtonElement;
-                          if (searchBtn) searchBtn.click();
-                        }, 0);
+                        handleSearch(suggestion.value);
                       }}
                       className="w-full text-left px-4 py-3 hover:bg-emerald-50 border-b border-gray-100 last:border-b-0 transition-colors flex items-center gap-2"
                     >
                       <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                       </svg>
-                      <span className="text-sm text-gray-700">{suggestion}</span>
+                      <span className="text-sm text-gray-700 flex-1">{suggestion.value}</span>
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700 bg-emerald-50 rounded px-2 py-1">
+                        {suggestion.type}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -1003,7 +1135,9 @@ export default function Header() {
               
               <button
                 type="button"
-                onClick={handleSearch}
+                onClick={() => {
+                  handleSearch();
+                }}
                 disabled={isSearchRedirecting}
                 className="absolute right-3 top-2.5 text-gray-400 hover:text-emerald-600"
                 aria-label="Search"

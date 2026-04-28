@@ -532,7 +532,7 @@ function LabTestsPageContent() {
       {/* Search & Filter Bar */}
       <div className="sticky top-[68px] md:top-0 z-30 bg-white border-b border-emerald-200 shadow-sm -mt-40">
         <div className="max-w-7xl mx-auto px-4 py-1">
-          <div className="flex flex-col gap-4 md:gap-0 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-7 md:gap-4 md:flex-row md:items-center md:justify-between">
             {/* Search Bar */}
             <div className="flex-1 md:mr-4">
               <div className="relative">
@@ -546,7 +546,7 @@ function LabTestsPageContent() {
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="mt-3 md:mt-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               {/* Thyrocare Gender Filter */}
               <select
                 value={gender}
