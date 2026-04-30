@@ -1,4 +1,5 @@
 import NodeCache from 'node-cache';
+import { isIndiaCountry, normalizeCountryCode } from './countryPreference';
 
 // Cache for exchange rates (1 hour TTL)
 const exchangeRateCache = new NodeCache({ stdTTL: 3600, checkperiod: 600 });
@@ -36,8 +37,15 @@ function isReservedIP(ip: string): boolean {
  * Detect user's country using IP address
  * Falls back to header-based detection and defaults to non-India for development
  */
-export async function detectUserCountry(ip?: string, acceptLanguage?: string): Promise<UserLocation> {
+export async function detectUserCountry(ip?: string, acceptLanguage?: string, preferredCountry?: string): Promise<UserLocation> {
   try {
+    if (preferredCountry) {
+      return {
+        country: normalizeCountryCode(preferredCountry) === 'IN' ? 'India' : 'Outside India',
+        isIndia: isIndiaCountry(preferredCountry),
+      };
+    }
+
     // If IP is provided and not reserved, try geolocation
     if (ip && !isReservedIP(ip)) {
       try {

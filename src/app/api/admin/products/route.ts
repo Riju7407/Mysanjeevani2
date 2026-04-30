@@ -59,24 +59,44 @@ export async function POST(request: NextRequest) {
       typeof body.approvalStatus === 'string'
         ? (body.approvalStatus.trim().toLowerCase() || undefined)
         : body.approvalStatus;
+    const normalizedPopularSection =
+      typeof body.popularSection === 'string' && ['None', 'Generic', 'Ayurveda', 'Homeopathy', 'LabTests'].includes(body.popularSection)
+        ? body.popularSection
+        : body.isPopularGeneric
+          ? 'Generic'
+          : body.isPopularAyurveda
+            ? 'Ayurveda'
+            : body.isPopularHomeopathy
+              ? 'Homeopathy'
+              : body.isPopularLabTests
+                ? 'LabTests'
+                : body.isPopular
+                  ? 'Generic'
+                  : 'None';
     
-    if (!body.name || !body.category || body.price === undefined) {
+    if (!body.name || !body.category || body.price === undefined || body.usdPrice === undefined || body.usdPrice === null || isNaN(Number(body.usdPrice))) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing or invalid required fields' },
         { status: 400 }
       );
     }
 
     const newProduct = await Product.create({
       ...body,
+      usdPrice: Number(body.usdPrice),
       potency: normalizedPotency,
       quantityUnit: normalizedQuantityUnit,
       productType: normalizedProductType,
       approvalStatus: normalizedApprovalStatus || body.approvalStatus || 'approved',
+      popularSection: normalizedPopularSection,
+      isPopular: body.isPopular !== undefined ? body.isPopular : normalizedPopularSection !== 'None',
+      isPopularGeneric: normalizedPopularSection === 'Generic',
+      isPopularAyurveda: normalizedPopularSection === 'Ayurveda',
+      isPopularHomeopathy: normalizedPopularSection === 'Homeopathy',
+      isPopularLabTests: normalizedPopularSection === 'LabTests',
       safetyInformation: body.safetyInformation || undefined,
       specifications: body.specifications || undefined,
       isActive: body.isActive !== undefined ? body.isActive : true,
-      isPopular: body.isPopular !== undefined ? body.isPopular : false,
     });
 
     return NextResponse.json({ product: newProduct, message: 'Product created successfully' }, { status: 201 });
@@ -114,6 +134,18 @@ export async function PUT(request: NextRequest) {
       typeof update.approvalStatus === 'string'
         ? (update.approvalStatus.trim().toLowerCase() || undefined)
         : update.approvalStatus;
+    const normalizedPopularSection =
+      typeof update.popularSection === 'string' && ['None', 'Generic', 'Ayurveda', 'Homeopathy', 'LabTests'].includes(update.popularSection)
+        ? update.popularSection
+        : undefined;
+    if (normalizedPopularSection !== undefined) {
+      update.popularSection = normalizedPopularSection;
+      update.isPopular = normalizedPopularSection !== 'None';
+      update.isPopularGeneric = normalizedPopularSection === 'Generic';
+      update.isPopularAyurveda = normalizedPopularSection === 'Ayurveda';
+      update.isPopularHomeopathy = normalizedPopularSection === 'Homeopathy';
+      update.isPopularLabTests = normalizedPopularSection === 'LabTests';
+    }
     const updated = await Product.findByIdAndUpdate(
       _id,
       {

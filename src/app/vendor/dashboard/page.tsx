@@ -36,6 +36,7 @@ interface Product {
   safetyInformation?: string;
   specifications?: string;
   image?: string;
+  usdPrice?: number;
   approvalStatus?: 'pending' | 'approved' | 'rejected';
 }
 
@@ -279,6 +280,7 @@ export default function VendorDashboard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('overview');
+  const [categoryTree, setCategoryTree] = useState<any[]>([]);
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [newProduct, setNewProduct] = useState({
     name: '',
@@ -287,13 +289,17 @@ export default function VendorDashboard() {
     safetyInformation: '',
     specifications: '',
     price: '',
+    usdPrice: '',
     mrp: '',
     productType: 'Generic Medicine' as VendorProductType,
-    category: getDefaultCategoryForType('Generic Medicine'),
+    category: '',
+    categoryPath: [] as string[],
+    categories: [] as string[],
     subcategory: '',
     potency: '',
     quantity: '',
     quantityUnit: 'None',
+    diseasePaths: [] as string[][],
     diseaseCategory: '',
     diseaseSubcategory: '',
     benefit: '',
@@ -303,6 +309,7 @@ export default function VendorDashboard() {
     isPopularAyurveda: false,
     isPopularHomeopathy: false,
     isPopularLabTests: false,
+    popularSection: 'None',
     stock: '',
     image: '',
   });
@@ -315,17 +322,22 @@ export default function VendorDashboard() {
     safetyInformation: '',
     specifications: '',
     price: '',
+    usdPrice: '',
     mrp: '',
     productType: 'Generic Medicine' as VendorProductType,
-    category: getDefaultCategoryForType('Generic Medicine'),
+    category: '',
+    categoryPath: [] as string[],
+    categories: [] as string[],
     subcategory: '',
     potency: '',
     quantity: '',
     quantityUnit: 'None',
+    diseasePaths: [] as string[][],
     diseaseCategory: '',
     diseaseSubcategory: '',
     benefit: '',
     requiresPrescription: false,
+    popularSection: 'None',
     stock: '',
     image: '',
   });
@@ -376,6 +388,57 @@ export default function VendorDashboard() {
     return options[0] || '';
   };
 
+  // ── Build dynamic category hierarchy ──────────────────────────────────────
+  const findNodeByName = (nodes: any[], name: string): any => {
+    for (const node of nodes) {
+      if (node.name === name) return node;
+      if (node.children) {
+        const found = findNodeByName(node.children, name);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  const getNodeChildren = (nodeName: string | null, treeData: any[]): string[] => {
+    if (!nodeName) {
+      // Get product types (top-level children under Product Types root)
+      const productTypesRoot = treeData.find((n: any) => n.name === 'Product Types');
+      if (productTypesRoot?.children) {
+        return productTypesRoot.children.map((n: any) => n.name).filter((n: any) => n);
+      }
+      return [];
+    }
+    const node = findNodeByName(treeData, nodeName);
+    if (node?.children) {
+      return node.children.map((n: any) => n.name).filter((n: any) => n);
+    }
+    return [];
+  };
+
+  const findCategoryPathFromTree = (productType: string, targetCategory: string): string[] => {
+    const productTypesRoot = categoryTree.find((n: any) => n.name === 'Product Types');
+    if (!productTypesRoot || !productTypesRoot.children) return [targetCategory];
+
+    const productTypeNode = productTypesRoot.children.find((node: any) => node.name === productType);
+    if (!productTypeNode) return [targetCategory];
+
+    const searchPath = (node: any, target: string, path: string[]): string[] | null => {
+      if (node.name === target) {
+        return path;
+      }
+      if (!node.children) return null;
+      for (const child of node.children) {
+        const result = searchPath(child, target, [...path, child.name]);
+        if (result) return result;
+      }
+      return null;
+    };
+
+    const foundPath = searchPath(productTypeNode, targetCategory, []);
+    return foundPath || [targetCategory];
+  };
+
   useEffect(() => {
     const token = localStorage.getItem('vendorToken');
     const info = localStorage.getItem('vendorInfo');
@@ -394,10 +457,17 @@ export default function VendorDashboard() {
   useEffect(() => {
     const fetchCategoryConfig = async () => {
       try {
-        const res = await fetch('/api/categories?mode=config');
-        const data = await res.json();
-        if (data?.success && data?.config) {
-          setCategoryConfig(data.config);
+        const [configRes, treeRes] = await Promise.all([
+          fetch('/api/categories?mode=config'),
+          fetch('/api/categories')
+        ]);
+        const configData = await configRes.json();
+        const treeData = await treeRes.json();
+        if (configData?.success && configData?.config) {
+          setCategoryConfig(configData.config);
+        }
+        if (treeData?.success && treeData?.tree) {
+          setCategoryTree(treeData.tree);
         }
       } catch {}
     };
@@ -514,9 +584,13 @@ export default function VendorDashboard() {
       if (!newProduct.price || isNaN(parseFloat(newProduct.price))) {
         throw new Error('Valid product price is required');
       }
+
+      if (!newProduct.usdPrice || isNaN(parseFloat(newProduct.usdPrice))) {
+        throw new Error('Valid USD dollar price is required');
+      }
       
-      if (!newProduct.category || newProduct.category.trim() === '') {
-        throw new Error('Product category is required');
+      if (!newProduct.categoryPath || newProduct.categoryPath.length === 0) {
+        throw new Error('Category hierarchy must be selected');
       }
 
       if (!imageUrl) {
@@ -532,8 +606,16 @@ export default function VendorDashboard() {
         body: JSON.stringify({
           vendorId: vendorInfo?._id,
           ...newProduct,
+          category: newProduct.categoryPath[0] || undefined,
+          subcategory: newProduct.categoryPath[1] || newProduct.subcategory || undefined,
+          categories: newProduct.categoryPath,
+          popularSection: newProduct.popularSection || 'None',
+          diseasePaths: newProduct.diseasePaths || [],
+          diseaseCategory: newProduct.diseasePaths?.[0]?.[0] || newProduct.diseaseCategory || undefined,
+          diseaseSubcategory: newProduct.diseasePaths?.[0]?.[1] || newProduct.diseaseSubcategory || undefined,
           potency: newProduct.potency || undefined,
           price: parseFloat(newProduct.price),
+          usdPrice: newProduct.usdPrice ? parseFloat(newProduct.usdPrice) : undefined,
           mrp: newProduct.mrp && !isNaN(parseFloat(newProduct.mrp)) ? parseFloat(newProduct.mrp) : undefined,
           quantity: newProduct.quantity && !isNaN(parseFloat(newProduct.quantity)) ? parseFloat(newProduct.quantity) : undefined,
           stock: newProduct.stock && !isNaN(parseInt(newProduct.stock)) ? parseInt(newProduct.stock) : 0,
@@ -551,13 +633,17 @@ export default function VendorDashboard() {
         safetyInformation: '',
         specifications: '',
         price: '',
+        usdPrice: '',
         mrp: '',
         productType: 'Generic Medicine',
-        category: getDefaultCategoryForTypeDynamic('Generic Medicine'),
+        category: '',
+        categoryPath: [],
+        categories: [],
         subcategory: '',
         potency: '',
         quantity: '',
         quantityUnit: 'None',
+        diseasePaths: [],
         diseaseCategory: '',
         diseaseSubcategory: '',
         benefit: '',
@@ -567,6 +653,7 @@ export default function VendorDashboard() {
         isPopularAyurveda: false,
         isPopularHomeopathy: false,
         isPopularLabTests: false,
+        popularSection: 'None',
         stock: '',
         image: '',
       });
@@ -589,13 +676,15 @@ export default function VendorDashboard() {
         (categories || []).includes(product.category)
       )?.[0] as VendorProductType) || inferProductTypeFromCategory(product.category);
     const normalizedCategory = product.category || getDefaultCategoryForTypeDynamic(inferredType);
-    const isHomeopathy = (product.productType as VendorProductType || inferredType) === 'Homeopathy';
-    const isAyurveda = (product.productType as VendorProductType || inferredType) === 'Ayurveda Medicine';
-    const isNutrition = (product.productType as VendorProductType || inferredType) === 'Nutrition';
-    const isPersonalCare = (product.productType as VendorProductType || inferredType) === 'Personal Care';
-    const isBabyCare = (product.productType as VendorProductType || inferredType) === 'Baby Care';
-    const isFitness = (product.productType as VendorProductType || inferredType) === 'Fitness';
-    const isUnani = (product.productType as VendorProductType || inferredType) === 'Unani';
+    const inferredProductType = (product.productType as VendorProductType) || inferredType;
+    const editCategoryPath = findCategoryPathFromTree(inferredProductType, normalizedCategory);
+    const isHomeopathy = inferredProductType === 'Homeopathy';
+    const isAyurveda = inferredProductType === 'Ayurveda Medicine';
+    const isNutrition = inferredProductType === 'Nutrition';
+    const isPersonalCare = inferredProductType === 'Personal Care';
+    const isBabyCare = inferredProductType === 'Baby Care';
+    const isFitness = inferredProductType === 'Fitness';
+    const isUnani = inferredProductType === 'Unani';
     setEditingProductId(product._id);
     setEditProduct({
       name: product.name || '',
@@ -604,26 +693,41 @@ export default function VendorDashboard() {
       safetyInformation: product.safetyInformation || '',
       specifications: product.specifications || '',
       price: String(product.price ?? ''),
+      usdPrice: String((product as any).usdPrice || ''),
       mrp: product.mrp !== undefined ? String(product.mrp) : '',
       productType: product.productType as VendorProductType || inferredType,
       category: normalizedCategory,
+      categoryPath: editCategoryPath,
+      categories: (product as any).categories || [],
       subcategory: product.subcategory || (
-        isHomeopathy ? getDefaultSubcategoryForTypeDynamic(product.productType as VendorProductType || inferredType, normalizedCategory)
-          : isAyurveda ? getDefaultSubcategoryForTypeDynamic(product.productType as VendorProductType || inferredType, normalizedCategory)
-          : isNutrition ? getDefaultSubcategoryForTypeDynamic(product.productType as VendorProductType || inferredType, normalizedCategory)
-          : isPersonalCare ? getDefaultSubcategoryForTypeDynamic(product.productType as VendorProductType || inferredType, normalizedCategory)
-          : isBabyCare ? getDefaultSubcategoryForTypeDynamic(product.productType as VendorProductType || inferredType, normalizedCategory)
-          : isFitness ? getDefaultSubcategoryForTypeDynamic(product.productType as VendorProductType || inferredType, normalizedCategory)
-          : isUnani ? getDefaultSubcategoryForTypeDynamic(product.productType as VendorProductType || inferredType, normalizedCategory)
+        isHomeopathy ? getDefaultSubcategoryForTypeDynamic(inferredProductType, normalizedCategory)
+          : isAyurveda ? getDefaultSubcategoryForTypeDynamic(inferredProductType, normalizedCategory)
+          : isNutrition ? getDefaultSubcategoryForTypeDynamic(inferredProductType, normalizedCategory)
+          : isPersonalCare ? getDefaultSubcategoryForTypeDynamic(inferredProductType, normalizedCategory)
+          : isBabyCare ? getDefaultSubcategoryForTypeDynamic(inferredProductType, normalizedCategory)
+          : isFitness ? getDefaultSubcategoryForTypeDynamic(inferredProductType, normalizedCategory)
+          : isUnani ? getDefaultSubcategoryForTypeDynamic(inferredProductType, normalizedCategory)
           : ''
       ),
       potency: product.potency || '',
       quantity: product.quantity !== undefined ? String(product.quantity) : '',
       quantityUnit: product.quantityUnit || 'None',
+      diseasePaths: Array.isArray((product as any).diseasePaths)
+        ? (product as any).diseasePaths
+        : ((product.diseaseCategory || product.diseaseSubcategory)
+          ? [[product.diseaseCategory || '', product.diseaseSubcategory || '']]
+          : []),
       diseaseCategory: product.diseaseCategory || '',
       diseaseSubcategory: product.diseaseSubcategory || '',
       benefit: product.benefit || '',
       requiresPrescription: product.requiresPrescription || false,
+      popularSection: (product as any).popularSection ||
+        ((product as any).isPopularGeneric ? 'Generic' :
+         (product as any).isPopularAyurveda ? 'Ayurveda' :
+         (product as any).isPopularHomeopathy ? 'Homeopathy' :
+         (product as any).isPopularLabTests ? 'LabTests' :
+         (product as any).isPopular ? 'Generic' :
+         'None'),
       stock: String(product.stock ?? ''),
       image: product.image || '',
     });
@@ -639,6 +743,16 @@ export default function VendorDashboard() {
 
     if (!editingProductId || !vendorInfo?._id) {
       alert('Unable to update product. Missing product or vendor details.');
+      return;
+    }
+
+    if (!editProduct.categoryPath || editProduct.categoryPath.length === 0) {
+      alert('Category hierarchy must be selected');
+      return;
+    }
+
+    if (!editProduct.usdPrice || isNaN(parseFloat(editProduct.usdPrice))) {
+      alert('Valid USD dollar price is required');
       return;
     }
 
@@ -665,16 +779,20 @@ export default function VendorDashboard() {
           name: editProduct.name,
           description: editProduct.description,
           price: parseFloat(editProduct.price),
+          usdPrice: editProduct.usdPrice ? parseFloat(editProduct.usdPrice) : undefined,
           mrp: editProduct.mrp ? parseFloat(editProduct.mrp) : undefined,
           quantity: editProduct.quantity ? parseFloat(editProduct.quantity) : undefined,
           stock: parseInt(editProduct.stock),
           productType: editProduct.productType,
-          category: editProduct.category,
-          subcategory: editProduct.subcategory || undefined,
+          category: editProduct.categoryPath?.[0] || editProduct.category,
+          categories: editProduct.categoryPath && editProduct.categoryPath.length > 0 ? editProduct.categoryPath : editProduct.category ? [editProduct.category] : [],
+          subcategory: editProduct.categoryPath?.[1] || editProduct.subcategory || undefined,
           potency: editProduct.potency || undefined,
           quantityUnit: editProduct.quantityUnit || 'None',
-          diseaseCategory: editProduct.diseaseCategory || undefined,
-          diseaseSubcategory: editProduct.diseaseSubcategory || undefined,
+          popularSection: editProduct.popularSection || 'None',
+          diseasePaths: editProduct.diseasePaths || [],
+          diseaseCategory: editProduct.diseasePaths?.[0]?.[0] || editProduct.diseaseCategory || undefined,
+          diseaseSubcategory: editProduct.diseasePaths?.[0]?.[1] || editProduct.diseaseSubcategory || undefined,
           benefit: editProduct.benefit || undefined,
           safetyInformation: editProduct.safetyInformation,
           specifications: editProduct.specifications,
@@ -983,13 +1101,12 @@ export default function VendorDashboard() {
                       value={newProduct.productType}
                       onChange={(e) => {
                         const productType = e.target.value as VendorProductType;
-                        const category = getDefaultCategoryForTypeDynamic(productType);
-                        const subcategory = getDefaultSubcategoryForTypeDynamic(productType, category);
                         setNewProduct({
                           ...newProduct,
                           productType,
-                          category,
-                          subcategory,
+                          category: '',
+                          categoryPath: [],
+                          subcategory: '',
                         });
                       }}
                       className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
@@ -998,57 +1115,116 @@ export default function VendorDashboard() {
                         <option key={productType} value={productType}>{productType}</option>
                       ))}
                     </select>
-                    <select
-                      value={newProduct.category}
-                      onChange={(e) => {
-                        const category = e.target.value;
-                        const subcategory = getDefaultSubcategoryForTypeDynamic(newProduct.productType, category);
-                        setNewProduct({ ...newProduct, category, subcategory });
-                      }}
-                      className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
-                    >
-                      <option value="">Category *</option>
-                      {(activeVendorCategoryMap[newProduct.productType] || []).map((category) => (
-                        <option key={category} value={category}>{category}</option>
+                    {(() => {
+                      const productTypeName = newProduct.productType || 'Generic Medicine';
+                      const hierarchyLevels: string[][] = [];
+                      let currentLevelName: string | null = productTypeName;
+
+                      for (let i = 0; i < 10; i++) {
+                        const options = getNodeChildren(currentLevelName, categoryTree);
+                        if (!options || options.length === 0) break;
+                        hierarchyLevels.push(options);
+
+                        if (i < newProduct.categoryPath.length) {
+                          currentLevelName = newProduct.categoryPath[i];
+                        } else {
+                          break;
+                        }
+                      }
+
+                      if (hierarchyLevels.length === 0) {
+                        const staticLevels: string[][] = [];
+                        const firstLevel = (activeVendorCategoryMap[productTypeName] || []);
+                        if (firstLevel.length > 0) staticLevels.push(firstLevel);
+                        if (newProduct.categoryPath[0]) {
+                          const secondLevel = getSubcategoryOptionsForType(productTypeName, newProduct.categoryPath[0]);
+                          if (secondLevel.length > 0) staticLevels.push(secondLevel);
+                        }
+                        hierarchyLevels.push(...staticLevels);
+                      }
+
+                      return (
+                        <>
+                          {hierarchyLevels.map((options, levelIdx) => (
+                            <select
+                              key={`hierarchy-${levelIdx}`}
+                              value={newProduct.categoryPath[levelIdx] || ''}
+                              onChange={(e) => {
+                                const newPath = newProduct.categoryPath.slice(0, levelIdx);
+                                if (e.target.value) newPath.push(e.target.value);
+                                setNewProduct({
+                                  ...newProduct,
+                                  categoryPath: newPath,
+                                  category: newPath[0] || '',
+                                  subcategory: newPath[1] || '',
+                                });
+                              }}
+                              className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
+                            >
+                              <option value="">{levelIdx === 0 ? 'Select Category' : `Level ${levelIdx + 1}`}</option>
+                              {options.map((opt) => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                          ))}
+                        </>
+                      );
+                    })()}
+                    <div className="md:col-span-3 space-y-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-sm font-semibold text-slate-800">Diseases / Conditions (Optional)</label>
+                        <button
+                          type="button"
+                          onClick={() => setNewProduct({ ...newProduct, diseasePaths: [...(newProduct.diseasePaths || []), ['', '']] })}
+                          className="text-emerald-700 hover:text-emerald-900 text-sm font-medium"
+                        >
+                          + Add Disease
+                        </button>
+                      </div>
+                      {(newProduct.diseasePaths || []).map((path, idx) => (
+                        <div key={`disease-${idx}`} className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                          <select
+                            value={path[0] || ''}
+                            onChange={(e) => {
+                              const updated = [...(newProduct.diseasePaths || [])];
+                              updated[idx] = [e.target.value, ''];
+                              setNewProduct({ ...newProduct, diseasePaths: updated });
+                            }}
+                            className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
+                          >
+                            <option value="">Select Disease Category</option>
+                            {Object.keys(activeDiseaseCategoryMap).map((category) => (
+                              <option key={category} value={category}>{category}</option>
+                            ))}
+                          </select>
+                          <select
+                            value={path[1] || ''}
+                            onChange={(e) => {
+                              const updated = [...(newProduct.diseasePaths || [])];
+                              updated[idx] = [path[0] || '', e.target.value];
+                              setNewProduct({ ...newProduct, diseasePaths: updated });
+                            }}
+                            className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
+                          >
+                            <option value="">Select Disease Subcategory</option>
+                            {(activeDiseaseCategoryMap[path[0]] || []).map((sub) => (
+                              <option key={sub} value={sub}>{sub}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = [...(newProduct.diseasePaths || [])];
+                              updated.splice(idx, 1);
+                              setNewProduct({ ...newProduct, diseasePaths: updated });
+                            }}
+                            className="text-sm text-red-600 hover:text-red-800 font-medium"
+                          >
+                            Remove
+                          </button>
+                        </div>
                       ))}
-                    </select>
-                    {(newProduct.productType === 'Homeopathy' || newProduct.productType === 'Ayurveda Medicine' || newProduct.productType === 'Nutrition' || newProduct.productType === 'Personal Care' || newProduct.productType === 'Baby Care' || newProduct.productType === 'Fitness' || newProduct.productType === 'Unani') && (
-                      <select value={newProduct.subcategory} onChange={(e) => setNewProduct({ ...newProduct, subcategory: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm">
-                        <option value="">Subcategory *</option>
-                        {getSubcategoryOptionsForType(newProduct.productType, newProduct.category).map((subcategory) => (
-                          <option key={subcategory} value={subcategory}>{subcategory}</option>
-                        ))}
-                      </select>
-                    )}
-                    <select
-                      value={newProduct.diseaseCategory}
-                      onChange={(e) => {
-                        const diseaseCategory = e.target.value;
-                        const options = activeDiseaseCategoryMap[diseaseCategory] || [];
-                        setNewProduct({
-                          ...newProduct,
-                          diseaseCategory,
-                          diseaseSubcategory: options[0] || '',
-                        });
-                      }}
-                      className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
-                    >
-                      <option value="">Disease Category (Optional)</option>
-                      {Object.keys(activeDiseaseCategoryMap).map((diseaseCategory) => (
-                        <option key={diseaseCategory} value={diseaseCategory}>{diseaseCategory}</option>
-                      ))}
-                    </select>
-                    <select
-                      value={newProduct.diseaseSubcategory}
-                      onChange={(e) => setNewProduct({ ...newProduct, diseaseSubcategory: e.target.value })}
-                      disabled={!newProduct.diseaseCategory}
-                      className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm disabled:bg-slate-100 disabled:text-slate-400"
-                    >
-                      <option value="">Disease Subcategory (Optional)</option>
-                      {(activeDiseaseCategoryMap[newProduct.diseaseCategory || ''] || []).map((diseaseSubcategory) => (
-                        <option key={diseaseSubcategory} value={diseaseSubcategory}>{diseaseSubcategory}</option>
-                      ))}
-                    </select>
+                    </div>
                     <input
                       type="text"
                       placeholder="Brand"
@@ -1061,6 +1237,15 @@ export default function VendorDashboard() {
                       placeholder="Price ₹ *"
                       value={newProduct.price}
                       onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                      required
+                      step="0.01"
+                      className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Dollar Price USD *"
+                      value={newProduct.usdPrice}
+                      onChange={(e) => setNewProduct({ ...newProduct, usdPrice: e.target.value })}
                       required
                       step="0.01"
                       className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
@@ -1148,25 +1333,18 @@ export default function VendorDashboard() {
                   </label>
 
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                    <h4 className="font-semibold text-slate-900 mb-4 text-sm">Display in Popular Sections:</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <label className="flex items-center gap-2 cursor-pointer p-3 rounded-lg border border-blue-300 hover:bg-blue-100 transition-colors bg-white">
-                        <input type="checkbox" checked={newProduct.isPopularGeneric} onChange={(e) => setNewProduct({ ...newProduct, isPopularGeneric: e.target.checked })} className="w-5 h-5 rounded border-slate-300 accent-blue-600" />
-                        <span className="text-sm font-medium text-slate-700">Popular Medicines</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer p-3 rounded-lg border border-green-300 hover:bg-green-100 transition-colors bg-white">
-                        <input type="checkbox" checked={newProduct.isPopularAyurveda} onChange={(e) => setNewProduct({ ...newProduct, isPopularAyurveda: e.target.checked })} className="w-5 h-5 rounded border-slate-300 accent-green-600" />
-                        <span className="text-sm font-medium text-slate-700">Popular Ayurveda Products</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer p-3 rounded-lg border border-purple-300 hover:bg-purple-100 transition-colors bg-white">
-                        <input type="checkbox" checked={newProduct.isPopularHomeopathy} onChange={(e) => setNewProduct({ ...newProduct, isPopularHomeopathy: e.target.checked })} className="w-5 h-5 rounded border-slate-300 accent-purple-600" />
-                        <span className="text-sm font-medium text-slate-700">Popular Homeopathy Products</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer p-3 rounded-lg border border-orange-300 hover:bg-orange-100 transition-colors bg-white">
-                        <input type="checkbox" checked={newProduct.isPopularLabTests} onChange={(e) => setNewProduct({ ...newProduct, isPopularLabTests: e.target.checked })} className="w-5 h-5 rounded border-slate-300 accent-orange-600" />
-                        <span className="text-sm font-medium text-slate-700">Popular Lab Tests</span>
-                      </label>
-                    </div>
+                    <label className="block text-sm font-semibold text-slate-900 mb-3">Display in Popular Sections</label>
+                    <select
+                      value={newProduct.popularSection}
+                      onChange={(e) => setNewProduct({ ...newProduct, popularSection: e.target.value as 'None' | 'Generic' | 'Ayurveda' | 'Homeopathy' | 'LabTests' })}
+                      className="w-full border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
+                    >
+                      <option value="None">None</option>
+                      <option value="Generic">Popular Medicines</option>
+                      <option value="Ayurveda">Popular Ayurveda Products</option>
+                      <option value="Homeopathy">Popular Homeopathy Products</option>
+                      <option value="LabTests">Popular Lab Tests</option>
+                    </select>
                   </div>
                   <div className="flex gap-3">
                     <button
@@ -1274,13 +1452,12 @@ export default function VendorDashboard() {
                       value={editProduct.productType}
                       onChange={(e) => {
                         const productType = e.target.value as VendorProductType;
-                        const category = getDefaultCategoryForTypeDynamic(productType);
-                        const subcategory = getDefaultSubcategoryForTypeDynamic(productType, category);
                         setEditProduct({
                           ...editProduct,
                           productType,
-                          category,
-                          subcategory,
+                          category: '',
+                          categoryPath: [],
+                          subcategory: '',
                         });
                       }}
                       className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
@@ -1289,57 +1466,116 @@ export default function VendorDashboard() {
                         <option key={productType} value={productType}>{productType}</option>
                       ))}
                     </select>
-                    <select
-                      value={editProduct.category}
-                      onChange={(e) => {
-                        const category = e.target.value;
-                        const subcategory = getDefaultSubcategoryForTypeDynamic(editProduct.productType, category);
-                        setEditProduct({ ...editProduct, category, subcategory });
-                      }}
-                      className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
-                    >
-                      <option value="">Category *</option>
-                      {(activeVendorCategoryMap[editProduct.productType] || []).map((category) => (
-                        <option key={category} value={category}>{category}</option>
+                    {(() => {
+                      const productTypeName = editProduct.productType || 'Generic Medicine';
+                      const hierarchyLevels: string[][] = [];
+                      let currentLevelName: string | null = productTypeName;
+
+                      for (let i = 0; i < 10; i++) {
+                        const options = getNodeChildren(currentLevelName, categoryTree);
+                        if (!options || options.length === 0) break;
+                        hierarchyLevels.push(options);
+
+                        if (i < editProduct.categoryPath.length) {
+                          currentLevelName = editProduct.categoryPath[i];
+                        } else {
+                          break;
+                        }
+                      }
+
+                      if (hierarchyLevels.length === 0) {
+                        const staticLevels: string[][] = [];
+                        const firstLevel = (activeVendorCategoryMap[productTypeName] || []);
+                        if (firstLevel.length > 0) staticLevels.push(firstLevel);
+                        if (editProduct.categoryPath[0]) {
+                          const secondLevel = getSubcategoryOptionsForType(productTypeName, editProduct.categoryPath[0]);
+                          if (secondLevel.length > 0) staticLevels.push(secondLevel);
+                        }
+                        hierarchyLevels.push(...staticLevels);
+                      }
+
+                      return (
+                        <>
+                          {hierarchyLevels.map((options, levelIdx) => (
+                            <select
+                              key={`hierarchy-edit-${levelIdx}`}
+                              value={editProduct.categoryPath[levelIdx] || ''}
+                              onChange={(e) => {
+                                const newPath = editProduct.categoryPath.slice(0, levelIdx);
+                                if (e.target.value) newPath.push(e.target.value);
+                                setEditProduct({
+                                  ...editProduct,
+                                  categoryPath: newPath,
+                                  category: newPath[0] || '',
+                                  subcategory: newPath[1] || '',
+                                });
+                              }}
+                              className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
+                            >
+                              <option value="">{levelIdx === 0 ? 'Select Category' : `Level ${levelIdx + 1}`}</option>
+                              {options.map((opt) => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                          ))}
+                        </>
+                      );
+                    })()}
+                    <div className="md:col-span-3 space-y-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-sm font-semibold text-slate-800">Diseases / Conditions (Optional)</label>
+                        <button
+                          type="button"
+                          onClick={() => setEditProduct({ ...editProduct, diseasePaths: [...(editProduct.diseasePaths || []), ['', '']] })}
+                          className="text-emerald-700 hover:text-emerald-900 text-sm font-medium"
+                        >
+                          + Add Disease
+                        </button>
+                      </div>
+                      {(editProduct.diseasePaths || []).map((path, idx) => (
+                        <div key={`edit-disease-${idx}`} className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                          <select
+                            value={path[0] || ''}
+                            onChange={(e) => {
+                              const updated = [...(editProduct.diseasePaths || [])];
+                              updated[idx] = [e.target.value, ''];
+                              setEditProduct({ ...editProduct, diseasePaths: updated });
+                            }}
+                            className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
+                          >
+                            <option value="">Select Disease Category</option>
+                            {Object.keys(activeDiseaseCategoryMap).map((category) => (
+                              <option key={category} value={category}>{category}</option>
+                            ))}
+                          </select>
+                          <select
+                            value={path[1] || ''}
+                            onChange={(e) => {
+                              const updated = [...(editProduct.diseasePaths || [])];
+                              updated[idx] = [path[0] || '', e.target.value];
+                              setEditProduct({ ...editProduct, diseasePaths: updated });
+                            }}
+                            className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
+                          >
+                            <option value="">Select Disease Subcategory</option>
+                            {(activeDiseaseCategoryMap[path[0]] || []).map((sub) => (
+                              <option key={sub} value={sub}>{sub}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = [...(editProduct.diseasePaths || [])];
+                              updated.splice(idx, 1);
+                              setEditProduct({ ...editProduct, diseasePaths: updated });
+                            }}
+                            className="text-sm text-red-600 hover:text-red-800 font-medium"
+                          >
+                            Remove
+                          </button>
+                        </div>
                       ))}
-                    </select>
-                    {(editProduct.productType === 'Homeopathy' || editProduct.productType === 'Ayurveda Medicine' || editProduct.productType === 'Nutrition' || editProduct.productType === 'Personal Care' || editProduct.productType === 'Baby Care' || editProduct.productType === 'Fitness' || editProduct.productType === 'Unani') && (
-                      <select value={editProduct.subcategory} onChange={(e) => setEditProduct({ ...editProduct, subcategory: e.target.value })} className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm">
-                        <option value="">Subcategory *</option>
-                        {getSubcategoryOptionsForType(editProduct.productType, editProduct.category).map((subcategory) => (
-                          <option key={subcategory} value={subcategory}>{subcategory}</option>
-                        ))}
-                      </select>
-                    )}
-                    <select
-                      value={editProduct.diseaseCategory}
-                      onChange={(e) => {
-                        const diseaseCategory = e.target.value;
-                        const options = activeDiseaseCategoryMap[diseaseCategory] || [];
-                        setEditProduct({
-                          ...editProduct,
-                          diseaseCategory,
-                          diseaseSubcategory: options[0] || '',
-                        });
-                      }}
-                      className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
-                    >
-                      <option value="">Disease Category (Optional)</option>
-                      {Object.keys(activeDiseaseCategoryMap).map((diseaseCategory) => (
-                        <option key={diseaseCategory} value={diseaseCategory}>{diseaseCategory}</option>
-                      ))}
-                    </select>
-                    <select
-                      value={editProduct.diseaseSubcategory}
-                      onChange={(e) => setEditProduct({ ...editProduct, diseaseSubcategory: e.target.value })}
-                      disabled={!editProduct.diseaseCategory}
-                      className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm disabled:bg-slate-100 disabled:text-slate-400"
-                    >
-                      <option value="">Disease Subcategory (Optional)</option>
-                      {(activeDiseaseCategoryMap[editProduct.diseaseCategory || ''] || []).map((diseaseSubcategory) => (
-                        <option key={diseaseSubcategory} value={diseaseSubcategory}>{diseaseSubcategory}</option>
-                      ))}
-                    </select>
+                    </div>
                     <input
                       type="text"
                       placeholder="Brand"
@@ -1352,6 +1588,15 @@ export default function VendorDashboard() {
                       placeholder="Price ₹ *"
                       value={editProduct.price}
                       onChange={(e) => setEditProduct({ ...editProduct, price: e.target.value })}
+                      required
+                      step="0.01"
+                      className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Dollar Price USD *"
+                      value={editProduct.usdPrice}
+                      onChange={(e) => setEditProduct({ ...editProduct, usdPrice: e.target.value })}
                       required
                       step="0.01"
                       className="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
@@ -1437,6 +1682,20 @@ export default function VendorDashboard() {
                     />
                     <span className="text-sm font-medium text-slate-700">Requires Prescription (Rx)</span>
                   </label>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <label className="block text-sm font-semibold text-slate-900 mb-3">Display in Popular Sections</label>
+                    <select
+                      value={editProduct.popularSection}
+                      onChange={(e) => setEditProduct({ ...editProduct, popularSection: e.target.value as 'None' | 'Generic' | 'Ayurveda' | 'Homeopathy' | 'LabTests' })}
+                      className="w-full border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
+                    >
+                      <option value="None">None</option>
+                      <option value="Generic">Popular Medicines</option>
+                      <option value="Ayurveda">Popular Ayurveda Products</option>
+                      <option value="Homeopathy">Popular Homeopathy Products</option>
+                      <option value="LabTests">Popular Lab Tests</option>
+                    </select>
+                  </div>
                   <div className="flex gap-3">
                     <button
                       type="submit"
@@ -1663,11 +1922,13 @@ export default function VendorDashboard() {
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Delivery Address</h3>
                 {selectedOrder.deliveryAddress ? (
                   <div className="text-gray-700 text-sm space-y-1">
-                    <p><strong>House No:</strong> {selectedOrder.deliveryAddress.houseNo || 'N/A'}</p>
-                    <p><strong>Street:</strong> {selectedOrder.deliveryAddress.streetAddress || 'N/A'}</p>
+                    <p><strong>Full Name:</strong> {selectedOrder.deliveryAddress.fullName || 'N/A'}</p>
+                    <p><strong>Phone:</strong> {selectedOrder.deliveryAddress.phone || 'N/A'}</p>
+                    <p><strong>Address:</strong> {selectedOrder.deliveryAddress.addressLine1 || 'N/A'}</p>
+                    {selectedOrder.deliveryAddress.addressLine2 && <p><strong>Address 2:</strong> {selectedOrder.deliveryAddress.addressLine2}</p>}
                     <p><strong>City:</strong> {selectedOrder.deliveryAddress.city || 'N/A'}</p>
                     <p><strong>State:</strong> {selectedOrder.deliveryAddress.state || 'N/A'}</p>
-                    <p><strong>Postal Code:</strong> {selectedOrder.deliveryAddress.postalCode || 'N/A'}</p>
+                    <p><strong>Pincode:</strong> {selectedOrder.deliveryAddress.pincode || 'N/A'}</p>
                     <p><strong>Country:</strong> {selectedOrder.deliveryAddress.country || 'N/A'}</p>
                   </div>
                 ) : (

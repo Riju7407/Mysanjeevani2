@@ -12,10 +12,158 @@ interface Category {
   href: string;
 }
 
+interface CategoryTreeNode {
+  _id: string;
+  name: string;
+  parentId: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  children: CategoryTreeNode[];
+}
+
 type DynamicCategoryConfig = {
   vendorCategoryMap?: Record<string, string[]>;
   subcategoryMapByType?: Record<string, Record<string, string[]>>;
   diseaseSubcategoryMap?: Record<string, string[]>;
+};
+
+const CATEGORY_TREE_NAME_MAPPING: Record<string, string> = {
+  Medicines: 'Generic Medicine',
+  Ayurveda: 'Ayurveda Medicine',
+  Disease: 'Disease Categories',
+};
+
+const normalizeName = (value: string) => String(value || '').trim().toLowerCase();
+
+const findTreeNodeByName = (
+  nodes: CategoryTreeNode[],
+  targetName: string
+): CategoryTreeNode | null => {
+  const normalizedTarget = normalizeName(targetName);
+  const stack = [...nodes];
+
+  while (stack.length) {
+    const node = stack.shift()!;
+    if (normalizeName(node.name) === normalizedTarget) {
+      return node;
+    }
+    stack.push(...node.children);
+  }
+
+  return null;
+};
+
+const getCategoryTreeRootName = (categoryName: string) => {
+  return CATEGORY_TREE_NAME_MAPPING[categoryName] || categoryName;
+};
+
+const getTreeNodeForCategory = (
+  tree: CategoryTreeNode[] | null,
+  categoryName: string
+): CategoryTreeNode | null => {
+  if (!tree) return null;
+  return findTreeNodeByName(tree, getCategoryTreeRootName(categoryName));
+};
+
+const getCategoryBasePath = (categoryName: string) => {
+  if (categoryName === 'Medicines') return '/medicines';
+  if (categoryName === 'Ayurveda') return '/ayurveda';
+  if (categoryName === 'Homeopathy') return '/homeopathy';
+  return '/medicines';
+};
+
+const getTreeNodeHref = (categoryName: string, path: string[]) => {
+  const linkName = path[path.length - 1] || '';
+  if (!linkName) {
+    return `${getCategoryBasePath(categoryName)}#products-section`;
+  }
+
+  if (categoryName === 'Medicines') {
+    return `${getCategoryBasePath(categoryName)}?subcategory=${encodeURIComponent(linkName)}#products-section`;
+  }
+
+  if (categoryName === 'Ayurveda' || categoryName === 'Homeopathy') {
+    return `${getCategoryBasePath(categoryName)}?category=${encodeURIComponent(linkName)}#products-section`;
+  }
+
+  if (categoryName === 'Disease') {
+    return `${getCategoryBasePath(categoryName)}?category=disease&subcategory=${encodeURIComponent(linkName)}#products-section`;
+  }
+
+  if (categoryName === 'Organic Products') {
+    return `${getCategoryBasePath(categoryName)}?category=nutrition&subcategory=${encodeURIComponent(linkName)}&orgProductsView=true#products-section`;
+  }
+
+  return `${getCategoryBasePath(categoryName)}?category=${encodeURIComponent(
+    categoryName.toLowerCase()
+  )}&subcategory=${encodeURIComponent(linkName)}#products-section`;
+};
+
+const renderTreeNodes = (
+  nodes: CategoryTreeNode[],
+  categoryName: string,
+  ancestry: string[] = [],
+  depth = 0
+): React.ReactNode[] => {
+  return nodes.map((node) => {
+    const path = [...ancestry, node.name];
+    return (
+      <div key={`${path.join('>')}`} className="space-y-1">
+        <Link
+          href={getTreeNodeHref(categoryName, path)}
+          className={`block text-sm truncate ${
+            depth === 0 ? '' : 'text-gray-700'
+          } hover:text-orange-500`}
+        >
+          {node.name}
+        </Link>
+
+        {node.children.length > 0 && (
+          <div className={`mt-2 space-y-1 ${depth >= 0 ? 'pl-4' : ''}`}>
+            {renderTreeNodes(node.children, categoryName, path, depth + 1)}
+          </div>
+        )}
+      </div>
+    );
+  });
+};
+
+const renderTreeDropdown = (
+  treeNodes: CategoryTreeNode[],
+  categoryName: string,
+  color: string
+) => {
+  return (
+    <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-5" style={{ width: '780px', maxWidth: '80vw' }}>
+      <h3 className={`text-base font-semibold mb-4 pb-3 border-b border-gray-200 ${COLOR_STYLES[color].text}`}>
+        {categoryName}
+      </h3>
+      <div className="overflow-x-auto pb-1">
+        <div
+          className="grid gap-4 overflow-y-auto pr-1"
+          style={{
+            gridTemplateColumns: 'repeat(3, minmax(240px, 1fr))',
+            minWidth: '900px',
+            maxHeight: '440px',
+          }}
+        >
+          {treeNodes.map((group) => (
+            <div key={group.name} className="min-w-0">
+              <Link
+                href={getTreeNodeHref(categoryName, [group.name])}
+                className={`block text-sm font-semibold mb-2 ${COLOR_STYLES[color].text} hover:text-orange-500 truncate`}
+              >
+                {group.name}
+              </Link>
+              <div className="space-y-2">
+                {renderTreeNodes(group.children, categoryName, [group.name], 1)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const AYURVEDA_GROUPED_SUBCATEGORIES: Record<string, string[]> = {
@@ -412,34 +560,45 @@ const COLOR_STYLES: Record<string, any> = {
 export default function CategoryNav({ isMobile = false }: { isMobile?: boolean }) {
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>(CATEGORIES);
+  const [categoryTree, setCategoryTree] = useState<CategoryTreeNode[] | null>(null);
 
   useEffect(() => {
     let active = true;
 
     const fetchDynamicCategories = async () => {
       try {
-        const response = await fetch('/api/categories?mode=config');
-        if (!response.ok) return;
+        const [configResponse, treeResponse] = await Promise.all([
+          fetch('/api/categories?mode=config'),
+          fetch('/api/categories'),
+        ]);
 
-        const data = await response.json();
-        if (!data?.success || !active) return;
+        if (configResponse.ok) {
+          const configData = await configResponse.json();
+          if (configData?.success && active) {
+            const dynamicGrouped = getDynamicGroupedByCategory(configData.config || {});
+            setCategories((prev) =>
+              prev.map((category) => {
+                const groupedSubcategories = dynamicGrouped[category.name] || category.groupedSubcategories;
+                if (!groupedSubcategories) return category;
 
-        const dynamicGrouped = getDynamicGroupedByCategory(data.config || {});
+                return {
+                  ...category,
+                  groupedSubcategories,
+                  subcategories: buildFlatSubcategories(groupedSubcategories),
+                };
+              })
+            );
+          }
+        }
 
-        setCategories((prev) =>
-          prev.map((category) => {
-            const groupedSubcategories = dynamicGrouped[category.name] || category.groupedSubcategories;
-            if (!groupedSubcategories) return category;
-
-            return {
-              ...category,
-              groupedSubcategories,
-              subcategories: buildFlatSubcategories(groupedSubcategories),
-            };
-          })
-        );
+        if (treeResponse.ok) {
+          const treeData = await treeResponse.json();
+          if (treeData?.success && active) {
+            setCategoryTree(treeData.tree || []);
+          }
+        }
       } catch {
-        // Keep fallback static categories when dynamic config cannot be loaded.
+        // Keep fallback static categories when dynamic config or tree data cannot be loaded.
       }
     };
 
@@ -563,7 +722,9 @@ export default function CategoryNav({ isMobile = false }: { isMobile?: boolean }
           <div
             className={`absolute ${dropdownPositionClass} mt-0 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50`}
           >
-            {category.groupedSubcategories ? (
+            {getTreeNodeForCategory(categoryTree, category.name)?.children?.length ? (
+              renderTreeDropdown(getTreeNodeForCategory(categoryTree, category.name)!.children, category.name, category.color)
+            ) : category.groupedSubcategories ? (
               <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-5" style={{ width: '780px', maxWidth: '80vw' }}>
                 <h3 className={`text-base font-semibold mb-4 pb-3 border-b border-gray-200 ${COLOR_STYLES[category.color].text}`}>
                   {category.name}

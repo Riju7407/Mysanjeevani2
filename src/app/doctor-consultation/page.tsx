@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { OTPVerificationModal } from '@/components/OTPVerificationModal';
+import { normalizeCountryCode, getCountryOption, type CountryCode } from '@/lib/countryPreference';
+import { convertPrice, formatPrice } from '@/lib/currencyUtils';
 
 const AgoraConsultationCall = dynamic(() => import('@/components/AgoraConsultationCall'), {
   ssr: false,
@@ -129,9 +131,18 @@ function getValidAvailableDates(dates?: string[]) {
   ).sort();
 }
 
-function formatFeeLabel(fee?: number) {
+function formatFeeLabel(fee?: number, selectedCountry?: CountryCode) {
   const amount = Number(fee || 0);
-  return amount <= 0 ? 'Free' : `₹${amount}`;
+  if (amount <= 0) return 'Free';
+
+  const countryOption = getCountryOption(selectedCountry || 'IN');
+  if (countryOption.currency === 'INR') {
+    return `₹${amount}`;
+  } else {
+    // For USD, convert from INR
+    const usdAmount = Math.round(amount * 0.012 * 100) / 100; // Approximate conversion
+    return `$${usdAmount}`;
+  }
 }
 
 export default function DoctorConsultationPage() {
@@ -155,6 +166,7 @@ export default function DoctorConsultationPage() {
   const [cancellingConsultationId, setCancellingConsultationId] = useState<string | null>(null);
   const [showOTPModal, setShowOTPModal] = useState(false);
   const [isOTPVerified, setIsOTPVerified] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState<CountryCode>('IN');
 
   const redirectToLogin = () => {
     if (typeof window === 'undefined') return;
@@ -219,6 +231,12 @@ export default function DoctorConsultationPage() {
   useEffect(() => {
     if (activeTab === 'mine') fetchConsultations();
   }, [activeTab, fetchConsultations]);
+
+  // Load selected country from localStorage
+  useEffect(() => {
+    const storedCountry = normalizeCountryCode(localStorage.getItem('preferredCountry') || 'IN');
+    setSelectedCountry(storedCountry);
+  }, []);
 
   const openBooking = (doctor: Doctor) => {
     const user = getUserData();
@@ -682,7 +700,7 @@ export default function DoctorConsultationPage() {
 
                         <div className="mb-2 flex items-end justify-between">
                           <div className="flex items-baseline gap-2">
-                            <span className="text-base font-black text-slate-900">{formatFeeLabel(doctor.consultationFee)}</span>
+                            <span className="text-base font-black text-slate-900">{formatFeeLabel(doctor.consultationFee, selectedCountry)}</span>
                           </div>
                           <span className="text-[11px] font-bold text-emerald-600">{doctor.experience} yrs</span>
                         </div>
@@ -797,7 +815,7 @@ export default function DoctorConsultationPage() {
                           <p className="text-xs text-gray-600 mt-1 font-medium">
                             {c.patientsAhead === 0 ? "You're first!" : `${c.patientsAhead} patient(s) ahead`}
                           </p>
-                          <p className="text-xs text-gray-400 mt-0.5">Fees: {formatFeeLabel(c.fees)}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">Fees: {formatFeeLabel(c.fees, selectedCountry)}</p>
                         </div>
                       )}
 
@@ -805,7 +823,7 @@ export default function DoctorConsultationPage() {
                         <div className="flex-shrink-0 bg-green-50 border border-green-200 rounded-xl p-4 text-center min-w-[110px]">
                           <p className="text-2xl font-semibold">Done</p>
                           <p className="text-sm font-medium text-green-700 mt-1">Completed</p>
-                          <p className="text-xs text-gray-400">{formatFeeLabel(c.fees)}</p>
+                          <p className="text-xs text-gray-400">{formatFeeLabel(c.fees, selectedCountry)}</p>
                         </div>
                       )}
                     </div>
@@ -883,7 +901,7 @@ export default function DoctorConsultationPage() {
                   <div className="mt-4 space-y-2 text-sm text-slate-600">
                     <p>Department: <span className="font-medium text-slate-800">{bookingDoctor.department}</span></p>
                     <p>Experience: <span className="font-medium text-slate-800">{bookingDoctor.experience} years</span></p>
-                    <p>Consultation Fee: <span className="font-semibold text-emerald-700">{formatFeeLabel(bookingDoctor.consultationFee)}</span></p>
+                    <p>Consultation Fee: <span className="font-semibold text-emerald-700">{formatFeeLabel(bookingDoctor.consultationFee, selectedCountry)}</span></p>
                   </div>
                 </div>
 
@@ -1027,7 +1045,7 @@ export default function DoctorConsultationPage() {
                     disabled={submitting}
                     className="w-full sm:w-auto rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 font-semibold transition disabled:opacity-60"
                   >
-                    {isOTPVerified ? (submitting ? 'Booking...' : `Confirm Booking • ${formatFeeLabel(bookingDoctor.consultationFee)}`) : 'Verify OTP & Book'}
+                    {isOTPVerified ? (submitting ? 'Booking...' : `Confirm Booking • ${formatFeeLabel(bookingDoctor.consultationFee, selectedCountry)}`) : 'Verify OTP & Book'}
                   </button>
                 </div>
               </div>

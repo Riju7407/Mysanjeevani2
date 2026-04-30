@@ -60,10 +60,19 @@ async function validateMerchantAccount() {
       };
     }
 
+    // Check if account currency is INR for Indian payments
+    if (account.currency && account.currency.toUpperCase() !== 'INR') {
+      return { 
+        valid: false, 
+        error: `Razorpay account currency is ${account.currency}. For Indian payments, account must be set to INR. Please update your Razorpay account currency.` 
+      };
+    }
+
     console.log('✅ Merchant account validated:', {
       email: account.email,
       status: account.status,
       business_type: account.business_type,
+      currency: account.currency,
     });
 
     return { valid: true };
@@ -128,6 +137,9 @@ export async function POST(request: NextRequest) {
       selectedPaymentMethod = '',
     } = await request.json();
 
+    // Force currency to INR for Indian payments
+    const orderCurrency = 'INR';
+
     if (!amount || Number(amount) <= 0) {
       return NextResponse.json({ error: 'Valid amount is required' }, { status: 400 });
     }
@@ -159,10 +171,10 @@ export async function POST(request: NextRequest) {
     // If test mode is enabled, create mock order
     if (testMode) {
       console.log('📝 TEST MODE: Generating mock Razorpay order');
-      order = generateMockOrder(amountInPaise, currency, receiptId);
+      order = generateMockOrder(amountInPaise, orderCurrency, receiptId);
     } else if (fallbackMode && !validation.valid) {
       console.warn('⚠️ FALLBACK MODE: Merchant account issue detected, using mock order');
-      order = generateMockOrder(amountInPaise, currency, receiptId);
+      order = generateMockOrder(amountInPaise, orderCurrency, receiptId);
     } else {
       // Try real Razorpay
       try {
@@ -182,7 +194,7 @@ export async function POST(request: NextRequest) {
 
         order = await razorpay.orders.create({
           amount: amountInPaise,
-          currency,
+          currency: orderCurrency,
           receipt: receiptId,
           notes,
         });
@@ -193,7 +205,7 @@ export async function POST(request: NextRequest) {
         // Fallback/mock mode is only honored when explicitly enabled.
         if (fallbackMode) {
           console.warn('⚠️ Fallback mode enabled, generating mock order after Razorpay error');
-          order = generateMockOrder(amountInPaise, currency, receiptId);
+          order = generateMockOrder(amountInPaise, orderCurrency, receiptId);
         } else {
           throw razorpayError;
         }

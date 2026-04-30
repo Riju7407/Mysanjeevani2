@@ -942,6 +942,9 @@ function InputField({
 
 function formatFee(fee?: number) {
   const amount = Number(fee || 0);
+  if (amount <= 0) return 'Free';
+
+  // For doctor panel, assume INR since it's for Indian doctors
   return amount <= 0 ? 'Free' : `₹${amount}`;
 }
 

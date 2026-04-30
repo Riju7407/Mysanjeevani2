@@ -20,7 +20,9 @@ interface Product {
   diseaseCategory?: string;
   diseaseSubcategory?: string;
   price: number;
+  displayPrice?: number;
   mrp?: number;
+  displayMrp?: number;
   discount?: number;
   image?: string;
   icon?: string;
@@ -33,6 +35,8 @@ interface Product {
   healthConcerns?: string[];
   isActive: boolean;
   isPopular?: boolean;
+  currencySymbol?: '₹' | '$';
+  currency?: 'INR' | 'USD';
 }
 
 interface ReviewSummary {
@@ -278,17 +282,8 @@ const COLOR_MAP: Record<string, { active: string; btn: string; tag: string; ring
 };
 
 function getProductPageHref(product: Product): string {
-  const productType = (product.productType || '').trim().toLowerCase();
-  
-  // Map product type to page and category
-  if (productType === 'ayurveda medicine' || productType === 'ayurveda') {
-    return `/ayurveda/${product._id}`;
-  }
-  if (productType === 'homeopathy') {
-    return `/homeopathy/${product._id}`;
-  }
-  
-  // All other types go to medicines page
+  // Always use the central medicine detail route for product detail navigation.
+  // This prevents invalid category-prefixed routes like /ayurveda/:id or /homeopathy/:id.
   return `/medicines/${product._id}`;
 }
 
@@ -358,7 +353,7 @@ function MedicinesContent() {
     setLoading(true);
     try {
       // fetch all, we filter client-side by category group
-      const res = await fetch('/api/products?limit=200', { cache: 'no-store' });
+      const res = await fetch('/api/products?limit=1000', { cache: 'no-store' });
       const data = await res.json();
       setProducts(data.products || []);
     } catch { setProducts([]); }
@@ -390,7 +385,7 @@ function MedicinesContent() {
       const c = JSON.parse(raw);
       const existing = c.find((i: any) => i.id === product._id);
       if (existing) existing.quantity += 1;
-      else c.push({ id: product._id, name: product.name, price: product.price, quantity: 1, brand: product.brand, image: product.image || product.icon || '💊', vendorName: 'MySanjeevni' });
+      else c.push({ id: product._id, name: product.name, price: product.displayPrice ?? product.price, displayPrice: product.displayPrice ?? product.price, displayMrp: product.displayMrp ?? product.mrp, currencySymbol: product.currencySymbol || '₹', currency: product.currency || 'INR', quantity: 1, brand: product.brand, image: product.image || product.icon || '💊', vendorName: 'MySanjeevni' });
       localStorage.setItem('cart', JSON.stringify(c));
       window.dispatchEvent(new Event('storage'));
     } catch {}
@@ -434,6 +429,7 @@ function MedicinesContent() {
       const isBabyCareType = productType === 'Baby Care' || normalizedType === 'baby care';
       const isSexualWellnessType = productType === 'Sexual Wellness' || normalizedType === 'sexual wellness';
       const isUnaniType = productType === 'Unani' || normalizedType === 'unani';
+      const isDiseaseTagged = Boolean(p.diseaseCategory || p.diseaseSubcategory || equalsIgnoreCase(p.category, 'disease'));
 
       // Filter by active tab
       if (activeTab === 'ayurveda') return isAyurvedaType;
@@ -444,6 +440,7 @@ function MedicinesContent() {
       if (activeTab === 'babycare') return isBabyCareType;
       if (activeTab === 'sexualwellness') return isSexualWellnessType;
       if (activeTab === 'unani') return isUnaniType;
+      if (activeTab === 'disease') return isDiseaseTagged;
 
       // Medicines tab - include generic medicines and other non-specialized products
       return !isLabTestType && !isAyurvedaType && !isHomeopathyType && !isNutritionType && !isPersonalCareType && !isFitnessType && !isBabyCareType && !isSexualWellnessType && !isUnaniType;
@@ -491,8 +488,7 @@ function MedicinesContent() {
 
       // Special handling for Disease category
       if (equalsIgnoreCase(urlCategory, 'disease')) {
-        // For disease, check diseaseCategory field specifically
-        return !!p.diseaseCategory && equalsIgnoreCase(p.diseaseCategory, urlCategory);
+        return Boolean(p.diseaseCategory || p.diseaseSubcategory || equalsIgnoreCase(p.category, 'disease'));
       }
 
       // Check if URL category maps to a product type
@@ -834,14 +830,14 @@ function MedicinesContent() {
 
                       <div className="mb-2 flex items-end justify-between">
                         <div className="flex items-baseline gap-2">
-                          <span className="text-base font-black text-slate-900">₹{product.price}</span>
-                          {product.mrp && product.mrp > product.price && (
-                            <span className="text-xs text-slate-400 line-through">₹{product.mrp}</span>
+                          <span className="text-base font-black text-slate-900">{product.currencySymbol || '₹'}{product.displayPrice ?? product.price}</span>
+                          {(product.displayMrp ?? product.mrp) && (product.displayMrp ?? product.mrp)! > (product.displayPrice ?? product.price) && (
+                            <span className="text-xs text-slate-400 line-through">{product.currencySymbol || '₹'}{product.displayMrp ?? product.mrp}</span>
                           )}
                         </div>
-                        {product.mrp && product.mrp > product.price && (
+                        {(product.displayMrp ?? product.mrp) && (product.displayMrp ?? product.mrp)! > (product.displayPrice ?? product.price) && (
                           <span className="text-[11px] font-bold text-emerald-600">
-                            {Math.round(((product.mrp - product.price) / product.mrp) * 100)}% OFF
+                            {Math.round((((product.displayMrp ?? product.mrp) - (product.displayPrice ?? product.price)) / (product.displayMrp ?? product.mrp)) * 100)}% OFF
                           </span>
                         )}
                       </div>

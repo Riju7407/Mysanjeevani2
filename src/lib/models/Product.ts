@@ -15,6 +15,9 @@ const productSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    usdPrice: {
+      type: Number,
+    },
     discount: Number,
     category: {
       type: String,
@@ -24,8 +27,7 @@ const productSchema = new mongoose.Schema(
       type: String,
     },
     categories: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'CategoryNode',
+      type: String,
     }],
     potency: {
       type: String,
@@ -53,6 +55,10 @@ const productSchema = new mongoose.Schema(
     },
     diseaseSubcategory: {
       type: String,
+    },
+    diseasePaths: {
+      type: [[String]],
+      default: [],
     },
     productType: {
       type: String,
@@ -150,26 +156,11 @@ const productSchema = new mongoose.Schema(
       },
     },
     
-    // Featured/Popular by Category
-    isPopular: {
-      type: Boolean,
-      default: false,
-    },
-    isPopularGeneric: {
-      type: Boolean,
-      default: false,
-    },
-    isPopularAyurveda: {
-      type: Boolean,
-      default: false,
-    },
-    isPopularHomeopathy: {
-      type: Boolean,
-      default: false,
-    },
-    isPopularLabTests: {
-      type: Boolean,
-      default: false,
+    // Featured/Popular Display Section (single selection)
+    popularSection: {
+      type: String,
+      enum: ['None', 'Generic', 'Ayurveda', 'Homeopathy', 'LabTests'],
+      default: 'None',
     },
   },
   {

@@ -6,11 +6,16 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { OTPVerificationModal } from '@/components/OTPVerificationModal';
+import { isIndiaCountry, normalizeCountryCode, type CountryCode } from '@/lib/countryPreference';
 
 interface CartItem {
   id: string | number;
   name: string;
   price: number;
+  displayPrice?: number;
+  displayMrp?: number;
+  currencySymbol?: '₹' | '$';
+  currency?: 'INR' | 'USD';
   quantity: number;
   brand: string;
   image?: string;
@@ -67,6 +72,7 @@ async function loadPayPalScript(clientId: string, currency: string) {
 export default function CartPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [user, setUser] = useState<any>(null);
+  const [selectedCountry, setSelectedCountry] = useState<CountryCode>('IN');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
@@ -89,13 +95,31 @@ export default function CartPage() {
   });
   const router = useRouter();
 
-  const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const currencySymbol = isIndiaCountry(selectedCountry) ? '₹' : '$';
+  const effectivePrice = (item: CartItem) => Number(item.displayPrice ?? item.price) || 0;
+  const totalPrice = cartItems.reduce((sum, item) => sum + effectivePrice(item) * item.quantity, 0);
   const discount = Math.floor(totalPrice * 0.10); // 10% discount
   const finalPrice = totalPrice - discount;
-  const deliveryCharge = finalPrice > 299 ? 0 : 49;
+  const deliveryCharge = isIndia ? 0 : 5;
   const totalAmount = finalPrice + deliveryCharge;
 
+  const isIndia = isIndiaCountry(selectedCountry);
+
+  const getStoredCountry = () => {
+    const fromLocalStorage = localStorage.getItem('preferredCountry');
+    if (fromLocalStorage) return normalizeCountryCode(fromLocalStorage);
+
+    const match = document.cookie.match(/(?:^|;\s*)preferredCountry=([^;]+)/i);
+    if (match?.[1]) return normalizeCountryCode(decodeURIComponent(match[1]));
+
+    return 'IN' as CountryCode;
+  };
+
   useEffect(() => {
+    const country = getStoredCountry();
+    setSelectedCountry(country);
+    setSelectedPaymentMethod(isIndiaCountry(country) ? 'domestic' : 'paypal');
+
     // Load cart from localStorage
     const savedCart = localStorage.getItem('cart');
     if (savedCart) {
@@ -105,7 +129,11 @@ export default function CartPage() {
           ? parsed.map((item: any) => ({
               id: item.id,
               name: item.name || 'Product',
-              price: Number(item.price) || 0,
+              price: Number(item.price ?? item.displayPrice) || 0,
+              displayPrice: Number(item.displayPrice ?? item.price) || 0,
+              displayMrp: item.displayMrp != null ? Number(item.displayMrp) || undefined : undefined,
+              currencySymbol: item.currencySymbol === '$' ? '$' : '₹',
+              currency: item.currency === 'USD' ? 'USD' : 'INR',
               quantity: Number(item.quantity) || 1,
               brand: item.brand || 'MySanjeevni',
               image: item.image || '💊',
@@ -379,6 +407,11 @@ export default function CartPage() {
       return;
     }
 
+    if (!isIndia) {
+      alert('International orders must use PayPal checkout.');
+      return;
+    }
+
     setIsProcessing(true);
     try {
       const isRazorpayLoaded = await loadRazorpayScript();
@@ -421,7 +454,7 @@ export default function CartPage() {
       const options: Record<string, unknown> = {
         key: createOrderData.keyId,
         amount: createOrderData.order.amount,
-        currency: createOrderData.order.currency,
+        currency: 'INR',
         name: 'MySanjeevni',
         description: 'Order Payment',
         order_id: createOrderData.order.id,
@@ -600,7 +633,7 @@ export default function CartPage() {
                           className="px-6 py-4 flex gap-4 items-center hover:bg-gray-50 transition"
                         >
                           {/* Product Image */}
-                          <div className="w-20 h-20 bg-emerald-50 rounded-lg flex items-center justify-center text-3xl flex-shrink-0">
+                          <div className="w-20 h-20 bg-emerald-50 rounded-lg flex items-center justify-center text-3xl shrink-0">
                             {isImageUrl(item.image) ? (
                               <img
                                 src={item.image}
@@ -618,7 +651,7 @@ export default function CartPage() {
                             <h3 className="font-semibold text-gray-900">{item.name}</h3>
                             <p className="text-sm text-gray-600">{item.brand}</p>
                             <p className="text-lg font-bold text-emerald-600 mt-1">
-                              ₹{item.price}
+                              {item.currencySymbol || currencySymbol}{effectivePrice(item).toFixed(2)}
                             </p>
                           </div>
 
@@ -644,7 +677,7 @@ export default function CartPage() {
                           {/* Total & Remove */}
                           <div className="text-right">
                             <p className="font-bold text-gray-900">
-                              ₹{item.price * item.quantity}
+                              {item.currencySymbol || currencySymbol}{(effectivePrice(item) * item.quantity).toFixed(2)}
                             </p>
                             <button
                               onClick={() => removeFromCart(item.id)}
@@ -672,23 +705,23 @@ export default function CartPage() {
 
               {/* Price Summary */}
               <div className="lg:col-span-1">
-                <div className="bg-gradient-to-b from-emerald-50 to-white border border-emerald-200 rounded-lg p-6 sticky top-24">
+                <div className="bg-linear-to-b from-emerald-50 to-white border border-emerald-200 rounded-lg p-6 sticky top-24">
                   <h3 className="text-lg font-bold text-gray-900 mb-6">Order Summary</h3>
 
                   <div className="space-y-4 mb-6 pb-6 border-b border-gray-200">
                     <div className="flex justify-between items-center text-gray-700">
                       <span>Subtotal:</span>
-                      <span className="font-semibold">₹{totalPrice.toFixed(2)}</span>
+                      <span className="font-semibold">{currencySymbol}{totalPrice.toFixed(2)}</span>
                     </div>
 
                     <div className="flex justify-between items-center text-green-600">
                       <span>Discount (10%):</span>
-                      <span className="font-semibold">-₹{discount.toFixed(2)}</span>
+                      <span className="font-semibold">-{currencySymbol}{discount.toFixed(2)}</span>
                     </div>
 
                     <div className="flex justify-between items-center text-gray-700">
                       <span>After Discount:</span>
-                      <span className="font-semibold">₹{finalPrice.toFixed(2)}</span>
+                      <span className="font-semibold">{currencySymbol}{finalPrice.toFixed(2)}</span>
                     </div>
 
                     <div className="flex justify-between items-center text-gray-700">
@@ -702,7 +735,7 @@ export default function CartPage() {
                         :
                       </span>
                       <span className="font-semibold">
-                        {deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge}`}
+                        {deliveryCharge === 0 ? 'FREE' : `${currencySymbol}${deliveryCharge}`}
                       </span>
                     </div>
                   </div>
@@ -710,19 +743,19 @@ export default function CartPage() {
                   <div className="flex justify-between items-center mb-6 text-lg">
                     <span className="font-bold text-gray-900">Total Amount:</span>
                     <span className="font-bold text-emerald-600 text-2xl">
-                      ₹{totalAmount.toFixed(2)}
+                      {currencySymbol}{totalAmount.toFixed(2)}
                     </span>
                   </div>
 
                   {deliveryCharge > 0 && (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6 text-xs text-blue-700">
-                      📦 Add ₹{(299 - finalPrice).toFixed(2)} more to get FREE delivery
+                      📦 Add {currencySymbol}{(299 - finalPrice).toFixed(2)} more to get FREE delivery
                     </div>
                   )}
 
                   <button
                     onClick={handleBuyNow}
-                    className="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white py-3 rounded-lg font-bold transition"
+                    className="w-full bg-linear-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white py-3 rounded-lg font-bold transition"
                   >
                     {isOTPVerified ? '💳 Buy Now' : '🔐 Verify OTP & Buy'}
                   </button>
@@ -745,63 +778,64 @@ export default function CartPage() {
           <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-96 overflow-y-auto">
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Select Payment Method</h2>
             <p className="text-gray-600 mb-6">
-              Amount to Pay: <span className="font-bold text-emerald-600 text-lg">₹{totalAmount.toFixed(2)}</span>
+              Amount to Pay: <span className="font-bold text-emerald-600 text-lg">{currencySymbol}{totalAmount.toFixed(2)}</span>
             </p>
 
             <div className="space-y-3 mb-6">
-              {/* Domestic (Razorpay) */}
-              <label className="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-emerald-300 transition"
-                onClick={() => setSelectedPaymentMethod('domestic')}>
-                <input
-                  type="radio"
-                  name="payment"
-                  value="domestic"
-                  checked={selectedPaymentMethod === 'domestic'}
-                  onChange={() => setSelectedPaymentMethod('domestic')}
-                  className="mr-4"
-                />
-                <div>
-                  <p className="font-semibold text-gray-900">🇮🇳 Domestic (Razorpay)</p>
-                  <p className="text-xs text-gray-600">UPI, Card, Net Banking, Wallets</p>
-                </div>
-              </label>
+                {isIndia ? (
+                  <>
+                    <label className="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-emerald-300 transition"
+                      onClick={() => setSelectedPaymentMethod('domestic')}>
+                      <input
+                        type="radio"
+                        name="payment"
+                        value="domestic"
+                        checked={selectedPaymentMethod === 'domestic'}
+                        onChange={() => setSelectedPaymentMethod('domestic')}
+                        className="mr-4"
+                      />
+                      <div>
+                        <p className="font-semibold text-gray-900">🇮🇳 India (Razorpay)</p>
+                        <p className="text-xs text-gray-600">UPI, Card, Net Banking, Wallets</p>
+                      </div>
+                    </label>
 
-              {/* International (PayPal) */}
-              <label className="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-emerald-300 transition"
-                onClick={() => setSelectedPaymentMethod('paypal')}>
-                <input
-                  type="radio"
-                  name="payment"
-                  value="paypal"
-                  checked={selectedPaymentMethod === 'paypal'}
-                  onChange={() => setSelectedPaymentMethod('paypal')}
-                  className="mr-4"
-                />
-                <div>
-                  <p className="font-semibold text-gray-900">🌍 International (PayPal)</p>
-                  <p className="text-xs text-gray-600">Pay securely with PayPal</p>
-                </div>
-              </label>
-
-              {/* Cash on Delivery */}
-              <label className="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-emerald-300 transition"
-                onClick={() => setSelectedPaymentMethod('cod')}>
-                <input
-                  type="radio"
-                  name="payment"
-                  value="cod"
-                  checked={selectedPaymentMethod === 'cod'}
-                  onChange={() => setSelectedPaymentMethod('cod')}
-                  className="mr-4"
-                />
-                <div>
-                  <p className="font-semibold text-gray-900">🚚 Cash on Delivery</p>
-                  <p className="text-xs text-gray-600">Pay when you receive</p>
-                </div>
-              </label>
+                    <label className="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-emerald-300 transition"
+                      onClick={() => setSelectedPaymentMethod('cod')}>
+                      <input
+                        type="radio"
+                        name="payment"
+                        value="cod"
+                        checked={selectedPaymentMethod === 'cod'}
+                        onChange={() => setSelectedPaymentMethod('cod')}
+                        className="mr-4"
+                      />
+                      <div>
+                        <p className="font-semibold text-gray-900">🚚 Cash on Delivery</p>
+                        <p className="text-xs text-gray-600">Pay when you receive</p>
+                      </div>
+                    </label>
+                  </>
+                ) : (
+                  <label className="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-emerald-300 transition"
+                    onClick={() => setSelectedPaymentMethod('paypal')}>
+                    <input
+                      type="radio"
+                      name="payment"
+                      value="paypal"
+                      checked={selectedPaymentMethod === 'paypal'}
+                      onChange={() => setSelectedPaymentMethod('paypal')}
+                      className="mr-4"
+                    />
+                    <div>
+                      <p className="font-semibold text-gray-900">🌍 International (PayPal)</p>
+                      <p className="text-xs text-gray-600">Pay securely in USD with PayPal</p>
+                    </div>
+                  </label>
+                )}
             </div>
 
-            {selectedPaymentMethod === 'paypal' && (
+              {selectedPaymentMethod === 'paypal' && !isIndia && (
               <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
                 <p className="text-xs text-blue-800 mb-2 font-medium">
                   International checkout via PayPal ({paypalCurrency})

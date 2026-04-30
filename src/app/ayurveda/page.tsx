@@ -25,7 +25,9 @@ interface Product {
   category: string;
   subcategory?: string;
   price: number;
+  displayPrice?: number;
   mrp?: number;
+  displayMrp?: number;
   icon?: string;
   image?: string;
   rating?: number;
@@ -40,6 +42,8 @@ interface Product {
   quantityUnit?: string;
   healthConcerns?: string[];
   isPopular?: boolean;
+  currencySymbol?: '₹' | '$';
+  currency?: 'INR' | 'USD';
 }
 
 function normalizeCategory(value?: string) {
@@ -179,7 +183,7 @@ function AyurvedaContent() {
       const c = JSON.parse(raw);
       const existing = c.find((i: any) => i.id === product._id);
       if (existing) existing.quantity += 1;
-      else c.push({ id: product._id, name: product.name, price: product.price, quantity: 1, brand: product.brand, image: product.image || product.icon || '🌿', vendorName: 'MySanjeevni' });
+      else c.push({ id: product._id, name: product.name, price: product.displayPrice ?? product.price, displayPrice: product.displayPrice ?? product.price, displayMrp: product.displayMrp ?? product.mrp, currencySymbol: product.currencySymbol || '₹', currency: product.currency || 'INR', quantity: 1, brand: product.brand, image: product.image || product.icon || '🌿', vendorName: 'MySanjeevni' });
       localStorage.setItem('cart', JSON.stringify(c));
       window.dispatchEvent(new Event('storage'));
     } catch {}
@@ -196,7 +200,7 @@ function AyurvedaContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-amber-50 via-yellow-50 to-white flex flex-col">
+    <div className="min-h-screen bg-linear-to-b from-amber-50 via-yellow-50 to-white flex flex-col">
       <Header />
 
       {/* Hero */}
@@ -205,7 +209,7 @@ function AyurvedaContent() {
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="sticky top-[68px] md:top-0 z-30 bg-white border-b border-amber-200 shadow-sm -mt-40">
+      <div className="sticky top-17 md:top-0 z-30 bg-white border-b border-amber-200 shadow-sm -mt-40">
         <div className="max-w-7xl mx-auto px-4 py-1">
           <div className="flex flex-col gap-7 md:gap-4 md:flex-row md:items-center md:justify-between">
             {/* Search Bar */}
@@ -243,7 +247,7 @@ function AyurvedaContent() {
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`whitespace-nowrap px-4 py-2 rounded-full font-medium text-sm transition-all flex-shrink-0 ${
+                className={`whitespace-nowrap px-4 py-2 rounded-full font-medium text-sm transition-all shrink-0 ${
                   selectedCategory === cat
                     ? 'bg-amber-500 text-white shadow-md'
                     : 'bg-gray-100 text-gray-700 hover:bg-amber-100'
@@ -280,7 +284,7 @@ function AyurvedaContent() {
                 key={i}
                 className="bg-white rounded-2xl border border-amber-100 p-4 shadow-sm animate-pulse"
               >
-                <div className="h-40 bg-gradient-to-br from-amber-100 to-yellow-100 rounded-xl mb-4" />
+                <div className="h-40 bg-linear-to-br from-amber-100 to-yellow-100 rounded-xl mb-4" />
                 <div className="h-4 bg-gray-200 rounded mb-3 w-3/4" />
                 <div className="h-3 bg-gray-200 rounded mb-2 w-full" />
                 <div className="h-3 bg-gray-200 rounded mb-4 w-1/2" />
@@ -370,9 +374,9 @@ function AyurvedaContent() {
 
                     {/* Price */}
                     <div className="mb-2 flex items-end justify-between">
-                      <span className="text-base font-black text-slate-900">₹{p.price}</span>
-                      {p.mrp && p.mrp > p.price && (
-                        <span className="text-xs text-slate-400 line-through">₹{p.mrp}</span>
+                      <span className="text-base font-black text-slate-900">{p.currencySymbol || '₹'}{p.displayPrice ?? p.price}</span>
+                      {(p.displayMrp ?? p.mrp) && (p.displayMrp ?? p.mrp)! > (p.displayPrice ?? p.price) && (
+                        <span className="text-xs text-slate-400 line-through">{p.currencySymbol || '₹'}{p.displayMrp ?? p.mrp}</span>
                       )}
                     </div>
 

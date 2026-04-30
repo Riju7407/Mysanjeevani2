@@ -141,6 +141,24 @@ export default function ContactPage() {
             </article>
           </div>
 
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm mb-8">
+            <h2 className="text-2xl font-black text-emerald-700">Find Us on Google Maps</h2>
+            <p className="mt-2 text-sm text-slate-700">Our current office location in Delhi.</p>
+            <div className="mt-5 overflow-hidden rounded-3xl border border-slate-200">
+              <iframe
+                title="My Sanjeevani Office Location"
+                src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d3501.797193657113!2d77.0812549!3d28.6358398!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x390d049519c8bd17%3A0xb52ce97608bca092!2sShri%20Ram%20Homoeo%20Pharmacy%20%26%20Ayurvedic%20Medicine%20(%20SINCE%201998)!5e0!3m2!1sen!2sin!4v1777547839388!5m2!1sen!2sin"
+                width="600"
+                height="450"
+                className="w-full border-0"
+                style={{ border: 0 }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            </div>
+          </div>
+
           <div className="rounded-3xl border border-emerald-200 bg-white p-6 sm:p-8 shadow-sm">
             <h2 className="text-2xl font-black text-emerald-700">Submit an Inquiry</h2>
             <p className="text-slate-600 mt-1 text-sm">This form is available only after login.</p>

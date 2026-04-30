@@ -708,7 +708,7 @@ Body:
     }
   ],
   "totalPrice": 90,
-  "deliveryAddress": "123 Main St, Mumbai 400001"
+  "deliveryAddressId": "address_id"
 }
 ```
 

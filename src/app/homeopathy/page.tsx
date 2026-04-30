@@ -13,7 +13,9 @@ interface HomeopathyProduct {
   category: string;
   subcategory?: string;
   price: number;
+  displayPrice?: number;
   mrp?: number;
+  displayMrp?: number;
   discount?: number;
   icon?: string;
   image?: string;
@@ -29,6 +31,8 @@ interface HomeopathyProduct {
   quantityUnit?: string;
   healthConcerns?: string[];
   stock?: number;
+  currencySymbol?: '₹' | '$';
+  currency?: 'INR' | 'USD';
 }
 
 const DEFAULT_CATEGORIES = [
@@ -187,7 +191,11 @@ function HomeopathyContent() {
         cartItems.push({
           id: product._id,
           name: product.name,
-          price: product.price,
+          price: product.displayPrice ?? product.price,
+          displayPrice: product.displayPrice ?? product.price,
+          displayMrp: product.displayMrp ?? product.mrp,
+          currencySymbol: product.currencySymbol || '₹',
+          currency: product.currency || 'INR',
           quantity: 1,
           brand: product.brand || 'Homeopathy',
           image: product.image || product.icon || '🌸',
@@ -394,12 +402,12 @@ function HomeopathyContent() {
 
                       <div className="mb-2 flex items-end justify-between">
                         <div className="flex items-baseline gap-2">
-                          <span className="text-base font-black text-slate-900">₹{product.price}</span>
-                        {product.mrp && product.mrp > product.price && (
-                            <span className="text-xs text-slate-400 line-through">₹{product.mrp}</span>
+                          <span className="text-base font-black text-slate-900">{product.currencySymbol || '₹'}{product.displayPrice ?? product.price}</span>
+                        {(product.displayMrp ?? product.mrp) && (product.displayMrp ?? product.mrp)! > (product.displayPrice ?? product.price) && (
+                            <span className="text-xs text-slate-400 line-through">{product.currencySymbol || '₹'}{product.displayMrp ?? product.mrp}</span>
                         )}
                         </div>
-                        {product.mrp && product.mrp > product.price && (
+                        {(product.displayMrp ?? product.mrp) && (product.displayMrp ?? product.mrp)! > (product.displayPrice ?? product.price) && (
                           <span className="text-[11px] font-bold text-emerald-600">{productDiscount}% OFF</span>
                         )}
                       </div>

@@ -161,6 +161,7 @@ export async function POST(request: NextRequest) {
       name,
       description,
       price,
+      usdPrice,
       productType,
       category,
       stock,
@@ -172,9 +173,9 @@ export async function POST(request: NextRequest) {
       ...otherFields
     } = body;
 
-    if (!vendorId || !name || !price || !category) {
+    if (!vendorId || !name || !price || !category || usdPrice === undefined || usdPrice === null || isNaN(parseFloat(String(usdPrice)))) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing or invalid required fields' },
         { status: 400 }
       );
     }
@@ -206,6 +207,7 @@ export async function POST(request: NextRequest) {
 
     // Safely convert numeric fields to avoid NaN values
     const parsedPrice = price && !isNaN(parseFloat(price)) ? parseFloat(price) : 0;
+    const parsedUsdPrice = usdPrice && !isNaN(parseFloat(String(usdPrice))) ? parseFloat(String(usdPrice)) : undefined;
     const parsedStock = stock && !isNaN(parseInt(stock)) ? parseInt(stock) : 0;
     const parsedMrp = mrp && !isNaN(parseFloat(mrp)) ? parseFloat(mrp) : undefined;
     const parsedQuantity = quantity && !isNaN(parseFloat(quantity)) ? parseFloat(quantity) : undefined;
@@ -216,6 +218,20 @@ export async function POST(request: NextRequest) {
       typeof otherFields.quantityUnit === 'string'
         ? (otherFields.quantityUnit.trim() || 'None')
         : (otherFields.quantityUnit || 'None');
+    const normalizedPopularSection =
+      typeof body.popularSection === 'string' && ['None', 'Generic', 'Ayurveda', 'Homeopathy', 'LabTests'].includes(body.popularSection)
+        ? body.popularSection
+        : body.isPopularGeneric
+          ? 'Generic'
+          : body.isPopularAyurveda
+            ? 'Ayurveda'
+            : body.isPopularHomeopathy
+              ? 'Homeopathy'
+              : body.isPopularLabTests
+                ? 'LabTests'
+                : body.isPopular
+                  ? 'Generic'
+                  : 'None';
 
     // Create product with properly typed numeric fields
     const newProduct = await Product.create({
@@ -224,6 +240,7 @@ export async function POST(request: NextRequest) {
       name,
       description,
       price: parsedPrice,
+      usdPrice: parsedUsdPrice,
       productType: resolvedType,
       category: normalizedCategory,
       stock: parsedStock,
@@ -238,11 +255,12 @@ export async function POST(request: NextRequest) {
       specifications: typeof specifications === 'string' ? specifications.trim() : undefined,
       approvalStatus: 'pending',
       isActive: false,
-      isPopular: false,
-      isPopularGeneric: false,
-      isPopularAyurveda: false,
-      isPopularHomeopathy: false,
-      isPopularLabTests: false,
+      popularSection: normalizedPopularSection,
+      isPopular: normalizedPopularSection !== 'None',
+      isPopularGeneric: normalizedPopularSection === 'Generic',
+      isPopularAyurveda: normalizedPopularSection === 'Ayurveda',
+      isPopularHomeopathy: normalizedPopularSection === 'Homeopathy',
+      isPopularLabTests: normalizedPopularSection === 'LabTests',
     });
 
     return NextResponse.json(
@@ -279,6 +297,26 @@ export async function PUT(request: NextRequest) {
         { error: 'Product ID and Vendor ID required' },
         { status: 400 }
       );
+    }
+
+    if (updateData.usdPrice === undefined || updateData.usdPrice === null || isNaN(parseFloat(String(updateData.usdPrice)))) {
+      return NextResponse.json(
+        { error: 'Missing or invalid USD dollar price' },
+        { status: 400 }
+      );
+    }
+
+    const normalizedPopularSection =
+      typeof updateData.popularSection === 'string' && ['None', 'Generic', 'Ayurveda', 'Homeopathy', 'LabTests'].includes(updateData.popularSection)
+        ? updateData.popularSection
+        : undefined;
+    if (normalizedPopularSection !== undefined) {
+      updateData.popularSection = normalizedPopularSection;
+      updateData.isPopular = normalizedPopularSection !== 'None';
+      updateData.isPopularGeneric = normalizedPopularSection === 'Generic';
+      updateData.isPopularAyurveda = normalizedPopularSection === 'Ayurveda';
+      updateData.isPopularHomeopathy = normalizedPopularSection === 'Homeopathy';
+      updateData.isPopularLabTests = normalizedPopularSection === 'LabTests';
     }
 
     // Verify ownership
@@ -325,10 +363,13 @@ export async function PUT(request: NextRequest) {
     }
 
     // Any vendor edit should return item to pending review.
+    const parsedUsdPrice = updateData.usdPrice && !isNaN(parseFloat(String(updateData.usdPrice))) ? parseFloat(String(updateData.usdPrice)) : undefined;
+
     const updatedProduct = await Product.findByIdAndUpdate(
       productId,
       {
         ...updateData,
+        usdPrice: parsedUsdPrice,
         potency: normalizedPotency,
         quantityUnit: normalizedQuantityUnit,
         safetyInformation: normalizedSafetyInformation,
@@ -337,7 +378,6 @@ export async function PUT(request: NextRequest) {
         category: nextCategory,
         approvalStatus: 'pending',
         isActive: false,
-        isPopular: false,
         updatedAt: new Date(),
       },
       { new: true, runValidators: true }

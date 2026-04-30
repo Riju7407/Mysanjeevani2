@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { LogoImage } from './Logo';
 import CategoryNav from './CategoryNav';
+import { COUNTRY_OPTIONS, normalizeCountryCode, getCountryOption } from '@/lib/countryPreference';
 
 declare global {
   interface Window {
@@ -138,12 +139,36 @@ export default function Header() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchRedirecting, setIsSearchRedirecting] = useState(false);
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
+  const [isCountryMenuOpen, setIsCountryMenuOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('en');
+  const [selectedCountry, setSelectedCountry] = useState('IN');
+  const [countrySearch, setCountrySearch] = useState('');
+  const [countryLetter, setCountryLetter] = useState('A');
   const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestion[]>([]);
   const [searchSuggestionPool, setSearchSuggestionPool] = useState<SearchSuggestion[]>([]);
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
+
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+  const sortedCountryOptions = useMemo(
+    () => [...COUNTRY_OPTIONS].sort((a, b) => a.label.localeCompare(b.label)),
+    []
+  );
+
+  const visibleCountryOptions = useMemo(() => {
+    const search = countrySearch.trim().toLowerCase();
+    let list = sortedCountryOptions;
+
+    if (search) {
+      list = list.filter((option) => option.label.toLowerCase().includes(search) || option.code.toLowerCase().includes(search));
+    } else if (countryLetter) {
+      list = list.filter((option) => option.label.toUpperCase().startsWith(countryLetter));
+    }
+
+    return list;
+  }, [countrySearch, countryLetter, sortedCountryOptions]);
 
   const getRootDomain = (hostname: string) => {
     const parts = hostname.split('.').filter(Boolean);
@@ -179,6 +204,32 @@ export default function Header() {
         document.cookie = `googtrans=${cookieValue}; ${baseAttrs}; domain=${rootDomain}`;
       }
     }
+  };
+
+  const setCountryPreference = (countryCode: string) => {
+    const normalized = normalizeCountryCode(countryCode);
+    const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+    const baseAttrs = `path=/; SameSite=Lax${secure}`;
+
+    document.cookie = `preferredCountry=; expires=Thu, 01 Jan 1970 00:00:00 GMT; ${baseAttrs}`;
+    document.cookie = `preferredCountry=${normalized}; ${baseAttrs}`;
+
+    const hostname = window.location.hostname;
+    if (hostname && hostname !== 'localhost' && !/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+      document.cookie = `preferredCountry=; expires=Thu, 01 Jan 1970 00:00:00 GMT; ${baseAttrs}; domain=${hostname}`;
+      document.cookie = `preferredCountry=${normalized}; ${baseAttrs}; domain=${hostname}`;
+      const rootDomain = getRootDomain(hostname);
+      if (rootDomain) {
+        document.cookie = `preferredCountry=; expires=Thu, 01 Jan 1970 00:00:00 GMT; ${baseAttrs}; domain=${rootDomain}`;
+        document.cookie = `preferredCountry=${normalized}; ${baseAttrs}; domain=${rootDomain}`;
+      }
+    }
+
+    localStorage.setItem('preferredCountry', normalized);
+    setSelectedCountry(normalized);
+    setCountryLetter(getCountryOption(normalized).label.charAt(0).toUpperCase());
+    setCountrySearch('');
+    window.dispatchEvent(new Event('storage'));
   };
 
   useEffect(() => {
@@ -219,6 +270,11 @@ export default function Header() {
     const storedLanguage = localStorage.getItem('siteLanguage') || 'en';
     setSelectedLanguage(storedLanguage);
     setTranslateCookies(storedLanguage);
+
+    const storedCountry = normalizeCountryCode(localStorage.getItem('preferredCountry') || 'IN');
+    setSelectedCountry(storedCountry);
+    setCountryLetter(getCountryOption(storedCountry).label.charAt(0).toUpperCase());
+    setCountryPreference(storedCountry);
 
     if (!document.getElementById('google-translate-script')) {
       window.googleTranslateElementInit = () => {
@@ -353,6 +409,12 @@ export default function Header() {
     localStorage.setItem('siteLanguage', languageCode);
     setTranslateCookies(languageCode);
     setIsLanguageMenuOpen(false);
+    window.location.reload();
+  };
+
+  const changeCountry = (countryCode: string) => {
+    setCountryPreference(countryCode);
+    setIsCountryMenuOpen(false);
     window.location.reload();
   };
 
@@ -753,11 +815,78 @@ export default function Header() {
               <>
                 <span className="truncate">Your All-in-One Natural Healthcare Destination</span>
                 <span className="text-emerald-100 hidden sm:inline">|</span>
-                <span className="hidden sm:inline">India's Healthcare Platform</span>
+                <span className="hidden sm:inline">India&apos;s Healthcare Platform</span>
               </>
             )}
           </div>
           <div className="hidden sm:flex items-center gap-4 shrink-0">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsCountryMenuOpen((prev) => !prev)}
+                className="hover:text-emerald-100"
+                aria-label="Change country"
+              >
+                {getCountryOption(selectedCountry).label}
+              </button>
+              {isCountryMenuOpen && (
+                <div className="absolute right-0 mt-2 w-88 rounded-lg bg-white text-gray-800 shadow-lg border border-gray-200 z-60 overflow-hidden">
+                  <div className="p-3 border-b border-gray-100 space-y-2">
+                    <input
+                      type="text"
+                      value={countrySearch}
+                      onChange={(e) => setCountrySearch(e.target.value)}
+                      placeholder="Search country"
+                      className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <div className="flex flex-wrap gap-1 max-h-24 overflow-auto pr-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCountryLetter('');
+                          setCountrySearch('');
+                        }}
+                        className={`rounded-full px-2 py-1 text-xs border ${!countryLetter && !countrySearch ? 'bg-emerald-600 text-white border-emerald-600' : 'border-gray-200 hover:bg-gray-50'}`}
+                      >
+                        All
+                      </button>
+                      {alphabet.map((letter) => (
+                        <button
+                          key={letter}
+                          type="button"
+                          onClick={() => {
+                            setCountrySearch('');
+                            setCountryLetter(letter);
+                          }}
+                          className={`rounded-full px-2 py-1 text-xs border ${countryLetter === letter && !countrySearch ? 'bg-emerald-600 text-white border-emerald-600' : 'border-gray-200 hover:bg-gray-50'}`}
+                        >
+                          {letter}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="max-h-72 overflow-auto">
+                    {visibleCountryOptions.length > 0 ? (
+                      visibleCountryOptions.map((option) => (
+                        <button
+                          key={option.code}
+                          type="button"
+                          onClick={() => changeCountry(option.code)}
+                          className={`w-full text-left px-3 py-2 text-sm hover:bg-emerald-50 ${
+                            selectedCountry === option.code ? 'bg-emerald-50 text-emerald-700 font-semibold' : ''
+                          }`}
+                        >
+                          <span className="block">{option.label}</span>
+                          <span className="block text-xs text-gray-500">{option.code}</span>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-3 py-4 text-sm text-gray-500">No countries found.</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="relative">
               <button
                 type="button"

@@ -19,17 +19,22 @@ interface Product {
   category: string;
   productType?: string;
   price: number;
+  displayPrice?: number;
   mrp?: number;
+  displayMrp?: number;
   stock: number;
   image?: string;
   icon?: string;
   rating?: number;
   reviews?: number;
+  currencySymbol?: '₹' | '$';
+  currency?: 'INR' | 'USD';
   isPopular?: boolean;
   isPopularGeneric?: boolean;
   isPopularAyurveda?: boolean;
   isPopularHomeopathy?: boolean;
   isPopularLabTests?: boolean;
+  popularSection?: 'None' | 'Generic' | 'Ayurveda' | 'Homeopathy' | 'LabTests';
 }
 
 interface ReviewSummary {
@@ -103,8 +108,10 @@ function PopularProductsDisplay({
   const isCompactPopularCard = true;
 
   const discountPercent = (product: Product) => {
-    if (!product.mrp || product.mrp <= product.price) return 0;
-    return Math.round(((product.mrp - product.price) / product.mrp) * 100);
+    const displayPrice = product.displayPrice ?? product.price;
+    const displayMrp = product.displayMrp ?? product.mrp;
+    if (!displayMrp || displayMrp <= displayPrice) return 0;
+    return Math.round(((displayMrp - displayPrice) / displayMrp) * 100);
   };
 
   if (loading) {
@@ -213,12 +220,12 @@ function PopularProductsDisplay({
 
                   <div className={`flex items-end justify-between ${isCompactPopularCard ? 'mb-2' : 'mb-3'}`}>
                     <div className="flex items-baseline gap-2">
-                      <span className={`${isCompactPopularCard ? 'text-base' : 'text-lg'} font-black text-slate-900`}>&#8377;{product.price}</span>
-                      {product.mrp && product.mrp > product.price && (
-                        <span className="text-xs text-slate-400 line-through">&#8377;{product.mrp}</span>
+                      <span className={`${isCompactPopularCard ? 'text-base' : 'text-lg'} font-black text-slate-900`}>{product.currencySymbol || '₹'}{product.displayPrice ?? product.price}</span>
+                      {(product.displayMrp ?? product.mrp) && (product.displayMrp ?? product.mrp)! > (product.displayPrice ?? product.price) && (
+                        <span className="text-xs text-slate-400 line-through">{product.currencySymbol || '₹'}{product.displayMrp ?? product.mrp}</span>
                       )}
                     </div>
-                    {product.mrp && product.mrp > product.price && (
+                    {(product.displayMrp ?? product.mrp) && (product.displayMrp ?? product.mrp)! > (product.displayPrice ?? product.price) && (
                       <span className="text-[11px] font-bold text-emerald-600">{discountPercent(product)}% OFF</span>
                     )}
                   </div>
@@ -330,7 +337,11 @@ export default function HomePage() {
         cart.push({
           id: product._id,
           name: product.name,
-          price: product.price,
+          price: product.displayPrice ?? product.price,
+          displayPrice: product.displayPrice ?? product.price,
+          displayMrp: product.displayMrp ?? product.mrp,
+          currencySymbol: product.currencySymbol || '₹',
+          currency: product.currency || 'INR',
           quantity: 1,
           brand: product.brand,
           image: product.image || product.icon || '💊',
@@ -355,42 +366,18 @@ export default function HomePage() {
     router.push('/cart');
   };
 
-  // Normalize values so legacy/lowercase entries are still matched.
-  const normalizeType = (value?: string) => String(value || '').trim().toLowerCase();
-  const normalizeCategory = (value?: string) => String(value || '').trim().toLowerCase();
-
-  // Filter products by type and popularity.
+  // Popular sections are driven by the selected popularSection value.
   const genericMedicines = allProducts.filter(
-    (p) =>
-      (!p.productType || normalizeType(p.productType) === 'generic medicine') &&
-      ((p as any).isPopularGeneric || p.isPopular)
+    (p) => (p.popularSection === 'Generic') || Boolean((p as any).isPopularGeneric || p.isPopular)
   );
   const ayurveda = allProducts.filter(
-    (p) => {
-      const type = normalizeType(p.productType);
-      const category = normalizeCategory(p.category);
-      const isAyurvedaType = type === 'ayurveda medicine' || type === 'ayurveda';
-      const isAyurvedaCategory = category.includes('ayurveda');
-      return Boolean((p as any).isPopularAyurveda) || ((isAyurvedaType || isAyurvedaCategory) && Boolean(p.isPopular));
-    }
+    (p) => (p.popularSection === 'Ayurveda') || Boolean((p as any).isPopularAyurveda)
   );
   const homeopathy = allProducts.filter(
-    (p) => {
-      const type = normalizeType(p.productType);
-      const category = normalizeCategory(p.category);
-      const isHomeopathyType = type === 'homeopathy' || type === 'homeopathy medicine';
-      const isHomeopathyCategory = category.includes('homeopathy');
-      return Boolean((p as any).isPopularHomeopathy) || ((isHomeopathyType || isHomeopathyCategory) && Boolean(p.isPopular));
-    }
+    (p) => (p.popularSection === 'Homeopathy') || Boolean((p as any).isPopularHomeopathy)
   );
   const labTests = allProducts.filter(
-    (p) => {
-      const type = normalizeType(p.productType);
-      const category = normalizeCategory(p.category);
-      const isLabType = type === 'lab tests' || type === 'lab test';
-      const isLabCategory = category.includes('lab');
-      return Boolean((p as any).isPopularLabTests) || ((isLabType || isLabCategory) && Boolean(p.isPopular));
-    }
+    (p) => (p.popularSection === 'LabTests') || Boolean((p as any).isPopularLabTests)
   );
 
   return (
@@ -410,7 +397,7 @@ export default function HomePage() {
             </div>
 
             {/* Center Carousel Section */}
-            <div className="w-full lg:flex-1 lg:max-w-4xl rounded-2xl overflow-hidden shadow-lg bg-white min-h-[220px] sm:min-h-[280px] lg:min-h-0">
+            <div className="w-full lg:flex-1 lg:max-w-4xl rounded-2xl overflow-hidden shadow-lg bg-white min-h-55 sm:min-h-70 lg:min-h-0">
               <HeroCarousel />
             </div>
           </div>

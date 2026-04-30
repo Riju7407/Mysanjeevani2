@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 
 type CategoryTreeNode = {
@@ -31,6 +31,16 @@ const PRIMARY_MEDICINE_CATEGORIES = [
   'Unani',
 ];
 
+const MANAGEMENT_CATEGORY_NAMES = [
+  'Nutrition',
+  'Organic Products',
+  'Personal Care',
+  'Fitness',
+  'Sexual Wellness',
+  'Disease',
+  'Unani',
+];
+
 const CATEGORY_ACCENT_CLASSES: Record<string, string> = {
   Medicines: 'border-emerald-200 bg-emerald-50 text-emerald-800',
   Ayurveda: 'border-green-200 bg-green-50 text-green-800',
@@ -43,6 +53,21 @@ const CATEGORY_ACCENT_CLASSES: Record<string, string> = {
   Disease: 'border-red-200 bg-red-50 text-red-800',
   Unani: 'border-indigo-200 bg-indigo-50 text-indigo-800',
 };
+
+const normalizeName = (value: string) => value?.trim().toLowerCase() || '';
+
+function findNodeByName(nodes: CategoryTreeNode[], name: string): CategoryTreeNode | null {
+  for (const node of nodes) {
+    if (normalizeName(node.name) === normalizeName(name)) {
+      return node;
+    }
+    const found = findNodeByName(node.children, name);
+    if (found) {
+      return found;
+    }
+  }
+  return null;
+}
 
 function getHierarchyGroups(config: DynamicCategoryConfig | null, categoryName: string): string[] {
   if (!config) return [];
@@ -104,6 +129,33 @@ export default function AdminCategoriesPage() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [newRootName, setNewRootName] = useState('');
+
+  const buildCategorySections = useCallback((nodes: CategoryTreeNode[]) => {
+    const productTypesRoot = nodes.find((node) => node.name === 'Product Types');
+    const diseaseRoot = nodes.find((node) => node.name === 'Disease Categories');
+    const otherRoots = nodes.filter(
+      (node) => node.name !== 'Product Types' && node.name !== 'Disease Categories'
+    );
+
+    return {
+      productTypes: productTypesRoot?.children || [],
+      diseases: diseaseRoot?.children || [],
+      otherRoots,
+    };
+  }, []);
+
+  const categoryGroupSections = useMemo(() => {
+    const findSectionNode = (name: string) => findNodeByName(tree, name);
+
+    return MANAGEMENT_CATEGORY_NAMES.map((categoryName) => {
+      const node = findSectionNode(categoryName);
+      return {
+        name: categoryName,
+        node,
+        sectionId: node ? `group-section-${node._id}` : undefined,
+      };
+    });
+  }, [tree]);
 
   const fetchTree = useCallback(async () => {
     setLoading(true);
@@ -175,11 +227,36 @@ export default function AdminCategoriesPage() {
     }
   };
 
+  const getGroupParentId = (groupName: string): string | null => {
+    const productTypesRoot = findNodeByName(tree, 'Product Types');
+    const diseaseRoot = findNodeByName(tree, 'Disease Categories');
+
+    if (normalizeName(groupName) === 'disease') {
+      return diseaseRoot?._id ?? null;
+    }
+
+    if (normalizeName(groupName) === 'organic products') {
+      const nutritionNode = findNodeByName(tree, 'Nutrition');
+      return nutritionNode?._id ?? productTypesRoot?._id ?? null;
+    }
+
+    return productTypesRoot?._id ?? null;
+  };
+
+  const addMissingCategoryGroup = async (name: string) => {
+    const parentId = getGroupParentId(name);
+    if (parentId === null) {
+      await createNode(name, null);
+      return;
+    }
+    await createNode(name, parentId);
+  };
+
   const NodeView = ({ node, depth }: { node: CategoryTreeNode; depth: number }) => {
     const [newChildName, setNewChildName] = useState('');
 
     return (
-      <div className="mt-3">
+      <div id={`category-section-${node._id}`} className="mt-3">
         <div
           className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2"
           style={{ marginLeft: `${depth * 18}px` }}
@@ -240,6 +317,9 @@ export default function AdminCategoriesPage() {
             <p className="text-sm text-slate-600">
               Manage category, subcategory, nested subcategory, and deeper levels. Forms update dynamically from this tree.
             </p>
+            <p className="text-sm text-slate-600">
+              Product Types and Disease Categories are flattened into their child level so menu categories like Nutrition, Organic Products, Personal Care, Fitness, Sexual Wellness, Disease, and Unani are easier to find and edit.
+            </p>
           </div>
         </div>
 
@@ -262,6 +342,83 @@ export default function AdminCategoriesPage() {
             >
               Add Root
             </button>
+          </div>
+        </div>
+
+        <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4">
+          <h2 className="mb-2 text-sm font-semibold text-slate-900">Manage Core Category Groups</h2>
+          <p className="mb-4 text-xs text-slate-600">
+            Quick access links for Nutrition, Organic Products, Personal Care, Fitness, Sexual Wellness, Disease, and Unani category management.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {categoryGroupSections.map(({ name, node, sectionId }) => (
+              <div key={name} className="rounded-lg border p-3 bg-slate-50">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-bold text-slate-900">{name}</h3>
+                  <span className="rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+                    {node ? `${node.children.length} children` : 'Not found'}
+                  </span>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (sectionId) {
+                        document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }}
+                    className="rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                    disabled={!sectionId}
+                  >
+                    Manage
+                  </button>
+                  {node ? (
+                    <span className="rounded-md bg-slate-100 px-3 py-2 text-xs text-slate-700">
+                      {node.children.length} child node{node.children.length === 1 ? '' : 's'}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4">
+          <h2 className="mb-2 text-sm font-semibold text-slate-900">Core Category Group Management</h2>
+          <p className="mb-4 text-xs text-slate-600">
+            Direct management panels for Nutrition, Organic Products, Personal Care, Fitness, Sexual Wellness, Disease, and Unani.
+          </p>
+          <div className="space-y-6">
+            {categoryGroupSections.map(({ name, node, sectionId }) => (
+              <div key={name} className="rounded-2xl border border-slate-200 bg-slate-50 p-4" id={sectionId}>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-800">{name}</h3>
+                    {node ? (
+                      <p className="text-xs text-slate-500">{node.children.length} child node{node.children.length === 1 ? '' : 's'}</p>
+                    ) : (
+                      <p className="text-xs text-slate-500">Category not found in tree yet.</p>
+                    )}
+                  </div>
+                </div>
+                {node ? (
+                  <NodeView node={node} depth={0} />
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-slate-600">
+                      This category group is not available in the current category tree. Add it under Product Types or Disease Categories to manage it here.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => addMissingCategoryGroup(name)}
+                      className="rounded-md bg-emerald-600 px-3 py-2 text-xs font-medium text-white hover:bg-emerald-700"
+                    >
+                      Add {name}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
 
@@ -316,7 +473,88 @@ export default function AdminCategoriesPage() {
           ) : tree.length === 0 ? (
             <div className="py-10 text-center text-slate-500">No categories found. Create your first root category.</div>
           ) : (
-            tree.map((node) => <NodeView key={node._id} node={node} depth={0} />)
+            (() => {
+              const { productTypes, diseases, otherRoots } = buildCategorySections(tree);
+
+              return (
+                <div className="space-y-8">
+                  {productTypes.length > 0 && (
+                    <div>
+                      <h2 className="mb-3 text-lg font-semibold text-slate-900">Product Type Categories</h2>
+                      <div className="grid gap-4 lg:grid-cols-2">
+                        {productTypes.map((node) => {
+                          const sectionId = `category-section-${node.name.replace(/[^a-zA-Z0-9]+/g, '-')}`;
+                          return (
+                            <section key={node._id} id={sectionId} className="rounded-2xl border border-slate-200 bg-white p-4">
+                              <div className="mb-3 flex items-center justify-between gap-3">
+                                <div>
+                                  <h3 className="text-base font-semibold text-slate-800">{node.name}</h3>
+                                  <p className="text-xs text-slate-500">{node.children.length} subcategory{node.children.length === 1 ? '' : 'ies'}</p>
+                                </div>
+                                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
+                                  Product Type
+                                </span>
+                              </div>
+                              <NodeView node={node} depth={0} />
+                            </section>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {diseases.length > 0 && (
+                    <div>
+                      <h2 className="mb-3 text-lg font-semibold text-slate-900">Disease Categories</h2>
+                      <div className="grid gap-4 lg:grid-cols-2">
+                        {diseases.map((node) => {
+                          const sectionId = `category-section-${node.name.replace(/[^a-zA-Z0-9]+/g, '-')}`;
+                          return (
+                            <section key={node._id} id={sectionId} className="rounded-2xl border border-slate-200 bg-white p-4">
+                              <div className="mb-3 flex items-center justify-between gap-3">
+                                <div>
+                                  <h3 className="text-base font-semibold text-slate-800">{node.name}</h3>
+                                  <p className="text-xs text-slate-500">{node.children.length} subcategory{node.children.length === 1 ? '' : 'ies'}</p>
+                                </div>
+                                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
+                                  Disease Group
+                                </span>
+                              </div>
+                              <NodeView node={node} depth={0} />
+                            </section>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {otherRoots.length > 0 && (
+                    <div>
+                      <h2 className="mb-3 text-lg font-semibold text-slate-900">Other Category Roots</h2>
+                      <div className="grid gap-4 lg:grid-cols-2">
+                        {otherRoots.map((node) => {
+                          const sectionId = `category-section-${node.name.replace(/[^a-zA-Z0-9]+/g, '-')}`;
+                          return (
+                            <section key={node._id} id={sectionId} className="rounded-2xl border border-slate-200 bg-white p-4">
+                              <div className="mb-3 flex items-center justify-between gap-3">
+                                <div>
+                                  <h3 className="text-base font-semibold text-slate-800">{node.name}</h3>
+                                  <p className="text-xs text-slate-500">{node.children.length} subcategory{node.children.length === 1 ? '' : 'ies'}</p>
+                                </div>
+                                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
+                                  Root Category
+                                </span>
+                              </div>
+                              <NodeView node={node} depth={0} />
+                            </section>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()
           )}
         </div>
       </div>

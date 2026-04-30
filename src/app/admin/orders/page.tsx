@@ -349,11 +349,13 @@ export default function AdminOrders() {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Delivery Address</h3>
               {selectedOrder.deliveryAddress ? (
                 <div className="text-gray-700 text-sm space-y-1">
-                  <p><strong>House No:</strong> {selectedOrder.deliveryAddress.houseNo || 'N/A'}</p>
-                  <p><strong>Street:</strong> {selectedOrder.deliveryAddress.streetAddress || 'N/A'}</p>
+                  <p><strong>Full Name:</strong> {selectedOrder.deliveryAddress.fullName || 'N/A'}</p>
+                  <p><strong>Phone:</strong> {selectedOrder.deliveryAddress.phone || 'N/A'}</p>
+                  <p><strong>Address:</strong> {selectedOrder.deliveryAddress.addressLine1 || 'N/A'}</p>
+                  {selectedOrder.deliveryAddress.addressLine2 && <p><strong>Address 2:</strong> {selectedOrder.deliveryAddress.addressLine2}</p>}
                   <p><strong>City:</strong> {selectedOrder.deliveryAddress.city || 'N/A'}</p>
                   <p><strong>State:</strong> {selectedOrder.deliveryAddress.state || 'N/A'}</p>
-                  <p><strong>Postal Code:</strong> {selectedOrder.deliveryAddress.postalCode || 'N/A'}</p>
+                  <p><strong>Pincode:</strong> {selectedOrder.deliveryAddress.pincode || 'N/A'}</p>
                   <p><strong>Country:</strong> {selectedOrder.deliveryAddress.country || 'N/A'}</p>
                 </div>
               ) : (

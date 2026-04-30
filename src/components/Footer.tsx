@@ -147,31 +147,6 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Download App */}
-          <div>
-            <h4 className="text-sm font-bold mb-4 text-gray-200">DOWNLOAD APP</h4>
-            <p className="text-gray-400 text-sm mb-3">Get exclusive deals on the MySanjeevni app</p>
-            <div className="space-y-2">
-              <a
-                href="#"
-                className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded text-xs"
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M17.05 20.28c-.98.95-2.05.8-3.08.38-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.38C2.79 15.25 3.51 7.59 9.05 7.31c1.35.04 2.29.77 3.06.92.94-.23 1.94-.72 2.98-.64 1.32.12 2.27.66 2.99 1.74-2.81 1.74-2.37 5.74.6 6.95-.53 1.5-1.34 2.66-2.63 3.0zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
-                </svg>
-                App Store
-              </a>
-              <a
-                href="#"
-                className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded text-xs"
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M3 20.5V3.5C3 2.92 3.25 2.5 3.5 2.5h16.75c.3 0 .75.25.75.5v17c0 .5-.5.5-.75.5H3.75c-.5 0-.75-.5-.75-.5zm2-10.5h6v6H5v-6zm10 0h2v2h-2v-2zm0 3h2v2h-2v-2zm0 3h2v2h-2v-2z" />
-                </svg>
-                Play Store
-              </a>
-            </div>
-          </div>
         </div>
 
         {/* Bottom Footer */}

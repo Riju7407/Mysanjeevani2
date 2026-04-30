@@ -16,7 +16,9 @@ interface Product {
   productType?: string;
   description?: string;
   price: number;
+  displayPrice?: number;
   mrp?: number;
+  displayMrp?: number;
   stock: number;
   image?: string;
   images?: string[];
@@ -33,6 +35,8 @@ interface Product {
   healthConcerns?: string[];
   expiryDate?: string;
   vendorRating?: number;
+  currencySymbol?: '₹' | '$';
+  currency?: 'INR' | 'USD';
 }
 
 interface ProductReview {
@@ -174,6 +178,8 @@ export default function MedicineDetailsPage() {
   const [reviewSummary, setReviewSummary] = useState({ averageRating: 0, total: 0 });
   const [activeTab, setActiveTab] = useState<'info' | 'safety' | 'specs'>('info');
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [shareMessage, setShareMessage] = useState('');
+  const [shareLoading, setShareLoading] = useState(false);
   const [potencyProducts, setPotencyProducts] = useState<Product[]>([]);
   const [quantityProducts, setQuantityProducts] = useState<Product[]>([]);
   const [isImageZoomed, setIsImageZoomed] = useState(false);
@@ -378,8 +384,10 @@ export default function MedicineDetailsPage() {
   }, []);
 
   const discountPercent = useMemo(() => {
-    if (!product?.mrp || product.mrp <= product.price) return 0;
-    return Math.round(((product.mrp - product.price) / product.mrp) * 100);
+    const price = product?.displayPrice ?? product?.price;
+    const mrp = product?.displayMrp ?? product?.mrp;
+    if (!mrp || mrp <= price) return 0;
+    return Math.round(((mrp - price) / mrp) * 100);
   }, [product]);
 
   const safetyItems = useMemo(() => toLineItems(product?.safetyInformation), [product?.safetyInformation]);
@@ -442,6 +450,37 @@ export default function MedicineDetailsPage() {
     router.push(`/login?redirect=${encodeURIComponent(returnTo)}`);
   };
 
+  const shareProduct = async () => {
+    if (!product) return;
+    setShareLoading(true);
+    setShareMessage('');
+
+    const shareData = {
+      title: product.name,
+      text: `Check out ${product.name} on MySanjeevni`,
+      url: window.location.href,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        setShareMessage('Product shared successfully');
+      } else if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(shareData.url);
+        setShareMessage('Product link copied to clipboard');
+      } else {
+        window.prompt('Copy this product link:', shareData.url);
+        setShareMessage('Product link is ready to copy');
+      }
+    } catch (error) {
+      if ((error as any)?.name !== 'AbortError') {
+        setShareMessage('Unable to share product right now');
+      }
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
   const addToCart = () => {
     if (!product) return;
 
@@ -455,7 +494,11 @@ export default function MedicineDetailsPage() {
         cart.push({
           id: product._id,
           name: product.name,
-          price: product.price,
+          price: product.displayPrice ?? product.price,
+          displayPrice: product.displayPrice ?? product.price,
+          displayMrp: product.displayMrp ?? product.mrp,
+          currencySymbol: product.currencySymbol || '₹',
+          currency: product.currency || 'INR',
           quantity: 1,
           brand: product.brand,
           image: (product.images && product.images.length > 0 ? product.images[0] : product.image) || product.icon || '💊',
@@ -659,7 +702,7 @@ export default function MedicineDetailsPage() {
                 <div className="md:col-span-2">
                   {/* Main Image */}
                   <div
-                    className="bg-gray-50 rounded-lg p-8 flex items-center justify-center min-h-96 border border-gray-200 sticky top-24 overflow-hidden relative"
+                    className="bg-gray-50 rounded-lg p-8 flex items-center justify-center min-h-96 border border-gray-200 sticky top-24 overflow-hidden"
                     onMouseEnter={() => setIsImageZoomed(true)}
                     onMouseLeave={() => {
                       setIsImageZoomed(false);
@@ -701,7 +744,7 @@ export default function MedicineDetailsPage() {
                         <button
                           key={idx}
                           onClick={() => setSelectedImageIndex(idx)}
-                          className={`flex-shrink-0 h-20 w-20 rounded-lg border-2 overflow-hidden transition-all ${
+                          className={`shrink-0 h-20 w-20 rounded-lg border-2 overflow-hidden transition-all ${
                             selectedImageIndex === idx
                               ? 'border-emerald-600 ring-2 ring-emerald-300'
                               : 'border-slate-300 hover:border-emerald-400'
@@ -848,10 +891,10 @@ export default function MedicineDetailsPage() {
                   {/* Pricing */}
                   <div className="mb-6 bg-gray-50 rounded-lg p-6">
                     <div className="flex items-baseline gap-3 mb-2">
-                      <span className="text-4xl font-bold text-slate-900">₹{product.price}</span>
-                      {product.mrp && product.mrp > product.price && (
+                      <span className="text-4xl font-bold text-slate-900">{product.currencySymbol || '₹'}{product.displayPrice ?? product.price}</span>
+                      {(product.displayMrp ?? product.mrp) && (product.displayMrp ?? product.mrp)! > (product.displayPrice ?? product.price) && (
                         <>
-                          <span className="text-xl text-slate-400 line-through">₹{product.mrp}</span>
+                          <span className="text-xl text-slate-400 line-through">{product.currencySymbol || '₹'}{product.displayMrp ?? product.mrp}</span>
                           <span className="text-lg font-bold text-emerald-600">
                             {discountPercent}% OFF
                           </span>
@@ -898,7 +941,7 @@ export default function MedicineDetailsPage() {
                     </p>
                   )}
 
-                  <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="grid grid-cols-2 gap-4 mb-4">
                     <button
                       onClick={addToCart}
                       disabled={product.stock <= 0}
@@ -922,6 +965,18 @@ export default function MedicineDetailsPage() {
                       🚀 Buy Now
                     </button>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={shareProduct}
+                    disabled={shareLoading}
+                    className="w-full py-3 px-6 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                  >
+                    {shareLoading ? 'Sharing…' : '🔗 Share Product'}
+                  </button>
+                  {shareMessage && (
+                    <p className="mt-3 text-sm text-slate-700">{shareMessage}</p>
+                  )}
 
                   {/* Trust Badges */}
                   <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
@@ -973,7 +1028,7 @@ export default function MedicineDetailsPage() {
                       {product.description && (
                         <div>
                           <h3 className="text-lg font-bold text-slate-900 mb-3">About this Product</h3>
-                          <p className="text-slate-700 leading-7 whitespace-pre-wrap break-words">{product.description}</p>
+                          <p className="text-slate-700 leading-7 whitespace-pre-wrap wrap-break-word">{product.description}</p>
                         </div>
                       )}
 
@@ -1401,12 +1456,12 @@ export default function MedicineDetailsPage() {
                           {/* Price */}
                           <div className="mb-3">
                             <div className="flex items-baseline gap-2">
-                              <span className="text-lg font-bold text-slate-900">₹{relProduct.price}</span>
-                              {relProduct.mrp && relProduct.mrp > relProduct.price && (
+                              <span className="text-lg font-bold text-slate-900">{relProduct.currencySymbol || '₹'}{relProduct.displayPrice ?? relProduct.price}</span>
+                              {(relProduct.displayMrp ?? relProduct.mrp) && (relProduct.displayMrp ?? relProduct.mrp)! > (relProduct.displayPrice ?? relProduct.price) && (
                                 <>
-                                  <span className="text-xs text-slate-400 line-through">₹{relProduct.mrp}</span>
+                                  <span className="text-xs text-slate-400 line-through">{relProduct.currencySymbol || '₹'}{relProduct.displayMrp ?? relProduct.mrp}</span>
                                   <span className="text-xs font-bold text-emerald-600">
-                                    {Math.round(((relProduct.mrp - relProduct.price) / relProduct.mrp) * 100)}% OFF
+                                    {Math.round((((relProduct.displayMrp ?? relProduct.mrp) - (relProduct.displayPrice ?? relProduct.price)) / (relProduct.displayMrp ?? relProduct.mrp)) * 100)}% OFF
                                   </span>
                                 </>
                               )}
@@ -1440,7 +1495,11 @@ export default function MedicineDetailsPage() {
                                   cart.push({
                                     id: relProduct._id,
                                     name: relProduct.name,
-                                    price: relProduct.price,
+                                    price: relProduct.displayPrice ?? relProduct.price,
+                                    displayPrice: relProduct.displayPrice ?? relProduct.price,
+                                    displayMrp: relProduct.displayMrp ?? relProduct.mrp,
+                                    currencySymbol: relProduct.currencySymbol || '₹',
+                                    currency: relProduct.currency || 'INR',
                                     quantity: 1,
                                     brand: relProduct.brand,
                                     image: relProduct.image || relProduct.icon || '💊',

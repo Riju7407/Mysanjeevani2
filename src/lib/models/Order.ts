@@ -17,7 +17,11 @@ const orderSchema = new mongoose.Schema(
       },
     ],
     totalPrice: Number,
-    deliveryAddress: String,
+    deliveryAddress: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Address',
+      required: true,
+    },
     status: {
       type: String,
       enum: ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'],
@@ -32,6 +36,9 @@ const orderSchema = new mongoose.Schema(
     razorpayPaymentId: String,
     razorpaySignature: String,
     orderNotes: String,
+    shiprocketOrderId: String,
+    shiprocketShipmentId: String,
+    awbNumber: String,
   },
   {
     timestamps: true,

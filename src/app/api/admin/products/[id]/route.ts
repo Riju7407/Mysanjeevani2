@@ -20,6 +20,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     await connectDB();
     const { id } = await params;
     const body = await req.json();
+    if (body.usdPrice === undefined || body.usdPrice === null || isNaN(Number(body.usdPrice))) {
+      return NextResponse.json({ error: 'Missing or invalid USD dollar price' }, { status: 400 });
+    }
+    body.usdPrice = Number(body.usdPrice);
     const normalizedPotency =
       typeof body.potency === 'string' ? (body.potency.trim() || undefined) : body.potency;
     const normalizedQuantityUnit =

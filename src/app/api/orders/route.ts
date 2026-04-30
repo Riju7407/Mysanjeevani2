@@ -5,6 +5,9 @@ import { connectDB } from '@/lib/db';
 import { Order } from '@/lib/models/Order';
 import { User } from '@/lib/models/User';
 import { Product } from '@/lib/models/Product';
+import { Address } from '@/lib/models/Address';
+import { Vendor } from '@/lib/models/Vendor';
+import { createShiprocketOrder, generateAWB } from '@/lib/shiprocket';
 
 const keyId = process.env.RAZORPAY_KEY_ID;
 const keySecret = process.env.RAZORPAY_KEY_SECRET;
@@ -42,7 +45,7 @@ export async function GET(request: NextRequest) {
 
     if (admin) {
       // Admin can see all orders
-      orders = await Order.find({}).sort({ createdAt: -1 }).populate('userId', 'fullName email phone');
+      orders = await Order.find({}).sort({ createdAt: -1 }).populate('userId', 'fullName email phone').populate('deliveryAddress');
     } else if (vendorId) {
       // Vendor can see orders containing their products
       const { Product } = await import('@/lib/models/Product');
@@ -51,10 +54,10 @@ export async function GET(request: NextRequest) {
       
       orders = await Order.find({
         'items.productId': { $in: productIds }
-      }).sort({ createdAt: -1 }).populate('userId', 'fullName email phone');
+      }).sort({ createdAt: -1 }).populate('userId', 'fullName email phone').populate('deliveryAddress');
     } else {
       // Regular user sees their own orders
-      orders = await Order.find({ userId }).sort({ createdAt: -1 });
+      orders = await Order.find({ userId }).sort({ createdAt: -1 }).populate('deliveryAddress');
     }
 
     return NextResponse.json(
@@ -81,7 +84,7 @@ export async function GET(request: NextRequest) {
  *   userId: string,
  *   items: Array<{productId, productName, quantity, price, total}>,
  *   totalPrice: number,
- *   deliveryAddress: string,
+ *   deliveryAddressId: string,
  *   currency: string (optional, default: 'INR'),
  *   notes: object (optional)
  * }
@@ -95,14 +98,14 @@ export async function POST(request: NextRequest) {
       userId,
       items,
       totalPrice,
-      deliveryAddress,
+      deliveryAddressId,
       currency = 'INR',
       notes = {},
     } = body;
 
-    if (!userId || !items || !totalPrice) {
+    if (!userId || !items || !totalPrice || !deliveryAddressId) {
       return NextResponse.json(
-        { error: 'Missing required fields: userId, items, totalPrice' },
+        { error: 'Missing required fields: userId, items, totalPrice, deliveryAddressId' },
         { status: 400 }
       );
     }
@@ -112,7 +115,7 @@ export async function POST(request: NextRequest) {
       userId,
       items,
       totalPrice,
-      deliveryAddress,
+      deliveryAddress: deliveryAddressId,
       status: 'pending',
       paymentStatus: 'pending',
     });
@@ -150,7 +153,7 @@ export async function POST(request: NextRequest) {
           userId,
           items,
           totalPrice,
-          deliveryAddress,
+          deliveryAddress: deliveryAddressId,
           status: order.status,
           paymentStatus: order.paymentStatus,
           razorpayOrderId: order.razorpayOrderId,
@@ -254,6 +257,16 @@ export async function PUT(request: NextRequest) {
     order.status = status;
     await order.save();
 
+    // If status changed to 'shipped', create Shiprocket shipment
+    if (status === 'shipped') {
+      try {
+        await createShiprocketShipment(order);
+      } catch (shippingError: any) {
+        console.error('Shipping creation error:', shippingError?.message || shippingError);
+        // Don't fail the request, just log the error
+      }
+    }
+
     return NextResponse.json(
       {
         message: 'Order status updated successfully',
@@ -267,5 +280,90 @@ export async function PUT(request: NextRequest) {
       { error: 'Internal server error' },
       { status: 500 }
     );
+  }
+}
+
+async function createShiprocketShipment(order: any) {
+  try {
+    // Populate order with delivery address and user
+    await order.populate('deliveryAddress');
+    await order.populate('userId');
+
+    // Get vendor from first product (assuming single vendor for simplicity)
+    const firstProductId = order.items[0].productId;
+    const product = await Product.findById(firstProductId).populate('vendorId');
+    if (!product || !product.vendorId) {
+      throw new Error('Vendor not found for product');
+    }
+    const vendor = product.vendorId;
+
+    // Prepare order data for Shiprocket
+    const orderData = {
+      order_id: order._id.toString(),
+      order_date: order.createdAt.toISOString().split('T')[0],
+      pickup_location: 'Main Warehouse', // Default pickup location name
+      channel_id: process.env.SHIPROCKET_CHANNEL_ID || '',
+      comment: order.orderNotes || '',
+      billing_customer_name: order.userId.fullName.split(' ')[0],
+      billing_last_name: order.userId.fullName.split(' ').slice(1).join(' ') || '',
+      billing_address: order.deliveryAddress.addressLine1,
+      billing_address_2: order.deliveryAddress.addressLine2 || '',
+      billing_city: order.deliveryAddress.city,
+      billing_pincode: order.deliveryAddress.pincode,
+      billing_state: order.deliveryAddress.state,
+      billing_country: order.deliveryAddress.country,
+      billing_email: order.userId.email,
+      billing_phone: order.userId.phone,
+      shipping_is_billing: true,
+      shipping_customer_name: order.deliveryAddress.fullName.split(' ')[0],
+      shipping_last_name: order.deliveryAddress.fullName.split(' ').slice(1).join(' ') || '',
+      shipping_address: order.deliveryAddress.addressLine1,
+      shipping_address_2: order.deliveryAddress.addressLine2 || '',
+      shipping_city: order.deliveryAddress.city,
+      shipping_pincode: order.deliveryAddress.pincode,
+      shipping_state: order.deliveryAddress.state,
+      shipping_country: order.deliveryAddress.country,
+      shipping_email: order.userId.email,
+      shipping_phone: order.deliveryAddress.phone,
+      order_items: order.items.map((item: any) => ({
+        name: item.productName,
+        sku: item.productId,
+        units: item.quantity,
+        selling_price: item.price,
+        discount: 0,
+        tax: 0,
+        hsn: '', // Need to add HSN to product model if required
+      })),
+      payment_method: 'Prepaid', // Since payment is already done
+      shipping_charges: 0, // Calculate if needed
+      giftwrap_charges: 0,
+      transaction_charges: 0,
+      total_discount: 0,
+      sub_total: order.totalPrice,
+      length: 10, // Default dimensions, should be from product
+      breadth: 10,
+      height: 10,
+      weight: 0.5, // Default weight
+    };
+
+    // Create Shiprocket order
+    const shiprocketResponse = await createShiprocketOrder(orderData);
+
+    // Update order with Shiprocket details
+    order.shiprocketOrderId = shiprocketResponse.order_id;
+    order.shiprocketShipmentId = shiprocketResponse.shipment_id;
+    await order.save();
+
+    // Generate AWB
+    if (order.shiprocketShipmentId) {
+      const awbResponse = await generateAWB(order.shiprocketShipmentId);
+      order.awbNumber = awbResponse.awb_code || awbResponse.awb_assign_response?.awb_code;
+      await order.save();
+    }
+
+    console.log('Shiprocket shipment created successfully for order:', order._id);
+  } catch (error: any) {
+    console.error('Error creating Shiprocket shipment:', error?.message || error);
+    throw error;
   }
 }

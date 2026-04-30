@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Product } from '@/lib/models/Product';
 import { detectUserCountry, convertPrice } from '@/lib/currencyUtils';
+import { getCountryFromCookieHeader, isIndiaCountry } from '@/lib/countryPreference';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +30,11 @@ export async function GET(request: NextRequest) {
       $or: [{ approvalStatus: 'approved' }, { approvalStatus: { $exists: false } }],
     };
 
-    if (category) query.category = category;
+    // Add category filtering
+    if (category) {
+      query.$or.push({ category: category });
+      query.$or.push({ categories: { $in: [category] } });
+    }
     if (subcategory) query.subcategory = subcategory;
     if (brand) query.brand = { $regex: brand, $options: 'i' };
     if (productType) query.productType = productType;
@@ -78,19 +83,42 @@ export async function GET(request: NextRequest) {
                request.headers.get('x-real-ip') ||
                '127.0.0.1';
     const acceptLanguage = request.headers.get('accept-language') || '';
-    const userLocation = await detectUserCountry(ip as string, acceptLanguage);
+    const preferredCountry = request.cookies.get('preferredCountry')?.value || getCountryFromCookieHeader(request.headers.get('cookie'));
+    const userLocation = await detectUserCountry(ip as string, acceptLanguage, preferredCountry);
 
     // Convert prices for all products
     const productsWithConvertedPrices = await Promise.all(
       products.map(async (product) => {
         const productObj = product.toObject();
-        const conversion = await convertPrice(productObj.price, userLocation);
+        const inIndia = userLocation.isIndia || isIndiaCountry(preferredCountry);
+        const usdPrice = typeof productObj.usdPrice === 'number' ? productObj.usdPrice : undefined;
+        const conversion = inIndia
+          ? {
+              convertedPrice: productObj.price,
+              currency: 'INR' as const,
+              symbol: '₹' as const,
+              exchangeRate: 1,
+            }
+          : usdPrice !== undefined
+            ? {
+                convertedPrice: usdPrice,
+                currency: 'USD' as const,
+                symbol: '$' as const,
+                exchangeRate: 1,
+              }
+            : await convertPrice(productObj.price, userLocation);
+
+        const displayMrp = inIndia || productObj.mrp === undefined || productObj.mrp === null
+          ? productObj.mrp
+          : Math.round(productObj.mrp * conversion.exchangeRate * 100) / 100;
 
         return {
           ...productObj,
+          displayCurrency: conversion.currency,
           displayPrice: conversion.convertedPrice,
           currency: conversion.currency,
           currencySymbol: conversion.symbol,
+          displayMrp,
           originalPrice: productObj.price,
           exchangeRate: conversion.exchangeRate,
         };
@@ -128,6 +156,7 @@ export async function POST(request: NextRequest) {
       name,
       description,
       price,
+      usdPrice,
       discount,
       category,
       brand,
@@ -145,6 +174,7 @@ export async function POST(request: NextRequest) {
       benefit,
       isActive,
       isPopular,
+      popularSection,
       productType,
       potency,
       quantity,
@@ -156,10 +186,25 @@ export async function POST(request: NextRequest) {
       typeof quantityUnit === 'string' ? (quantityUnit.trim() || 'None') : (quantityUnit || 'None');
     const normalizedProductType =
       typeof productType === 'string' ? (productType.trim() || undefined) : productType;
+    const normalizedPopularSection =
+      typeof popularSection === 'string' && ['None', 'Generic', 'Ayurveda', 'Homeopathy', 'LabTests'].includes(popularSection)
+        ? popularSection
+        : body.isPopularGeneric
+          ? 'Generic'
+          : body.isPopularAyurveda
+            ? 'Ayurveda'
+            : body.isPopularHomeopathy
+              ? 'Homeopathy'
+              : body.isPopularLabTests
+                ? 'LabTests'
+                : body.isPopular
+                  ? 'Generic'
+                  : 'None';
+    const isPopularSectionSelected = normalizedPopularSection !== 'None';
 
-    if (!name || !price || !category) {
+    if (!name || !price || !category || usdPrice === undefined || usdPrice === null || isNaN(Number(usdPrice))) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing or invalid required fields' },
         { status: 400 }
       );
     }
@@ -168,6 +213,7 @@ export async function POST(request: NextRequest) {
       name,
       description,
       price,
+      usdPrice: Number(usdPrice),
       discount,
       category,
       brand,
@@ -184,7 +230,12 @@ export async function POST(request: NextRequest) {
       mrp,
       benefit,
       isActive: isActive !== undefined ? isActive : true,
-      isPopular: isPopular !== undefined ? isPopular : false,
+      popularSection: normalizedPopularSection,
+      isPopular: isPopular !== undefined ? isPopular : isPopularSectionSelected,
+      isPopularGeneric: normalizedPopularSection === 'Generic',
+      isPopularAyurveda: normalizedPopularSection === 'Ayurveda',
+      isPopularHomeopathy: normalizedPopularSection === 'Homeopathy',
+      isPopularLabTests: normalizedPopularSection === 'LabTests',
       productType: normalizedProductType || 'Generic Medicine',
       potency: normalizedPotency,
       quantity,
