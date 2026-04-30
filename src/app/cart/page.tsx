@@ -98,12 +98,11 @@ export default function CartPage() {
   const currencySymbol = isIndiaCountry(selectedCountry) ? '₹' : '$';
   const effectivePrice = (item: CartItem) => Number(item.displayPrice ?? item.price) || 0;
   const totalPrice = cartItems.reduce((sum, item) => sum + effectivePrice(item) * item.quantity, 0);
+  const isIndia = isIndiaCountry(selectedCountry);
   const discount = Math.floor(totalPrice * 0.10); // 10% discount
   const finalPrice = totalPrice - discount;
   const deliveryCharge = isIndia ? 0 : 5;
   const totalAmount = finalPrice + deliveryCharge;
-
-  const isIndia = isIndiaCountry(selectedCountry);
 
   const getStoredCountry = () => {
     const fromLocalStorage = localStorage.getItem('preferredCountry');
