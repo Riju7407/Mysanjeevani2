@@ -95,10 +95,10 @@ export default function CartPage() {
   });
   const router = useRouter();
 
+  const isIndia = isIndiaCountry(selectedCountry);
   const currencySymbol = isIndiaCountry(selectedCountry) ? '₹' : '$';
   const effectivePrice = (item: CartItem) => Number(item.displayPrice ?? item.price) || 0;
   const totalPrice = cartItems.reduce((sum, item) => sum + effectivePrice(item) * item.quantity, 0);
-  const isIndia = isIndiaCountry(selectedCountry);
   const discount = Math.floor(totalPrice * 0.10); // 10% discount
   const finalPrice = totalPrice - discount;
   const deliveryCharge = isIndia ? 0 : 5;
@@ -124,15 +124,15 @@ export default function CartPage() {
     if (savedCart) {
       try {
         const parsed = JSON.parse(savedCart);
-        const normalized: CartItem[] = Array.isArray(parsed)
+        const normalized = Array.isArray(parsed)
           ? parsed.map((item: any) => ({
               id: item.id,
               name: item.name || 'Product',
               price: Number(item.price ?? item.displayPrice) || 0,
               displayPrice: Number(item.displayPrice ?? item.price) || 0,
               displayMrp: item.displayMrp != null ? Number(item.displayMrp) || undefined : undefined,
-              currencySymbol: (item.currencySymbol === '$' ? '$' : '₹') as const,
-              currency: (item.currency === 'USD' ? 'USD' : 'INR') as const,
+              currencySymbol: item.currencySymbol === '$' ? ('$' as const) : ('₹' as const),
+              currency: item.currency === 'USD' ? ('USD' as const) : ('INR' as const),
               quantity: Number(item.quantity) || 1,
               brand: item.brand || 'MySanjeevni',
               image: item.image || '💊',
