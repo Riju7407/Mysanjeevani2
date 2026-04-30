@@ -837,7 +837,7 @@ function MedicinesContent() {
                         </div>
                         {(product.displayMrp ?? product.mrp) && (product.displayMrp ?? product.mrp)! > (product.displayPrice ?? product.price) && (
                           <span className="text-[11px] font-bold text-emerald-600">
-                            {Math.round((((product.displayMrp ?? product.mrp) - (product.displayPrice ?? product.price)) / (product.displayMrp ?? product.mrp)) * 100)}% OFF
+                            {Math.round((((product.displayMrp ?? product.mrp)! - (product.displayPrice ?? product.price)!) / (product.displayMrp ?? product.mrp)!) * 100)}% OFF
                           </span>
                         )}
                       </div>
