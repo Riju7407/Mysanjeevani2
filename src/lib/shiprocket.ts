@@ -23,7 +23,7 @@ export async function getShiprocketToken(): Promise<string> {
       password: SHIPROCKET_PASSWORD,
     });
 
-    shiprocketToken = response.data.token;
+    shiprocketToken = response.data.token as string;
     // Token typically expires in 24 hours, set expiry to 23 hours from now
     tokenExpiry = Date.now() + (23 * 60 * 60 * 1000);
 
