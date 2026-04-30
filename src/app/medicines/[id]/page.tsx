@@ -1457,14 +1457,18 @@ export default function MedicineDetailsPage() {
                           <div className="mb-3">
                             <div className="flex items-baseline gap-2">
                               <span className="text-lg font-bold text-slate-900">{relProduct.currencySymbol || '₹'}{relProduct.displayPrice ?? relProduct.price}</span>
-                              {(relProduct.displayMrp ?? relProduct.mrp) && (relProduct.displayMrp ?? relProduct.mrp)! > (relProduct.displayPrice ?? relProduct.price) && (
-                                <>
-                                  <span className="text-xs text-slate-400 line-through">{relProduct.currencySymbol || '₹'}{relProduct.displayMrp ?? relProduct.mrp}</span>
-                                  <span className="text-xs font-bold text-emerald-600">
-                                    {Math.round((((relProduct.displayMrp ?? relProduct.mrp) - (relProduct.displayPrice ?? relProduct.price)) / (relProduct.displayMrp ?? relProduct.mrp)) * 100)}% OFF
-                                  </span>
-                                </>
-                              )}
+                              {(() => {
+                                const mrp = relProduct.displayMrp ?? relProduct.mrp;
+                                const price = relProduct.displayPrice ?? relProduct.price;
+                                return mrp && price && mrp > price ? (
+                                  <>
+                                    <span className="text-xs text-slate-400 line-through">{relProduct.currencySymbol || '₹'}{mrp}</span>
+                                    <span className="text-xs font-bold text-emerald-600">
+                                      {Math.round(((mrp - price) / mrp) * 100)}% OFF
+                                    </span>
+                                  </>
+                                ) : null;
+                              })()}
                             </div>
                           </div>
 
