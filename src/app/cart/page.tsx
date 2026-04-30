@@ -124,15 +124,15 @@ export default function CartPage() {
     if (savedCart) {
       try {
         const parsed = JSON.parse(savedCart);
-        const normalized = Array.isArray(parsed)
+        const normalized: CartItem[] = Array.isArray(parsed)
           ? parsed.map((item: any) => ({
               id: item.id,
               name: item.name || 'Product',
               price: Number(item.price ?? item.displayPrice) || 0,
               displayPrice: Number(item.displayPrice ?? item.price) || 0,
               displayMrp: item.displayMrp != null ? Number(item.displayMrp) || undefined : undefined,
-              currencySymbol: item.currencySymbol === '$' ? '$' : '₹',
-              currency: item.currency === 'USD' ? 'USD' : 'INR',
+              currencySymbol: (item.currencySymbol === '$' ? '$' : '₹') as const,
+              currency: (item.currency === 'USD' ? 'USD' : 'INR') as const,
               quantity: Number(item.quantity) || 1,
               brand: item.brand || 'MySanjeevni',
               image: item.image || '💊',
