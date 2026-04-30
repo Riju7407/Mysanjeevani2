@@ -386,7 +386,7 @@ export default function MedicineDetailsPage() {
   const discountPercent = useMemo(() => {
     const price = product?.displayPrice ?? product?.price;
     const mrp = product?.displayMrp ?? product?.mrp;
-    if (!mrp || mrp <= price) return 0;
+    if (!mrp || !price || mrp <= price) return 0;
     return Math.round(((mrp - price) / mrp) * 100);
   }, [product]);
 
