@@ -398,6 +398,10 @@ export default function HomePage() {
       {/* Primary Services */}
       <PrimaryServicesCarousel />
 
+      
+
+       <HealthConcernCarousel />
+
       {/* Popular Medicines Section */}
       <PopularProductsDisplay
         title="Popular Medicines"
@@ -577,7 +581,7 @@ export default function HomePage() {
       </section>
 
       {/* Health Concerns Section */}
-      <HealthConcernCarousel />
+    
 
       {/* Trust & Assurance Section */}
       <section ref={trustSectionRef} className="bg-linear-to-br from-slate-50 via-white to-emerald-50 py-14 sm:py-16 relative overflow-hidden">
