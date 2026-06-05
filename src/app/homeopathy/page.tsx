@@ -35,6 +35,9 @@ interface HomeopathyProduct {
   stock?: number;
   currencySymbol?: '₹' | '$';
   currency?: 'INR' | 'USD';
+  categories?: string[];
+extraCategoryPaths?: string[][];
+diseasePaths?: string[][];
 }
 
 const DEFAULT_CATEGORIES = [
@@ -78,13 +81,29 @@ function HomeopathyContent() {
   const [cart, setCart] = useState<Record<string, number>>({});
 
   const categories = useMemo(() => {
-    const dynamicCategories = Array.from(
-      new Set(
-        products
-          .map((product) => (product.category || '').trim())
-          .filter(Boolean)
-      )
-    );
+   const dynamicCategories = Array.from(
+  new Set(
+    products.flatMap((product) => {
+      const values: string[] = [];
+
+      if (product.category) values.push(product.category);
+
+      if (product.subcategory) values.push(product.subcategory);
+
+      if (product.categories) {
+        values.push(...product.categories);
+      }
+
+      if (product.extraCategoryPaths) {
+        product.extraCategoryPaths.forEach(path => {
+          values.push(...path.filter(Boolean));
+        });
+      }
+
+      return values;
+    })
+  )
+);
 
     const merged = Array.from(new Set([...DEFAULT_CATEGORIES, ...dynamicCategories]));
     return ['All', ...merged];
@@ -100,10 +119,23 @@ function HomeopathyContent() {
   const filteredProducts = useMemo(() => {
     let result = products.filter((product) => {
       const matchesCategory =
-        selectedCategory === 'All' ||
-        product.category === selectedCategory ||
-        product.subcategory === selectedCategory ||
-        product.brand === selectedCategory;
+  selectedCategory === 'All' ||
+
+  product.category === selectedCategory ||
+
+  product.subcategory === selectedCategory ||
+
+  product.brand === selectedCategory ||
+
+  product.categories?.includes(selectedCategory) ||
+
+  product.extraCategoryPaths?.some(path =>
+    path.includes(selectedCategory)
+  ) ||
+
+  product.diseasePaths?.some(path =>
+    path.includes(selectedCategory)
+  );
 
       const searchText = search.trim().toLowerCase();
       const concatenatedHealthConcerns = Array.isArray(product.healthConcerns) ? product.healthConcerns.join(' ') : '';
