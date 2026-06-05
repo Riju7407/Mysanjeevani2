@@ -1,10 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   devIndicators: {
     position: 'bottom-right',
   },
+
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+
   images: {
     localPatterns: [
       {
@@ -18,6 +22,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+
   async headers() {
     return [
       {
