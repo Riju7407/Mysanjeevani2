@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { usePreferredCountry } from '@/lib/usePreferredCountry';
+import { addToCartUtil } from '@/lib/cartUtils';
 
 interface HomeopathyProduct {
   _id: number;
@@ -180,35 +181,12 @@ function HomeopathyContent() {
   };
 
   const addToCart = (product: HomeopathyProduct) => {
-    setCart((prev) => ({ ...prev, [product._id]: (prev[product._id] || 0) + 1 }));
-
-    try {
-      const raw = localStorage.getItem('cart') || '[]';
-      const cartItems = JSON.parse(raw);
-      const existing = cartItems.find((item: any) => item.id === product._id);
-
-      if (existing) {
-        existing.quantity += 1;
-      } else {
-        cartItems.push({
-          id: product._id,
-          name: product.name,
-          price: product.displayPrice ?? product.price,
-          displayPrice: product.displayPrice ?? product.price,
-          displayMrp: product.displayMrp ?? product.mrp,
-          currencySymbol: product.currencySymbol || '₹',
-          currency: product.currency || 'INR',
-          quantity: 1,
-          brand: product.brand || 'Homeopathy',
-          image: product.image || product.icon || '🌸',
-          vendorName: 'MySanjeevni',
-        });
-      }
-
-      localStorage.setItem('cart', JSON.stringify(cartItems));
-      window.dispatchEvent(new Event('storage'));
-    } catch {
-      // Silent cart fallback for local storage parsing issues.
+    const result = addToCartUtil(product);
+    if (result) {
+      setCart((prev) => ({ ...prev, [product._id]: (prev[product._id] || 0) + 1 }));
+    } else {
+      console.error('Failed to add product to cart:', product._id);
+      alert('Failed to add product to cart. Please try again.');
     }
   };
 

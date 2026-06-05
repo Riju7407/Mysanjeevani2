@@ -99,8 +99,8 @@ export default function CartPage() {
 
   const isIndia = isIndiaCountry(selectedCountry);
   const currencySymbol = isIndiaCountry(selectedCountry) ? '₹' : '$';
-  const effectivePrice = (item: CartItem) => Number(item.displayPrice ?? item.price) || 0;
-  const totalPrice = cartItems.reduce((sum, item) => sum + effectivePrice(item) * item.quantity, 0);
+  const effectivePrice = (item?: CartItem) => item ? Number(item.displayPrice ?? item.price) || 0 : 0;
+  const totalPrice = cartItems.reduce((sum, item) => sum + effectivePrice(item) * (item?.quantity || 0), 0);
   const discount = Math.floor(totalPrice * 0.10); // 10% discount
   const finalPrice = totalPrice - discount;
   const deliveryCharge = isIndia ? 50 : 0;
@@ -319,7 +319,7 @@ export default function CartPage() {
                 customerName: address.fullName,
                 customerEmail: user?.email || 'not-provided',
                 customerPhone: address.phoneNumber,
-                items: cartItems.map((item) => ({
+                items: cartItems.filter((item) => item).map((item) => ({
                   ...item,
                   vendorId: item.vendorId || 'default-vendor',
                 })),
@@ -402,14 +402,14 @@ export default function CartPage() {
       return;
     }
     const updated = cartItems.map((item) =>
-      item.id === id ? { ...item, quantity } : item
-    );
+      item && item.id === id ? { ...item, quantity } : item
+    ).filter((item) => item);
     setCartItems(updated);
     localStorage.setItem('cart', JSON.stringify(updated));
   };
 
   const removeFromCart = (id: string | number) => {
-    const updated = cartItems.filter((item) => item.id !== id);
+    const updated = cartItems.filter((item) => item && item.id !== id);
     setCartItems(updated);
     localStorage.setItem('cart', JSON.stringify(updated));
   };
@@ -453,7 +453,7 @@ export default function CartPage() {
         customerName: address.fullName,
         customerEmail: user?.email || 'not-provided',
         customerPhone: address.phoneNumber,
-        items: cartItems.map((item) => ({
+        items: cartItems.filter((item) => item).map((item) => ({
           ...item,
           vendorId: item.vendorId || 'default-vendor',
         })),
@@ -584,7 +584,7 @@ export default function CartPage() {
               customerName: address.fullName,
               customerEmail: user?.email || 'not-provided',
               customerPhone: address.phoneNumber,
-              items: cartItems.map((item) => ({
+              items: cartItems.filter((item) => item).map((item) => ({
                 ...item,
                 vendorId: item.vendorId || 'default-vendor',
               })),
@@ -708,6 +708,7 @@ export default function CartPage() {
 
                   <div className="divide-y divide-gray-200">
                     {cartItems.map((item) => {
+                      if (!item) return null;
                       return (
                         <div
                           key={item.id}
@@ -718,7 +719,7 @@ export default function CartPage() {
                             {isImageUrl(item.image) ? (
                               <img
                                 src={item.image}
-                                alt={item.name}
+                                alt={item.name || 'Product'}
                                 className="w-full h-full object-cover rounded-lg"
                                 loading="lazy"
                               />
@@ -729,8 +730,8 @@ export default function CartPage() {
 
                           {/* Product Details */}
                           <div className="flex-1">
-                            <h3 className="font-semibold text-gray-900">{item.name}</h3>
-                            <p className="text-sm text-gray-600">{item.brand}</p>
+                            <h3 className="font-semibold text-gray-900">{item.name || 'Product'}</h3>
+                            <p className="text-sm text-gray-600">{item.brand || 'N/A'}</p>
                             <p className="text-lg font-bold text-emerald-600 mt-1">
                               {item.currencySymbol || currencySymbol}{effectivePrice(item).toFixed(2)}
                             </p>
@@ -739,16 +740,16 @@ export default function CartPage() {
                           {/* Quantity Control */}
                           <div className="flex items-center gap-3 bg-gray-100 rounded-lg px-3 py-2">
                             <button
-                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                              onClick={() => updateQuantity(item.id, (item.quantity || 1) - 1)}
                               className="text-gray-600 hover:text-gray-900 font-bold"
                             >
                               −
                             </button>
                             <span className="w-8 text-center font-semibold text-gray-900">
-                              {item.quantity}
+                              {item.quantity || 1}
                             </span>
                             <button
-                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                              onClick={() => updateQuantity(item.id, (item.quantity || 1) + 1)}
                               className="text-gray-600 hover:text-gray-900 font-bold"
                             >
                               +
@@ -758,7 +759,7 @@ export default function CartPage() {
                           {/* Total & Remove */}
                           <div className="text-right">
                             <p className="font-bold text-gray-900">
-                              {item.currencySymbol || currencySymbol}{(effectivePrice(item) * item.quantity).toFixed(2)}
+                              {item.currencySymbol || currencySymbol}{(effectivePrice(item) * (item.quantity || 1)).toFixed(2)}
                             </p>
                             <button
                               onClick={() => removeFromCart(item.id)}

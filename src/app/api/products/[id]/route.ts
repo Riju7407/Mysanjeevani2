@@ -21,34 +21,78 @@ export async function GET(
     const isObjectId = mongoose.Types.ObjectId.isValid(normalizedId);
 
     if (!isNumericId && !isObjectId) {
+      console.warn(`[API] Invalid product id format: ${normalizedId}`);
       return NextResponse.json({ error: 'Invalid product id' }, { status: 400 });
     }
 
-    const product = await Product.findOne({
-      _id: isNumericId ? numericId : normalizedId,
-      isActive: true,
-      $or: [{ approvalStatus: 'approved' }, { approvalStatus: { $exists: false } }],
-    }).populate({ path: 'vendorId', select: 'isActive' });
+    try {
+      console.log(`[API] Fetching product with id: ${normalizedId}, isNumeric: ${isNumericId}, isObjectId: ${isObjectId}`);
+      
+      const query: any = {
+        isActive: true,
+        $or: [{ approvalStatus: 'approved' }, { approvalStatus: { $exists: false } }],
+      };
+      
+      // Use numeric ID if available, otherwise use string ID
+      if (isNumericId) {
+        query._id = numericId;
+      } else if (isObjectId) {
+        query._id = normalizedId;
+      } else {
+        // Fallback: try both numeric and string
+        query.$or.push({ _id: numericId }, { _id: normalizedId });
+      }
 
-    if (!product || (product.vendorId && typeof product.vendorId === 'object' && 'isActive' in product.vendorId && (product.vendorId as any).isActive === false)) {
-      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
-    }
+      console.log(`[API] Query filter:`, JSON.stringify(query));
 
-    const ip = _request.headers.get('x-forwarded-for') || _request.headers.get('x-real-ip') || '127.0.0.1';
-    const acceptLanguage = _request.headers.get('accept-language') || '';
-    const preferredCountry = _request.cookies.get('preferredCountry')?.value || getCountryFromCookieHeader(_request.headers.get('cookie'));
-    const userLocation = await detectUserCountry(ip as string, acceptLanguage, preferredCountry);
-    const inIndia = userLocation.isIndia || isIndiaCountry(preferredCountry);
-    const productObj = product.toObject();
-    const usdPrice = typeof productObj.usdPrice === 'number' ? productObj.usdPrice : undefined;
-    const conversion = inIndia
-      ? { convertedPrice: productObj.price, currency: 'INR' as const, symbol: '₹' as const, exchangeRate: 1 }
-      : usdPrice !== undefined
-        ? { convertedPrice: usdPrice, currency: 'USD' as const, symbol: '$' as const, exchangeRate: 1 }
-        : await convertPrice(productObj.price, userLocation);
+      // Fetch product without populate to avoid schema registration issues
+      const product = await Product.findOne(query).lean();
 
-    return NextResponse.json({
-      product: {
+      if (!product) {
+        console.warn(`[API] Product not found for id: ${normalizedId}`);
+        return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+      }
+
+      // Don't populate vendor - just check if vendorId exists and is valid
+      // Vendor population can cause schema registration errors in API routes
+      console.log(`[API] Product found: ${product._id}, vendorId: ${product.vendorId}`);
+
+      const ip = _request.headers.get('x-forwarded-for') || _request.headers.get('x-real-ip') || '127.0.0.1';
+      const acceptLanguage = _request.headers.get('accept-language') || '';
+      const preferredCountry = _request.cookies.get('preferredCountry')?.value || getCountryFromCookieHeader(_request.headers.get('cookie'));
+      
+      console.log(`[API] Location detection - IP: ${ip}, preferredCountry: ${preferredCountry}`);
+      
+      let userLocation: any = { isIndia: isIndiaCountry(preferredCountry) };
+      try {
+        userLocation = await detectUserCountry(ip as string, acceptLanguage, preferredCountry);
+        console.log(`[API] User location detected:`, userLocation);
+      } catch (locationError) {
+        console.warn('[API] Failed to detect user country:', locationError);
+        userLocation = { isIndia: isIndiaCountry(preferredCountry) };
+      }
+
+      const inIndia = userLocation.isIndia || isIndiaCountry(preferredCountry);
+      const productObj = product;
+      const usdPrice = typeof productObj.usdPrice === 'number' ? productObj.usdPrice : undefined;
+      
+      console.log(`[API] Product pricing - INR: ${productObj.price}, USD: ${usdPrice}, inIndia: ${inIndia}`);
+      
+      let conversion = { convertedPrice: productObj.price || 0, currency: 'INR' as const, symbol: '₹' as const, exchangeRate: 1 };
+      
+      try {
+        conversion = inIndia
+          ? { convertedPrice: productObj.price || 0, currency: 'INR' as const, symbol: '₹' as const, exchangeRate: 1 }
+          : usdPrice !== undefined
+            ? { convertedPrice: usdPrice, currency: 'USD' as const, symbol: '$' as const, exchangeRate: 1 }
+            : await convertPrice(productObj.price || 0, userLocation);
+        console.log(`[API] Conversion result:`, conversion);
+      } catch (conversionError) {
+        console.warn('[API] Failed to convert price:', conversionError);
+        conversion = { convertedPrice: productObj.price || 0, currency: 'INR' as const, symbol: '₹' as const, exchangeRate: 1 };
+      }
+
+      const responseProduct = {
         ...productObj,
         displayPrice: conversion.convertedPrice,
         displayCurrency: conversion.currency,
@@ -56,13 +100,21 @@ export async function GET(
         currencySymbol: conversion.symbol,
         displayMrp: inIndia || productObj.mrp === undefined || productObj.mrp === null
           ? productObj.mrp
-          : Math.round(productObj.mrp * conversion.exchangeRate * 100) / 100,
-        originalPrice: productObj.price,
+          : Math.round((productObj.mrp || 0) * conversion.exchangeRate * 100) / 100,
+        originalPrice: productObj.price || 0,
         exchangeRate: conversion.exchangeRate,
-      },
-    }, { status: 200 });
+      };
+
+      console.log(`[API] Success - returning product ${normalizedId}`);
+      return NextResponse.json({ product: responseProduct }, { status: 200 });
+    } catch (dbError) {
+      console.error('[API] Database error in get product by id:', dbError);
+      const errorMessage = dbError instanceof Error ? dbError.message : 'Unknown error';
+      return NextResponse.json({ error: `Failed to fetch product: ${errorMessage}` }, { status: 500 });
+    }
   } catch (error) {
-    console.error('Get product by id error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('[API] Get product by id error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: `Internal server error: ${errorMessage}` }, { status: 500 });
   }
 }

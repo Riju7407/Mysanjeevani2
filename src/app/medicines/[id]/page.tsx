@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { usePreferredCountry } from '@/lib/usePreferredCountry';
+import { addToCartUtil } from '@/lib/cartUtils';
 
 interface Product {
   _id: number;
@@ -211,19 +212,40 @@ export default function MedicineDetailsPage() {
       setError('');
 
       try {
+        console.log(`[Frontend] Fetching product: ${productId}`);
         const res = await fetch(`/api/products/${productId}`, { cache: 'no-store' });
         const data = await res.json();
 
+        console.log(`[Frontend] Response status: ${res.status}, data:`, data);
+
         if (!res.ok) {
-          setError(data.error || 'Unable to load product details');
+          if (res.status === 404) {
+            console.warn('[Frontend] Product not found:', productId);
+            setError('Product not found');
+          } else if (res.status === 500) {
+            console.error('[Frontend] Server error:', data.error);
+            setError(`Server error: ${data.error || 'Unable to load product details'}`);
+          } else {
+            console.warn('[Frontend] API error:', res.status, data.error);
+            setError(data.error || 'Unable to load product details');
+          }
           setProduct(null);
           return;
         }
 
+        if (!data.product) {
+          console.warn('[Frontend] No product in response');
+          setError('Product data is invalid');
+          setProduct(null);
+          return;
+        }
+
+        console.log('[Frontend] Product loaded successfully:', data.product._id);
         setProduct(data.product || null);
         setSelectedImageIndex(0);
-      } catch {
-        setError('Unable to load product details');
+      } catch (error) {
+        console.error('[Frontend] Error fetching product:', error);
+        setError(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
         setProduct(null);
       } finally {
         setLoading(false);
@@ -486,33 +508,13 @@ export default function MedicineDetailsPage() {
   const addToCart = () => {
     if (!product) return;
 
-    try {
-      const raw = localStorage.getItem('cart') || '[]';
-      const cart = JSON.parse(raw);
-      const existing = cart.find((item: any) => item.id === product._id);
-
-      if (existing) existing.quantity += 1;
-      else {
-        cart.push({
-          id: product._id,
-          name: product.name,
-          price: product.displayPrice ?? product.price,
-          displayPrice: product.displayPrice ?? product.price,
-          displayMrp: product.displayMrp ?? product.mrp,
-          currencySymbol: product.currencySymbol || '₹',
-          currency: product.currency || 'INR',
-          quantity: 1,
-          brand: product.brand,
-          image: (product.images && product.images.length > 0 ? product.images[0] : product.image) || product.icon || '💊',
-          vendorName: 'MySanjeevni',
-        });
-      }
-
-      localStorage.setItem('cart', JSON.stringify(cart));
-      window.dispatchEvent(new Event('storage'));
+    const result = addToCartUtil(product);
+    if (result) {
       setAdded(true);
-    } catch {
+      setError('');
+    } else {
       setError('Unable to add product to cart');
+      console.error('Failed to add product to cart:', product._id);
     }
   };
 

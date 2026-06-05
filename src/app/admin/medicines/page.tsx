@@ -690,7 +690,10 @@ export default function AdminMedicines() {
     // Always use m.category as primary source, only use categories[0] if categories exist
     const category = m.category || (categories.length > 0 ? getCategoryName(categories[0]) : '');
     const subcategory = m.subcategory || (categories.length > 1 ? getCategoryName(categories[1]) : '');
-    const categoryPath = category ? (subcategory ? [category, subcategory] : [category]) : [];
+    // Load full category hierarchy from categories array if available, fallback to category/subcategory
+    const categoryPath = categories.length > 0 
+      ? categories.map(c => getCategoryName(c)).filter(Boolean)
+      : (category ? (subcategory ? [category, subcategory] : [category]) : []);
     const existingPopularSections: string[] = [];
     if ((m as any).popularSections && Array.isArray((m as any).popularSections)) {
       existingPopularSections.push(...(m as any).popularSections);

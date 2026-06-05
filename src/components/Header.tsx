@@ -246,7 +246,7 @@ export default function Header() {
     const cartStr = localStorage.getItem('cart');
     if (cartStr) {
       const cart = JSON.parse(cartStr);
-      const count = cart.reduce((sum: number, item: any) => sum + item.quantity, 0);
+      const count = cart.reduce((sum: number, item: any) => sum + (item?.quantity || 0), 0);
       setCartCount(count);
     }
 
@@ -255,7 +255,7 @@ export default function Header() {
       const cartStr = localStorage.getItem('cart');
       if (cartStr) {
         const cart = JSON.parse(cartStr);
-        const count = cart.reduce((sum: number, item: any) => sum + item.quantity, 0);
+        const count = cart.reduce((sum: number, item: any) => sum + (item?.quantity || 0), 0);
         setCartCount(count);
       } else {
         setCartCount(0);

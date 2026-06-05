@@ -12,6 +12,7 @@ import PrimaryServicesCarousel from '@/components/PrimaryServicesCarousel';
 import HealthConcernCarousel from '@/components/HealthConcernCarousel';
 import FeaturedProductsSection from '@/components/FeaturedProductsSection';
 import { usePreferredCountry } from '@/lib/usePreferredCountry';
+import { addToCartUtil } from '@/lib/cartUtils';
 
 interface Product {
   _id: number;
@@ -339,34 +340,10 @@ export default function HomePage() {
   }, []);
 
   const addToCart = (product: Product) => {
-    try {
-      const raw = localStorage.getItem('cart') || '[]';
-      const cart = JSON.parse(raw);
-      const productId = product._id !== undefined && product._id !== null ? String(product._id) : `${product.name || 'product'}`;
-      const existing = cart.find((item: any) => item.id === productId);
-
-      if (existing) {
-        existing.quantity += 1;
-      } else {
-        cart.push({
-          id: productId,
-          name: product.name,
-          price: product.displayPrice ?? product.price,
-          displayPrice: product.displayPrice ?? product.price,
-          displayMrp: product.displayMrp ?? product.mrp,
-          currencySymbol: product.currencySymbol || '₹',
-          currency: product.currency || 'INR',
-          quantity: 1,
-          brand: product.brand,
-          image: product.image || product.icon || '💊',
-          vendorName: 'MySanjeevni',
-        });
-      }
-
-      localStorage.setItem('cart', JSON.stringify(cart));
-      window.dispatchEvent(new Event('storage'));
-    } catch (error) {
-      console.error('Failed to add to cart:', error);
+    const result = addToCartUtil(product);
+    if (!result) {
+      console.error('Failed to add product to cart:', product._id);
+      alert('Failed to add product to cart. Please try again.');
     }
   };
 
